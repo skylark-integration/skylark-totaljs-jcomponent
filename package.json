@@ -1,5 +1,5 @@
 {
-  "name": " skylark-totaljs-jcomponent",
+  "name": "skylark-totaljs-jcomponent",
   "description": "A version of totaljs jcomponent that ported to running on skylarkjs",
   "version": "0.9.0",
   "keywords": [

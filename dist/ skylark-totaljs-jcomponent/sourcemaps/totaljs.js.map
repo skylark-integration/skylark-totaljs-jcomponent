@@ -1,1 +1,0 @@
-{"version":3,"sources":["totaljs.js"],"names":["define","skylark","totaljs"],"mappings":";;;;;;;AAAAA,QACC,yBACC,SAASC,GACV,MAAOA,GAAQC","file":"../totaljs.js","sourcesContent":["define([\r\n\t\"skylark-langx/skylark\"\r\n],function(skylark){\r\n\treturn skylark.totaljs = {};\r\n});"]}

@@ -1,2 +1,2 @@
 # skylark-totaljs-jcomponent
-A version of totaljs jcomponent that ported to running on skylarkjs.
+A version of totaljs jcomponent that ported to running on skylarkjs. In development.
