@@ -1,8 +1,9 @@
 define([
+	"skylark-langx/skylark",
 	"skylark-langx/langx",
-	"skylark-utils-dom/query",
-	"./totaljs"
-],function(langx,$,totaljs){
+	"skylark-utils-dom/query"
+],function(skylark,langx,$){
+	var totaljs = skylark.totaljs = {};
 	var M = totaljs.jc = {
 		isPRIVATEMODE : false,
 		isMOBILE : /Mobi/.test(navigator.userAgent),
@@ -79,11 +80,6 @@ define([
 	//- jBinder
 
 
-	function isValue(val) {
-		var index = val.indexOf('value');
-		return index !== -1 ? (((/\W/).test(val)) || val === 'value') : false;
-	}
-
 	//- Plugin
 
 
@@ -98,7 +94,7 @@ define([
 	M.$version = '';
 	M.$language = '';
 
-	M.$parser = [];
+	//M.$parser = [];
 	//M.transforms = {};
 	//M.compiler = C;
 

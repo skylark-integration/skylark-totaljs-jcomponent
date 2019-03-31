@@ -30,6 +30,9 @@
 			<div class="newtask-button"><button disabled data-bind="@__disabled:!value || !value.length"><i class="fa fa-keyboard"></i>ADD</button></div>
 			<div class="newtask-input"><input type="text" placeholder="Type a task" maxlength="1000" data-jc-bind="" /></div>
 		</div>
+		<div data-jc-scope="form">
+			<div data-bind="name__html:JSON.stringify(value)"></div>
+		</div>
 		<div data-bind="form__html:JSON.stringify(value)"></div>
 		<div data-bind="form__track:name__html:value.name"></div>
 	</div>

@@ -2,20 +2,15 @@ define([
 	"./jc"
 ],function(jc){
 	var defaults =  {
-		scope : Window,
 		delay : 555,
 		delaywatcher : 555,
 		delaybinder : 200,
-		fallback : 'https://cdn.componentator.com/j-{0}.html',
-		fallbackcache : '',
 		localstorage : true,
 		version : '',
 		importcache : 'session',
 		root : '' , // String or Function
 		keypress : true,
 		jsoncompress : false,
-		thousandsseparator : ' ',
-		decimalseparator : '.',
 		dateformat : null
 
 	};

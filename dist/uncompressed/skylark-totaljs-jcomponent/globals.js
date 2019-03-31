@@ -1,25 +1,21 @@
 define([
 	"./jc",
 	"./defaults",
-	"./env",
+	"./utils/env",
 	"./langx",
-	"./logs",
+	"./utils/logs",
 	"./topic",
-	"./cookies",
-	"./caches",
-	"./storages",
-	"./transforms",
+	"./utils/cookies",
+	"./utils/cache",
 	"./plugins",
-	"./Component",
-	"./binders",
-	"./views",
-	"./compiler",
-	"./schedulers",
-	"./paths"
+	"./components",
+	"./binding",
+	"./views"
 ],function(jc, defaults, env,langx,logs,topic,cookies,caches,storages,transforms,plugins,Component,binders,views,compiler,schedulers,paths){
 
 	var M = jc,
 		W = Window;
+
 
 	//jc
 	langx.each({
@@ -257,6 +253,9 @@ define([
 	langx.mixin(W,{
 		PLUGINS : plugins.registry
 	});
+
+
+
 
 	return W;
 })

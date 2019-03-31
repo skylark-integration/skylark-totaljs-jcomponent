@@ -1,8 +1,7 @@
 define([
 	"./jc",
-	"./langx",
-	"./caches"
-],function(jc, langx,caches){
+	"./langx"
+],function(jc, langx){
 	var events = {};
 
 	// ===============================================================
@@ -13,9 +12,11 @@ define([
 	function on(name, path, fn, init, context) {
 
 		if (name.indexOf(MULTIPLE) !== -1) {
+			//ex: ON('name1 + name2 + name3', function() {});
 			var arr = name.split(MULTIPLE).trim();
-			for (var i = 0; i < arr.length; i++)
+			for (var i = 0; i < arr.length; i++) {
 				on(arr[i], path, fn, init, context);
+			}
 			return this; //W;
 		}
 
@@ -34,11 +35,12 @@ define([
 			name = name.substring(index + 1).trim();
 		}
 
-		if (typeof(path) === TYPE_FN) {
+		if (langx.isFunction(path)) {
 			fn = path;
 			path = name === 'watch' ? '*' : '';
-		} else
+		} else {
 			path = path.replace('.*', '');
+		}
 
 		var obj = { name: name, fn: fn, owner: owner || current_owner, context: context || (current_com == null ? undefined : current_com) };
 
@@ -51,12 +53,14 @@ define([
 				obj.format = tmp.fn;
 			}
 
-			if (path.substring(path.length - 1) === '.')
+			if (path.substring(path.length - 1) === '.') {
 				path = path.substring(0, path.length - 1);
+			}
 
 			// Temporary
-			if (path.charCodeAt(0) === 37)
+			if (path.charCodeAt(0) === 37) {
 				path = 'jctmp.' + path.substring(1);
+			}
 
 			path = path.env();
 
@@ -81,20 +85,23 @@ define([
 			obj.path = path;
 			obj.$path = arr;
 
-			if (push)
+			if (push) {
 				watches.push(obj);
-			else
+			} else {
 				watches.unshift(obj);
+			}
 
 			init && fn.call(context || M, path, obj.format ? obj.format(get(path), path, 0) : get(path), 0);
 		} else {
 			if (events[name]) {
-				if (push)
+				if (push) {
 					events[name].push(obj);
-				else
+				} else {
 					events[name].unshift(obj);
-			} else
+				}
+			} else {
 				events[name] = [obj];
+			}
 			(!C.ready && (name === 'ready' || name === 'init')) && fn();
 		}
 		return this; //W;
@@ -104,18 +111,20 @@ define([
 
 		if (name.indexOf('+') !== -1) {
 			var arr = name.split('+').trim();
-			for (var i = 0; i < arr.length; i++)
-				W.OFF(arr[i], path, fn);
+			for (var i = 0; i < arr.length; i++) {
+				off(arr[i], path, fn); //W.OFF
+			}
 			return this; //W;
 		}
 
-		if (typeof(path) === TYPE_FN) {
+		if (lang.isFunction(path)) {
 			fn = path;
 			path = '';
 		}
 
-		if (path === undefined)
+		if (path === undefined) {
 			path = '';
+		}
 
 		var owner = null;
 		var index = name.indexOf('#');
@@ -127,10 +136,12 @@ define([
 		if (path) {
 			path = path.replace('.*', '').trim();
 			var tmp = findFormat(path);
-			if (tmp)
+			if (tmp) {
 				path = tmp.path;
-			if (path.substring(path.length - 1) === '.')
+			}
+			if (path.substring(path.length - 1) === '.') {
 				path = path.substring(0, path.length - 1);
+			}
 		}
 
 		var type = 0;
@@ -179,8 +190,9 @@ define([
 
 		Object.keys(events).forEach(function(p) {
 			events[p] = cleararr(events[p], p);
-			if (!events[p].length)
+			if (!events[p].length) {
 				delete events[p];
+			}
 		});
 
 		watches = cleararr(watches, 'watch');
@@ -190,24 +202,85 @@ define([
 	function emit(name) {
 
 		var e = events[name];
-		if (!e)
+		if (!e) {
 			return false;
+		}
 
 		var args = [];
 
-		for (var i = 1, length = arguments.length; i < length; i++)
+		for (var i = 1, length = arguments.length; i < length; i++) {
 			args.push(arguments[i]);
+		}
 
 		for (var i = 0, length = e.length; i < length; i++) {
 			var context = e[i].context;
-			if (context !== undefined && (context === null || context.$removed))
+			if (context !== undefined && (context === null || context.$removed)) {
 				continue;
+			}
 			e[i].fn.apply(context || window, args);
 		}
 
 		return true;
 	}
 
+	function each(fn) {
+
+		var keys = Object.keys(events);
+		var length = keys.length;
+
+		for (var i = 0; i < length; i++) {
+			var key = keys[i];
+			arr = events[key];
+			fn(key,arr);
+
+			if (!arr.length) {
+				delete events[key];
+			}
+
+		}
+
+	}
+
+	var watches = [];
+
+	function unwatch(path, fn) { //W.UNWATCH 
+
+		if (path.indexOf(MULTIPLE) !== -1) {
+			var arr = path.split(MULTIPLE).trim();
+			for (var i = 0; i < arr.length; i++)
+				unwatch(arr[i], fn);
+			return this; //W;
+		}
+
+		return topic.off('watch', path, fn); //OFF
+	};
+
+	function watch(path, fn, init) { // W.WATCH
+
+		if (path.indexOf(MULTIPLE) !== -1) {
+			var arr = path.split(MULTIPLE).trim();
+			for (var i = 0; i < arr.length; i++)
+				watch(arr[i], fn, init);
+			return this; //W;
+		}
+
+		if (langx.isFunction(path)) { //if (typeof(path) === TYPE_FN) {
+			init = fn;
+			fn = path;
+			path = '*';
+		}
+
+		var push = '';
+
+		if (path.substring(0, 1) === '^') {
+			path = path.substring(1);
+			push = '^';
+		}
+
+		path = pathmaker(path, true);
+		topic.on(push + 'watch', path, fn, init);  // ON
+		return this; //W;
+	}
 	return jc.topic = {
 		on,
 		off,

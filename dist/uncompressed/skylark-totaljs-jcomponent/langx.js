@@ -1,22 +1,22 @@
 define([
 	"skylark-langx/langx",
 	"./jc",
-	"./_langx/regexp",
-	"./_langx/now",
-	"./_langx/ArrayEx",
-	"./_langx/DateEx",
-	"./_langx/NumberEx",
-	"./_langx/StringEx"
+	"./langx/regexp",
+	"./langx/now",
+	"./langx/ArrayEx",
+	"./langx/DateEx",
+	"./langx/NumberEx",
+	"./langx/StringEx"
 ],function(slangx,jc,regexp,now){
 	var statics = {};
 	var waits = {};
 
 
-
 	function async(arr, fn, done) {
 		var item = arr.shift();
-		if (item == null)
+		if (item == null) {
 			return done && done();
+		}
 		fn(item, function() {
 			async(arr, fn, done);
 		});
@@ -31,7 +31,7 @@ define([
 			case 'boolean':
 				return obj;
 			case TYPE_S:
-				return path ? obj : CLONE(get(obj), true);
+				return path ? obj : clone(get(obj), true);
 		}
 
 		if (obj == null)
@@ -49,7 +49,7 @@ define([
 			var key = keys[i];
 			var val = a[key];
 			var type = typeof(val);
-			b[key] = type === TYPE_O ? val ? CLONE(val) : val : val;
+			b[key] = type === TYPE_O ? val ? clone(val) : val : val;
 		}
 		return b;
 	}
