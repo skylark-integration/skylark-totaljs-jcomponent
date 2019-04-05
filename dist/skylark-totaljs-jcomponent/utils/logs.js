@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define([],function(){return{warn:function(){Window.console&&Window.console.warn.apply(W.console,arguments)}}});
+define(["../langx"],function(n){var o=n.hoster.global;return{warn:function(){o.console&&o.console.warn.apply(o.console,arguments)}}});
 //# sourceMappingURL=../sourcemaps/utils/logs.js.map

@@ -1,13 +1,9 @@
 define([
-	"../jc",
 	"../langx",
-	"../topic",
-	"./paths",
+	"../binding/findFormat",
 	"./Usage"
-],function(jc,langx, topic, paths, Usage){
-	var	configs =  [],
-		extensions = {},
-		tmp = {};
+],function(langx, findFormat, Usage){
+	var temp = {};
 
 	var counter = 0;
 
@@ -43,8 +39,8 @@ define([
 	// COMPONENT DECLARATION
 	// ===============================================================
 
-	var Component = langx.Evented.inherit({
-		_construct(name) {
+	var Component = langx.klass({
+		_construct(name,view) {
 			var self = this;
 			self._id = self.ID = 'jc' + (counter++);
 			self.usage = new Usage();
@@ -63,6 +59,7 @@ define([
 
 			var version = name.lastIndexOf('@');
 
+			self.view = view;
 			self.name = name;
 			self.$name = version === -1 ? name : name.substring(0, version);
 			self.version = version === -1 ? '' : name.substring(version + 1);
@@ -266,7 +263,7 @@ define([
 		}
 
 		if (self.$ppc) {
-			var c = Component.components.all; //M.components;
+			var c = self.view.components.all; //M.components;
 			for (var i = 0; i < c.length; i++) {
 				var com = c[i];
 				if (com.owner === self && com.$pp && key === com.path)
@@ -476,7 +473,7 @@ define([
 	 */
 	PPC.import = function(url, callback, insert, preparator) {
 		var self = this;
-		M.import(url, self.element, callback, insert, preparator);
+		this.view.import(url, self.element, callback, insert, preparator);
 		return self;
 	};
 
@@ -968,8 +965,9 @@ define([
 		if (tmp) {
 			path = tmp.path;
 			self.$format = tmp.fn;
-		} else if (!type)
+		} else if (!type) {
 			self.$format = null;
+		}
 
 		var arr = [];
 
@@ -1008,7 +1006,10 @@ define([
 
 		self.path = path;
 		self.$path = arr;
-		type !== 1 && C.ready && refresh();
+		
+		if (type !== 1 && C.ready) {
+			refresh(); // TODO
+		}
 		return self;
 	};
 
@@ -1098,10 +1099,11 @@ define([
 				if (!init && self.config[k] !== v)
 					self.config[k] = v;
 				self.data('config.' + k, v);
-				if (callback)
+				if (callback) {
 					callback(k, v, init, init ? undefined : prev);
-				else if (self.configure)
+				} else if (self.configure) {
 					self.configure(k, v, init, init ? undefined : prev);
+				}
 			});
 		}
 
@@ -1125,9 +1127,17 @@ define([
 			self.$init = cfg.$init;
 		}
 
-		cfg.$class && self.tclass(cfg.$class);
-		cfg.$released && self.release(cfg.$released == true);
-		cfg.$reconfigure && EXEC.call(cfg.$reconfigure, cfg);
+		if (cfg.$class) {
+			self.tclass(cfg.$class);
+		}
+		
+		if (cfg.$released) {
+			self.release(cfg.$released == true);
+		}
+		
+		if (cfg.$reconfigure) {
+			EXEC.call(cfg.$reconfigure, cfg); // TODO
+		}
 		return self;
 	};
 
@@ -1145,10 +1155,12 @@ define([
 
 	PPC.html = function(value) {
 		var el = this.element;
-		if (value === undefined)
+		if (value === undefined) {
 			return el.html();
-		if (value instanceof Array)
+		}
+		if (value instanceof Array) {
 			value = value.join('');
+		}
 		var type = typeof(value);
 		//caches.current.element = el[0];
 		var v = (value || TNB[type]) ? el.empty().append(value) : el.empty();
@@ -1196,8 +1208,9 @@ define([
 //	PPC.append = SCP.append = function(value) {
 	PPC.append = function(value) {
 		var el = this.element;
-		if (value instanceof Array)
+		if (value instanceof Array) {
 			value = value.join('');
+		}
 		//caches.current.element = el[0];
 		var v = value ? el.append(value) : el;
 		//caches.current.element = null;
@@ -1210,9 +1223,9 @@ define([
 //	PPC.event = SCP.event = function() {
 	PPC.event = function() {
 		var self = this;
-		if (self.element)
+		if (self.element) {
 			self.element.on.apply(self.element, arguments);
-		else {
+		} else {
 			setTimeout(function(arg) {
 				self.event(self, arg);
 			}, 500, arguments);
@@ -1235,8 +1248,9 @@ define([
 	PPC.isInvalid = function() {
 		var self = this;
 		var is = !self.$valid;
-		if (is && !self.$validate)
+		if (is && !self.$validate) {
 			is = !self.$dirty;
+		}
 		return is;
 	};
 
@@ -1245,7 +1259,7 @@ define([
 	 */
 	PPC.unwatch = function(path, fn) {
 		var self = this;
-		OFF('com' + self._id + '#watch', path, fn);
+		self.pathing.off('com' + self._id + '#watch', path, fn);  // OFF
 		return self;
 	};
 
@@ -1272,7 +1286,7 @@ define([
 	 * Sets the state of this component to invalid and it contacts all components listen on the path.
 	 */
 	PPC.invalid = function() {
-		return INVALID(this.path, this);
+		return this.view.invalid(this.path, this);
 	};
 
 	PPC.valid = function(value, noEmit) {
@@ -1290,13 +1304,17 @@ define([
 		self.$valid = value;
 		self.$validate = false;
 		self.$interaction(102);
-		clear('valid');
-		!noEmit && self.state && self.stateX(1, 1);
+		
+		self.view.clear('valid');
+		
+		if (!noEmit && self.state) {
+			self.stateX(1, 1);
+		}
 		return self;
 	};
 
 	PPC.style = function(value) {
-		STYLE(value, this._id);
+		domx.style(value, this._id);
 		return this;
 	};
 
@@ -1308,7 +1326,7 @@ define([
 		var self = this;
 		self.$dirty_disabled = false;
 		self.$dirty = true;
-		CHANGE(self.path, value === undefined ? true : value, self);
+		self.view.change(self.path, value === undefined ? true : value, self);
 		return self;
 	};
 
@@ -1336,8 +1354,10 @@ define([
 
 		self.$dirty = value;
 		self.$interaction(101);
-		clear('dirty');
-		!noEmit && self.state && self.stateX(2, 2);
+		self.view.clear('dirty');
+		if (!noEmit && self.state) {
+			self.stateX(2, 2);
+		}
 		return self;
 	};
 
@@ -1347,7 +1367,7 @@ define([
 	 */
 	PPC.reset = function() {
 		var self = this;
-		M.reset(self.path, 0, self);
+		self.view.reset(self.path, 0, self);
 		return self;
 	};
 
@@ -1363,7 +1383,7 @@ define([
 	 */
 	PPC.default = function(reset) {
 		var self = this;
-		M.default(self.path, 0, self, reset);
+		self.view.default(self.path, 0, self, reset);
 		return self;
 	};
 
@@ -1382,10 +1402,10 @@ define([
 
 		self.$removed = 1;
 		self.removed = true;
-		OFF('com' + self._id + '#');
+		self.pathing.off('com' + self._id + '#'); // OFF
 		
 		if(!noClear) {
-			setTimeout2('$cleaner', cleaner2, 100);
+			langx.setTimeout2('$cleaner', cleaner2, 100);
 		}
 		return true;
 	};
@@ -1406,7 +1426,7 @@ define([
 			name = name.substring(1);
 		}
 
-		topic.on(push + 'com' + self._id + '#' + name, path, fn, init, self); // ON
+		self.pathing.on(push + 'com' + self._id + '#' + name, path, fn, init, self); // ON
 		return self;
 	};
 
@@ -1433,12 +1453,15 @@ define([
 			}
 		}
 
+		/*
 		a = M.$formatter;
 		if (a && a.length) {
 			for (var i = 0, length = a.length; i < length; i++) {
 				value = a[i].call(self, self.path, value, self.type);
 			}
-		}
+		}*/
+
+		value = self.view.format(self.path,value,self.type); // TODO
 
 		return value;
 	};
@@ -1478,7 +1501,7 @@ define([
 		//		value = a[i].call(self, self.path, value, self.type);
 		//	}
 		//}
-		value = paths.parser(self.path,value,self.type);
+		value = self.view.parser(self.path,value,self.type);
 
 		return value;
 	};
@@ -1487,7 +1510,7 @@ define([
 	 * Emits an event within jComponent. Is alias for EMIT() method.
 	 */
 	PPC.emit = function() {
-		topic.emit.apply(M, arguments); // W>EMIT
+		self.pathing.emit.apply(self.pathing, arguments); // W>EMIT
 		return this;
 	};
 
@@ -1496,7 +1519,7 @@ define([
 			expression = path;
 			path = this.path;
 		}
-		return EVALUATE(path, expression, nopath);
+		return self.view.evaluate(path, expression, nopath);
 	};
 
 	/*
@@ -1513,13 +1536,13 @@ define([
 		}
 
 		if (path) {
-			return paths.get(path);
+			return self.view.get(path);
 		}
 	};
 
 	PPC.skip = function(path) {
 		var self = this;
-		skip(path || self.path); // SKIP
+		self.view.skip(path || self.path); // SKIP
 		return self;
 	};
 
@@ -1538,9 +1561,9 @@ define([
 
 		// Backwards compatibility
 		if (arg.length === 3) {
-			paths.immSetx(arg[0], arg[1], arg[2]);
+			self.view.setx(arg[0], arg[1], arg[2]);
 		} else {
-			paths.immSetx(self.path, value, type);
+			self.view.setx(self.path, value, type);
 		}
 
 		return self;
@@ -1551,7 +1574,7 @@ define([
 	 */
 	PPC.inc = function(value, type) {
 		var self = this;
-		paths.immInc(self.path, value, type);
+		self.view.inc(self.path, value, type);
 		return self;
 	};
 
@@ -1560,7 +1583,7 @@ define([
 	 */
 	PPC.extend = function(value, type) {
 		var self = this;
-		paths.immExtend(self.path, value, type); // M.extend
+		self.view.extend(self.path, value, type); // M.extend
 		return self;
 	};
 
@@ -1569,7 +1592,7 @@ define([
 	 */
 	PPC.rewrite = function(value) {
 		var self = this;
-		REWRITE(self.path, value);
+		self.view.rewrite(self.path, value);
 		return self;
 	};
 
@@ -1578,142 +1601,9 @@ define([
 	 */
 	PPC.push = function(value, type) {
 		var self = this;
-		paths.immPush(self.path, value, type);
+		self.view.push(self.path, value, type);
 		return self;
 	};
 
-
-	var $components = registry = {}; //	M.$components = {};
-
-	function register(name, config, declaration, dependencies) { // W.COMPONENT =
-
-		if (langx.isFunction(config)) {
-			dependencies = declaration;
-			declaration = config;
-			config = null;
-		}
-
-		// Multiple versions
-		if (name.indexOf(',') !== -1) {
-			name.split(',').forEach(function(item, index) {
-				item = item.trim();
-				if (item) {
-					register(item, config, declaration, index ? null : dependencies);	
-				} 
-			});
-			return;
-		}
-
-		if ($components[name]){ // M.$components
-			warn('Components: Overwriting component:', name);	
-		} 
-		var a = $components[name] = { //M.$components
-			name: name, 
-			config: config, 
-			declaration: declaration, 
-			shared: {}, 
-			dependencies: dependencies instanceof Array ? dependencies : null 
-		};
-		topic.emit('component.compile', name, a);
-	};
-
-   /**
-   * Extend a component by adding new features.
-   * @param  {String} name 
-   * @param  {String/Object} config A default configuration
-   * @param  {Function} declaration 
-   */
-	function extend(name, config, declaration) { //W.COMPONENT_EXTEND = 
-
-		if (typeof(config) === TYPE_FN) {
-			var tmp = declaration;
-			declaration = config;
-			config = tmp;
-		}
-
-		if (extensions[name]) {
-			extensions[name].push({ config: config, fn: declaration });
-		} else {
-			extensions[name] = [{ config: config, fn: declaration }];
-		}
-
-		for (var i = 0, length = all.length; i < length; i++) { // M.components.length
-			var m = all[i]; // M.components[i];
-			if (!m.$removed || name === m.name){
-				config && m.reconfigure(config, undefined, true);
-				declaration.call(m, m, m.config);
-			}
-		}
-
-		RECOMPILE();
-	};
-
-   /**
-   * Sets a default configuration for all components according to the selector
-   * @param  {String} selector 
-   * @param  {String/Object} config A default configuration
-   */
-	function configure(selector, config) { //W.COMPONENT_CONFIG = 
-
-		if (langx.isString(selector)) {
-			var fn = [];
-			selector.split(' ').forEach(function(sel) {
-				var prop = '';
-				switch (sel.trim().substring(0, 1)) {
-					case '*':
-						fn.push('com.path.indexOf(\'{0}\')!==-1'.format(sel.substring(1)));
-						return;
-					case '.':
-						// path
-						prop = 'path';
-						break;
-					case '#':
-						// id
-						prop = 'id';
-						break;
-					default:
-						// name
-						prop = '$name';
-						break;
-				}
-				fn.push('com.{0}==\'{1}\''.format(prop, prop === '$name' ? sel : sel.substring(1)));
-			});
-			selector = FN('com=>' + fn.join('&&'));
-		}
-
-		configs.push({ fn: selector, config: config });
-	};
-
-	var skips = {};
-
-   /**
-   * skips component.setter for future update. It's incremental.
-   * @param  {String} pathA Absolute path according to the component "data-jc-path"  
-   * @param  {String} pathB Absolute path according to the component "data-jc-path"  
-   * @param  {String} pathN Absolute path according to the component "data-jc-path"  
-   */
-	function skip() { // W.SKIP = 
-		for (var j = 0; j < arguments.length; j++) {
-			var arr = arguments[j].split(',');
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var p = arr[i].trim();
-				if (skips[p]) {
-					skips[p]++;
-				} else {
-					skips[p] = 1;
-				}
-			}
-		}
-	};
-
-	langx.mixin(Component,{
-		extend : extend,
-		configure : configure,
-		registry : registry,
-		register : register,
-		extensions : extensions,
-		skip : skip
-	});
-
-	return jc.Component = Component;
+	return Component;
 });

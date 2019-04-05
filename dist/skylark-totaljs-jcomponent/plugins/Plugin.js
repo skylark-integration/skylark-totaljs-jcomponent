@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["skylark-utils-dom/query","../jc","../utils/cache","../topic","./schedulers"],function(e,t,r,n,i){function o(t,i){/\W/.test(t)&&warn("Plugin name must contain A-Z chars only."),registry[t]&&registry[t].$remove(!0);var o=this;o.element=e(r.current.element||document.body),o.id="plug"+t,o.name=t,registry[t]=o;var c=r.current.owner;r.current.owner=o.id,i.call(o,o),r.current.owner=c,n.emit("plugin",o)}return o.prototype.$remove=function(){var e=this;return!e.element||(n.emit("plugin.destroy",e),e.destroy&&e.destroy(),Object.keys(events).forEach(function(t){var r=events[t];(r=r.remove("owner",e.id)).length||delete events[t]}),watches=watches.remove("owner",e.id),n.off(e.id+"#watch"),i.clearAll(e.id),e.element=null,delete registry[e.name],!0)},o});
+define(["skylark-utils-dom/query","../jc","../utils/cache","./_registry","./schedulers"],function(e,t,n,l,i){function r(e,t){/\W/.test(e)&&warn("Plugin name must contain A-Z chars only."),l[e]&&l[e].$remove(!0);var n=this;n.id="plug"+e,n.name=e,l[e]=n,t.call(n,n)}return r.prototype.$remove=function(){return!this.element||(i.clearAll(this.id),this.element=null,delete l[this.name],!0)},r});
 //# sourceMappingURL=../sourcemaps/plugins/Plugin.js.map

@@ -7,8 +7,9 @@ define([
 		var arr = document.cookie.split(';');
 		for (var i = 0; i < arr.length; i++) {
 			var c = arr[i];
-			if (c.charAt(0) === ' ')
+			if (c.charAt(0) === ' ') {
 				c = c.substring(1);
+			}
 			var v = c.split('=');
 			if (v.length > 1 && v[0] === name)
 				return v[1];

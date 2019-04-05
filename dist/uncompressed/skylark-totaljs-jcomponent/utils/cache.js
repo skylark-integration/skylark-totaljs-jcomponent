@@ -1,7 +1,7 @@
 define([
-	"../defaults",
-	"../langx"
-],function(defaults,langx){
+	"../langx",
+	"./localStorage"
+],function(langx, localStorage){
 	//var M = jc,
 	//	MD = defaults;
 
@@ -9,11 +9,72 @@ define([
 		session = {} ,
 		storage = {};
 
+	function cachestorage(key, value, expire) {
+
+		var now = Date.now();
+
+		if (value !== undefined) {
+
+			if (expire === 'session') {
+				caches.set('$session' + key, value);
+				return value;
+			}
+
+			if (langx.isString(expire)) {
+				expire = expire.parseExpire();
+			}
+
+			storage[key] = { expire: now + expire, value: value };
+			save();
+			return value;
+		}
+
+		var item = caches.get('$session' + key);
+		if (item) {
+			return item;
+		}
+
+		item = storage[key];
+		if (item && item.expire > now) {
+			return item.value;
+		}
+	}
+
+	function get(key) {
+		return cachestorage(key);
+	}	
+
+	function put(key, value, expire) { //W.CACHE = 
+		return cachestorage(key, value, expire);
+	}
+
+
+	function remove(key, isSearching) { // W.REMOVECACHE = 
+		if (isSearching) {
+			for (var m in storage) {
+				if (m.indexOf(key) !== -1)
+					delete storage[key];
+			}
+		} else {
+			delete storage[key];
+		}
+		save();
+		return this;
+	};
+
+	function save() {
+		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
+		localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
+		//}
+	}
+
 
 	function cache(key, value, expire) {  //W.CACHE = 
 
 		if (value !== undefined) {
-
+			return cache.set(key,value,expire)
+		} else {
+			return cache.get(key);
 		}
 
 	}
@@ -92,7 +153,6 @@ define([
 		return this;
 	};
 
-
 	cache.getPageData = function(key) {
 		return page[key];
 	};
@@ -130,8 +190,83 @@ define([
 		}
 	};
 
+	cache.getSessionData = function(key) {
+		return session[key];
+	};
 
-	function load() {
+	cache.setSessionData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	cache.clearSessionData = function() {
+
+		if (!arguments.length) {
+			session = {};
+			return;
+		}
+
+		var keys = langx.keys(page);
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i];
+			var remove = false;
+			var a = arguments;
+
+			for (var j = 0; j < a.length; j++) {
+				if (key.substring(0, a[j].length) !== a[j]) {
+					continue;
+				}
+				remove = true;
+				break;
+			}
+
+			if (remove) {
+				delete session[key];
+			}
+		}
+	};
+
+
+	cache.getStorageData = function(key) {
+		return session[key];
+	};
+
+	cache.setStorageData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	cache.clearStorageData = function() {
+
+		if (!arguments.length) {
+			session = {};
+		} else {
+			var keys = langx.keys(page);
+
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				var remove = false;
+				var a = arguments;
+
+				for (var j = 0; j < a.length; j++) {
+					if (key.substring(0, a[j].length) !== a[j]) {
+						continue;
+					}
+					remove = true;
+					break;
+				}
+
+				if (remove) {
+					delete session[key];
+				}
+			}
+		}
+		save();
+
+	};
+
+	cache.load = function () {
 		clearTimeout($ready);
 		if (MD.localstorage) {
 			var cache;

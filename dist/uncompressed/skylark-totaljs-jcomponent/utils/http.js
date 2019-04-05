@@ -1,9 +1,9 @@
 define([
 	"../jc",
 	"../langx",
-	"../topic",
 	"./cache"
 ],function(jc,langx,topic,cache){
+	/* TODo
 	function remap(path, value) {
 
 		var index = path.replace('-->', '->').indexOf('->');
@@ -15,6 +15,7 @@ define([
 
 		immSetx(path, value);
 	}
+	*/
 
 	var ajaxconfig = {};
 	var defaults = {
@@ -181,11 +182,14 @@ define([
 				} catch (e) {}
 
 				if (progress) {
+					/* TODO
 					if (typeof(progress) === TYPE_S) {
 						remap(progress, 100);
 					} else {
 						progress(100);
 					}
+					*/
+					progress(100);
 				}
 
 				output.response = r;
@@ -219,11 +223,14 @@ define([
 				if (evt.lengthComputable) {
 					percentage = Math.round(evt.loaded * 100 / evt.total);
 				}
+				/* TODO
 				if (langx.isString(progress)) {
 					remap(progress.env(), percentage);
 				} else {
 					progress(percentage, evt.transferSpeed, evt.timeRemaining);
 				}
+				*/
+				progress(percentage, evt.transferSpeed, evt.timeRemaining);
 			};
 
 			xhr.open(method, makeurl(output.url));
@@ -463,6 +470,7 @@ define([
 		return this;
 	}
 
+	/* 
 	function uptodate(period, url, callback, condition) { // W.UPTODATE = 
 
 		if (langx.isFunction(url)) {
@@ -487,6 +495,7 @@ define([
 			callback && callback(id);
 		});
 	}
+	*/
 
 	function ping(url, timeout, execute) { // W.PING = 
 
@@ -668,7 +677,7 @@ define([
 			if (!options.url)
 				options.url = url;
 
-			topic.emit('request', options);
+			//topic.emit('request', options); //TODO
 
 			if (options.cancel)
 				return;
@@ -691,12 +700,15 @@ define([
 				output.status = req.status || 999;
 				output.text = s;
 				output.headers = parseHeaders(req.getAllResponseHeaders());
-				topic.emit('response', output);
+				//topic.emit('response', output); TODO
 				if (output.process && !output.cancel) {
+					/* TODO
 					if (typeof(callback) === TYPE_S)
 						remap(callback, output.response);
 					else
 						callback && callback.call(output, output.response, undefined, output);
+					*/
+					callback && callback.call(output, output.response, undefined, output);
 				}
 			};
 
@@ -727,19 +739,23 @@ define([
 					} catch (e) {}
 				}
 
-				topic.emit('response', output);
+				//topic.emit('response', output); TODO
 
 				if (output.cancel || !output.process)
 					return;
 
 				if (defaults.ajaxerrors) {
+					/* TODO
 					if (typeof(callback) === TYPE_S)
 						remap(callback, output.response);
 					else
 						callback && callback.call(output, output.response, output.status, output);
+					*/
+					callback && callback.call(output, output.response, output.status, output);
 				} else {
-					topic.emit('error', output);
-					typeof(callback) === TYPE_FN && callback.call(output, output.response, output.status, output);
+					//topic.emit('error', output); TODO
+					if (langx.isFunction(callback)) 
+					callback.call(output, output.response, output.status, output);
 				}
 			};
 
@@ -756,9 +772,8 @@ define([
 
 	function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
 
-		var tdata = typeof(data);
 
-		if (tdata === TYPE_FN || (tdata === TYPE_S && typeof(callback) === TYPE_S && typeof(expire) !== TYPE_S)) {
+		if (langx.isFunction(data) || (langx.isString(data) && langx.isString(callback)  && !langx.isString(expire))) {
 			clear = timeout;
 			timeout = expire;
 			expire = callback;
@@ -766,7 +781,7 @@ define([
 			data = null;
 		}
 
-		if (typeof(timeout) === 'boolean') {
+		if (langx.isBoolean(timeout)) {
 			clear = timeout === true;
 			timeout = 0;
 		}
@@ -784,10 +799,13 @@ define([
 
 				var diff = review ? STRINGIFY(value) : null;
 
+				/* TODO
 				if (typeof(callback) === TYPE_S)
 					remap(callback, value);
 				else
 					callback(value, true);
+				*/
+				callback(value, true);
 
 				if (!review)
 					return;
@@ -798,10 +816,13 @@ define([
 					// Is same?
 					if (diff !== STRINGIFY(r)) {
 						cacherest(method, uri, data, r, expire);
+						/* TODO
 						if (typeof(callback) === TYPE_S)
 							remap(callback, r);
 						else
 							callback(r, false, true);
+						*/
+						callback(r, false, true);
 					}
 				});
 				return;
@@ -811,10 +832,13 @@ define([
 				if (err)
 					r = err;
 				cacherest(method, uri, data, r, expire);
+				/* TODO
 				if (typeof(callback) === TYPE_S)
 					remap(callback, r);
 				else
 					callback(r, false);
+				*/
+				callback(r, false);
 			});
 		}, timeout || 1);
 

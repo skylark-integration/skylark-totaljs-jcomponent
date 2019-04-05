@@ -9,6 +9,8 @@ define([
 	
 	var REGMETA = /_{2,}/;
 	
+	var bindersnew = [];
+	
 	function parsebinderskip(str) {
 		var a = arguments;
 		for (var i = 1; i < a.length; i++) {

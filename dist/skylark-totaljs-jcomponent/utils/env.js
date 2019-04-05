@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../jc","../topic","../defaults"],function(n,t,e){var i="environment",r=/(\[.*?\])/gi,u=e.environment={};return SP.env=function(){return this.replace(r,function(n){return ENV[n.substring(1,n.length-1)]||n})},SP.$env=function(){var n=this.indexOf("?");return-1===n?this.env():this.substring(0,n).env()+this.substring(n)},n.env=function(n,t){return langx.isObject(n)?(n&&Object.keys(n).forEach(function(t){u[t]=n[t],EMIT(i,t,n[t])}),n):void 0!==t?(EMIT(i,n,t),ENV[n]=t,t):u[n]}});
+define(["../langx","../jc"],function(n,e){var i=n.topic,c="skylark.vmm.env",t={};return e.env=function(e,r){return n.isObject(e)?(e&&Object.keys(e).forEach(function(n){t[n]=e[n],i.publish(c,n,e[n])}),e):void 0!==r?(i.publish(c,e,r),r):t[e]}});
 //# sourceMappingURL=../sourcemaps/utils/env.js.map

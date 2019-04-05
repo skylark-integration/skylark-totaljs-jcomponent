@@ -2,9 +2,10 @@ define([
 	"skylark-utils-dom/query",
 	"../jc",
 	"../utils/cache",
-	"../topic",
+	"./_registry",
 	"./schedulers"
-],function($, jc, caches, topic, schedulers){
+],function($, jc, caches, registry,schedulers){
+	
 	function Plugin(name, fn) {
 		if ((/\W/).test(name)) {
 			warn('Plugin name must contain A-Z chars only.');
@@ -13,15 +14,15 @@ define([
 			registry[name].$remove(true);
 		}
 		var t = this;
-		t.element = $(caches.current.element || document.body);
+		//t.element = $(caches.current.element || document.body); // TODO
 		t.id = 'plug' + name;
 		t.name = name;
 		registry[name] = t;
-		var a = caches.current.owner;
-		caches.current.owner = t.id;
+		//var a = caches.current.owner;
+		//caches.current.owner = t.id;
 		fn.call(t, t);
-		caches.current.owner = a;
-		topic.emit('plugin', t); // EMIT
+		//caches.current.owner = a;
+		// topic.emit('plugin', t); // EMIT TODO
 	}
 
 	Plugin.prototype.$remove = function() {
@@ -31,6 +32,7 @@ define([
 			return true;
 		}
 
+		/* TODO
 		topic.emit('plugin.destroy', self); // EMIT
 		if (self.destroy) {
 			self.destroy();
@@ -48,7 +50,8 @@ define([
 		watches = watches.remove('owner', self.id);
 
 		// Remove events
-		topic.off(self.id + '#watch'); // OFF
+		topic.off(self.id + '#watch'); // OFF 
+		*/
 
 		// Remove schedulers
 		//schedulers = schedulers.remove('owner', self.id);

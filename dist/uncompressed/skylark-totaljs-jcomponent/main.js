@@ -4,7 +4,8 @@ define([
 	"./components",
 	"./langx",
 	"./plugins",
-	"./topic",
+	"./stores",
+	"./utils",
 	"./views",
 	"./globals"
 ],function(jc){

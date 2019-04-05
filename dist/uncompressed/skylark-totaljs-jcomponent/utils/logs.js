@@ -1,7 +1,12 @@
-define([],function(){
+define([
+	"../langx"
+],function(langx){
+	var W = langx.hoster.global;
 
 	function warn() { // W.WARN
-		Window.console && Window.console.warn.apply(W.console, arguments);
+		if (W.console) {
+			W.console.warn.apply(W.console, arguments);
+		}
 	};
 	
 	return {

@@ -5,11 +5,6 @@ define([
 ],function(skylark,langx,$){
 	var totaljs = skylark.totaljs = {};
 	var M = totaljs.jc = {
-		isPRIVATEMODE : false,
-		isMOBILE : /Mobi/.test(navigator.userAgent),
-		isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
-		isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
-		isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
 	}; // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	// Internal cache
@@ -69,9 +64,6 @@ define([
     //- Ex
 
 
-	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
-
-
 	//- queryex
 
 
@@ -83,12 +75,12 @@ define([
 	//- Plugin
 
 
-	M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
-	M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
+	//M.months 
+	//M.days 
 
 	//M.skipproxy = '';
 
-	M.loaded = false;
+	//M.loaded = false;
 	M.version = 16.044;
 	//M.$localstorage = 'jc';
 	M.$version = '';
@@ -99,14 +91,6 @@ define([
 	//M.compiler = C;
 
 	//M.compile = compile;
-
-	M.environment = function(name, version, language, env) {
-		M.$localstorage = name;
-		M.$version = version || '';
-		M.$language = language || '';
-		env && ENV(env);
-		return M;
-	};
 
 
 	M.prototypes = function(fn) {

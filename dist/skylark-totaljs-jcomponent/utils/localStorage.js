@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["./jc","./defaults","./langx","./utils/caches"],function(t,e,n,r){var a="jc.";return{get:function(t){var e=localStorage.getItem(a+t);return e&&n.isString(e)&&(e=n.parse(e)),e},set:function(t,e){return localStorage.setItem(a+t,JSON.stringify(e)),this}}});
+define(["../langx"],function(t){var e="jc.";return{get:function(n){var r=localStorage.getItem(e+n);return r&&t.isString(r)&&(r=t.parse(r)),r},set:function(t,n){return localStorage.setItem(e+t,JSON.stringify(n)),this}}});
 //# sourceMappingURL=../sourcemaps/utils/localStorage.js.map

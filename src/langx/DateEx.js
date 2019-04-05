@@ -2,6 +2,10 @@ define([
 	"./regexp"
 ],function(regexp){
 
+	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
+	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
+
+
 	window.$jcdatempam = function(value) {  // TODO: will be changed
 		return value >= 12 ? value - 12 : value;
 	};

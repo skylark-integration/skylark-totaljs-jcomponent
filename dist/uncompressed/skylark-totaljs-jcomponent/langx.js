@@ -11,7 +11,6 @@ define([
 	var statics = {};
 	var waits = {};
 
-
 	function async(arr, fn, done) {
 		var item = arr.shift();
 		if (item == null) {
@@ -322,9 +321,15 @@ define([
 
 	return jc.langx = {
 
-		mixin : slangx.mixin,
+		Evented : slangx.Evented,
+		hoster : hoster,
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
+		isObject : slangx.isObject,
+		isString : slangx.isString,
+		klass : slangx.klass,
+		mixin : slangx.mixin,
+		topic : slangx.topic,
 
 		async:async,
 		clearTimeout2:clearTimeout2,

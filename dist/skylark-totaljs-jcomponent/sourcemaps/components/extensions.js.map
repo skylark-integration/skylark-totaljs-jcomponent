@@ -1,0 +1,1 @@
+{"version":3,"sources":["components/extensions.js"],"names":["define"],"mappings":";;;;;;;AAAAA,UAAU,WAGT","file":"../../components/extensions.js","sourcesContent":["define([],function(){\r\n\tvar extensions = {};\r\n\r\n\treturn extensions;\r\n})"]}

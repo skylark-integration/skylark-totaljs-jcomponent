@@ -143,7 +143,7 @@ define([
 				view.imports[x] = 1;
 				view.importing++;
 
-				M.import(x, function() {
+				view.import(x, function() {
 					view.importing--;
 					view.imports[x] = 2;
 				});
@@ -156,7 +156,7 @@ define([
 				delete fallback[name];
 			}
 
-			var obj = new Component(com.name);
+			var obj = new Component(com.name,view);
 			var parent = dom.parentNode;
 
 			while (true) {

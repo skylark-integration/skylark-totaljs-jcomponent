@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../stores/localStorage"],function(e){});
-//# sourceMappingURL=../sourcemaps/utils/block.js.map
+define([],function(){});
+//# sourceMappingURL=../sourcemaps/stores/helper.js.map

@@ -13,7 +13,6 @@ define([
 	var REGCSS = /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
 	var REGSCRIPT = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>|<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
 	var mediaqueriescounter = 0;
-	var knockknockcounter = 0;
 
  	var mediaqueries = [];
 	var $domready = false;
@@ -512,27 +511,19 @@ define([
 			return t;
 		};
 
-		$.components = M;
-
-		setInterval(function() {
-			//W.DATETIME = W.NOW = new Date();
-			langx.now(true);
-			var c = M.components;
-			for (var i = 0, length = c.length; i < length; i++)
-				c[i].knockknock && c[i].knockknock(knockknockcounter);
-			EMIT('knockknock', knockknockcounter++);
-		}, 60000);
-
 		function resize() {
-			var w = $(window);
-			W.WW = w.width();
-			W.WH = w.height();
+			//var w = $(window); // TODO
+			//W.WW = w.width();
+			//W.WH = w.height(); 
 			mediaquery();
 		}
 
 		resize();
 
 		$(window).on('resize', resize);
+
+
+		$(window).on('orientationchange', mediaquery);
 	//}, 100);
 
 	return jc.domx = {

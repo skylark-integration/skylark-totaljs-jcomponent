@@ -1,7 +1,8 @@
 define([
-	"../stores/localStorage"
+	"./localStorage"
 ],function(localStorage){
-	var blocked = {};
+	var blocked = {},
+		blocking = {};
 
    /**
    * Lock some code for a specific time. 
@@ -10,7 +11,7 @@ define([
    * @param  {Number} timeout 
    * @param  {Function} callback  
    */
-	function block(name, timeout, callback) { //W.BLOCKED = 
+	blocking.blocked = function (name, timeout, callback) { //W.BLOCKED = 
 		var key = name;
 		var item = blocked[key];
 		var now = Date.now();
@@ -33,20 +34,21 @@ define([
 		return false;
 	};
 
-	function load() {
-		clearTimeout($ready);
-		if (MD.localstorage) {
-			var cache;
-			try {
-				cache = localStorage.getItem(M.$localstorage + '.blocked');
-				if (cache && langx.isString(cache)) {
-					blocked = langx.parse(cache);  // PARSE
-				}
-			} catch (e) {}
-		}
+	block.load = function() {
+		//clearTimeout($ready);
+		//if (MD.localstorage) {
+		var cache;
+		try {
+			cache = localStorage.getItem(M.$localstorage + '.blocked');
+			if (cache && langx.isString(cache)) {
+				blocked = langx.parse(cache);  // PARSE
+			}
+		} catch (e) {}
+		//}
 
-		M.loaded = true;
+		//M.loaded = true;  //TODO
 	}
 
+	return blocking;
 
 });

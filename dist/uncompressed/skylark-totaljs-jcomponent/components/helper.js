@@ -121,6 +121,134 @@ define([
 		return scope.$scopedata;
 	}
 
+	function findcomponent(container, selector, callback) {
+
+		var s = (selector ? selector.split(' ') : EMPTYARRAY);
+		var path = '';
+		var name = '';
+		var id = '';
+		var version = '';
+		var index;
+
+		for (var i = 0, length = s.length; i < length; i++) {
+			switch (s[i].substring(0, 1)) {
+				case '*':
+					break;
+				case '.':
+					// path
+					path = s[i].substring(1);
+					break;
+				case '#':
+					// id;
+					id = s[i].substring(1);
+					index = id.indexOf('[');
+					if (index !== -1) {
+						path = id.substring(index + 1, id.length - 1).trim();
+						id = id.substring(0, index);
+					}
+					break;
+				default:
+					// name
+					name = s[i];
+					index = name.indexOf('[');
+
+					if (index !== -1) {
+						path = name.substring(index + 1, name.length - 1).trim();
+						name = name.substring(0, index);
+					}
+
+					index = name.lastIndexOf('@');
+
+					if (index !== -1) {
+						version = name.substring(index + 1);
+						name = name.substring(0, index);
+					}
+
+					break;
+			}
+		}
+
+		var arr = callback ? undefined : [];
+		if (container) {
+			var stop = false;
+			container.find('[data-jc]').each(function() {
+				var com = this.$com;
+
+				if (stop || !com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || (path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path))))))
+					return;
+
+				if (callback) {
+					if (callback(com) === false)
+						stop = true;
+				} else
+					arr.push(com);
+			});
+		} else {
+			for (var i = 0, length = components.length; i < length; i++) { // M.components.length
+				var com = components[i]; // M.components[i]
+				if (!com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || ((path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path)))))))
+					continue;
+
+				if (callback) {
+					if (callback(com) === false) {
+						break;
+					}
+				} else {
+					arr.push(com);
+				}
+			}
+		}
+
+		return arr;
+	}
+
+	function findcontrol2(com, input) {
+
+		if (com.$inputcontrol) {
+			if (com.$inputcontrol % 2 !== 0) {
+				com.$inputcontrol++;
+				return;
+			}
+		}
+
+		var target = input ? input : com.element;
+		findcontrol(target[0], function(el) {
+			if (!el.$com || el.$com !== com) {
+				el.$com = com;
+				com.$inputcontrol = 1;
+			}
+		});
+	}
+
+	function findcontrol(container, onElement, level) {
+
+		var arr = container.childNodes;
+		var sub = [];
+
+		domx.inputable(container) && onElement(container);
+
+		if (level == null) {
+			level = 0;
+		} else {
+			level++;
+		}
+
+		for (var i = 0, length = arr.length; i < length; i++) {
+			var el = arr[i];
+			if (el && el.tagName) {
+				el.childNodes.length && el.tagName !== 'SCRIPT' && el.getAttribute('data-jc') == null && sub.push(el);
+				if (domx.inputable(el) && el.getAttribute('data-jc-bind') != null && onElement(el) === false)
+					return;
+			}
+		}
+
+		for (var i = 0, length = sub.length; i < length; i++) {
+			el = sub[i];
+			if (el && findcontrol(el, onElement, level) === false) {
+				return;
+			}
+		}
+	}
 
 	// find all nested component
 	function nested(el) {

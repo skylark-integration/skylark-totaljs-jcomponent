@@ -95,11 +95,13 @@ define('skylark-langx/skylark',[], function() {
 
 define('skylark-langx/types',[
 ],function(){
+    var toString = {}.toString;
+    
     var type = (function() {
         var class2type = {};
 
         // Populate the class2type map
-        "Boolean Number String Function Array Date RegExp Object Error".split(" ").forEach(function(name) {
+        "Boolean Number String Function Array Date RegExp Object Error Symbol".split(" ").forEach(function(name) {
             class2type["[object " + name + "]"] = name.toLowerCase();
         });
 
@@ -113,10 +115,46 @@ define('skylark-langx/types',[
         return object && object.constructor === Array;
     }
 
+
+    /**
+     * Checks if `value` is array-like. A value is considered array-like if it's
+     * not a function/string/element and has a `value.length` that's an integer greater than or
+     * equal to `0` and less than or equal to `Number.MAX_SAFE_INTEGER`.
+     *
+     * @category Lang
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is array-like, else `false`.
+     * @example
+     *
+     * isArrayLike([1, 2, 3])
+     * // => true
+     *
+     * isArrayLike(document.body.children)
+     * // => false
+     *
+     * isArrayLike('abc')
+     * // => true
+     *
+     * isArrayLike(Function)
+     * // => false
+     */    
     function isArrayLike(obj) {
         return !isString(obj) && !isHtmlNode(obj) && typeof obj.length == 'number' && !isFunction(obj);
     }
 
+    /**
+     * Checks if `value` is classified as a boolean primitive or object.
+     *
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is a boolean, else `false`.
+     * @example
+     *
+     * isBoolean(false)
+     * // => true
+     *
+     * isBoolean(null)
+     * // => false
+     */
     function isBoolean(obj) {
         return typeof(obj) === "boolean";
     }
@@ -139,6 +177,20 @@ define('skylark-langx/types',[
         return true;
     }
 
+
+    /**
+     * Checks if `value` is classified as a `Function` object.
+     *
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is a function, else `false`.
+     * @example
+     *
+     * isFunction(parseInt)
+     * // => true
+     *
+     * isFunction(/abc/)
+     * // => false
+     */
     function isFunction(value) {
         return type(value) == "function";
     }
@@ -164,6 +216,10 @@ define('skylark-langx/types',[
         } else {
             return (value instanceof type) || (value && value.isInstanceOf ? value.isInstanceOf(type) : false);
         }
+    }
+
+    function isNull(value) {
+      return type(value) === "null";
     }
 
     function isNumber(obj) {
@@ -196,6 +252,28 @@ define('skylark-langx/types',[
         }
     }
 
+    /**
+     * Checks if `value` is classified as a `Symbol` primitive or object.
+     *
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is a symbol, else `false`.
+     * @example
+     *
+     * _.isSymbol(Symbol.iterator);
+     * // => true
+     *
+     * _.isSymbol('abc');
+     * // => false
+     */
+    function isSymbol(value) {
+      return typeof value == 'symbol' ||
+        (isObjectLike(value) && objectToString.call(value) == symbolTag);
+    }
+
+    function isUndefined(value) {
+      return value === undefined
+    }
+
     return {
 
         isArray: isArray,
@@ -208,13 +286,19 @@ define('skylark-langx/types',[
 
         isDocument: isDocument,
 
+        isEmpty : isEmptyObject,
+
         isEmptyObject: isEmptyObject,
 
         isFunction: isFunction,
 
         isHtmlNode: isHtmlNode,
 
+        isNull: isNull,
+
         isNumber: isNumber,
+
+        isNumeric: isNumber,
 
         isObject: isObject,
 
@@ -224,22 +308,362 @@ define('skylark-langx/types',[
 
         isSameOrigin: isSameOrigin,
 
+        isSymbol : isSymbol,
+
+        isUndefined: isUndefined,
+
         isWindow: isWindow,
 
         type: type
     };
 
 });
-define('skylark-langx/objects',[
+define('skylark-langx/arrays',[
+	"./types"
+],function(types,objects){
+	var filter = Array.prototype.filter,
+		isArrayLike = types.isArrayLike;
+
+    /**
+     * The base implementation of `_.findIndex` and `_.findLastIndex` without
+     * support for iteratee shorthands.
+     *
+     * @param {Array} array The array to inspect.
+     * @param {Function} predicate The function invoked per iteration.
+     * @param {number} fromIndex The index to search from.
+     * @param {boolean} [fromRight] Specify iterating from right to left.
+     * @returns {number} Returns the index of the matched value, else `-1`.
+     */
+    function baseFindIndex(array, predicate, fromIndex, fromRight) {
+      var length = array.length,
+          index = fromIndex + (fromRight ? 1 : -1);
+
+      while ((fromRight ? index-- : ++index < length)) {
+        if (predicate(array[index], index, array)) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
+     *
+     * @param {Array} array The array to inspect.
+     * @param {*} value The value to search for.
+     * @param {number} fromIndex The index to search from.
+     * @returns {number} Returns the index of the matched value, else `-1`.
+     */
+    function baseIndexOf(array, value, fromIndex) {
+      if (value !== value) {
+        return baseFindIndex(array, baseIsNaN, fromIndex);
+      }
+      var index = fromIndex - 1,
+          length = array.length;
+
+      while (++index < length) {
+        if (array[index] === value) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * The base implementation of `isNaN` without support for number objects.
+     *
+     * @private
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is `NaN`, else `false`.
+     */
+    function baseIsNaN(value) {
+      return value !== value;
+    }
+
+
+    function compact(array) {
+        return filter.call(array, function(item) {
+            return item != null;
+        });
+    }
+
+    function flatten(array) {
+        if (isArrayLike(array)) {
+            var result = [];
+            for (var i = 0; i < array.length; i++) {
+                var item = array[i];
+                if (isArrayLike(item)) {
+                    for (var j = 0; j < item.length; j++) {
+                        result.push(item[j]);
+                    }
+                } else {
+                    result.push(item);
+                }
+            }
+            return result;
+        } else {
+            return array;
+        }
+        //return array.length > 0 ? concat.apply([], array) : array;
+    }
+
+    function grep(array, callback) {
+        var out = [];
+
+        each(array, function(i, item) {
+            if (callback(item, i)) {
+                out.push(item);
+            }
+        });
+
+        return out;
+    }
+
+    function inArray(item, array) {
+        if (!array) {
+            return -1;
+        }
+        var i;
+
+        if (array.indexOf) {
+            return array.indexOf(item);
+        }
+
+        i = array.length;
+        while (i--) {
+            if (array[i] === item) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function makeArray(obj, offset, startWith) {
+       if (isArrayLike(obj) ) {
+        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
+      }
+
+      // array of single index
+      return [ obj ];             
+    }
+
+
+    function forEach (arr, fn) {
+      if (arr.forEach) return arr.forEach(fn)
+      for (var i = 0; i < arr.length; i++) fn(arr[i], i);
+    }
+
+    function map(elements, callback) {
+        var value, values = [],
+            i, key
+        if (isArrayLike(elements))
+            for (i = 0; i < elements.length; i++) {
+                value = callback.call(elements[i], elements[i], i);
+                if (value != null) values.push(value)
+            }
+        else
+            for (key in elements) {
+                value = callback.call(elements[key], elements[key], key);
+                if (value != null) values.push(value)
+            }
+        return flatten(values)
+    }
+
+    function uniq(array) {
+        return filter.call(array, function(item, idx) {
+            return array.indexOf(item) == idx;
+        })
+    }
+
+    return {
+        baseFindIndex: baseFindIndex,
+
+        baseIndexOf : baseIndexOf,
+        
+        compact: compact,
+
+        first : function(items,n) {
+            if (n) {
+                return items.slice(0,n);
+            } else {
+                return items[0];
+            }
+        },
+
+        flatten: flatten,
+
+        inArray: inArray,
+
+        makeArray: makeArray,
+
+        forEach : forEach,
+
+        map : map,
+        
+        uniq : uniq
+
+    }
+});
+define('skylark-langx/numbers',[
 	"./types"
 ],function(types){
+	var isObject = types.isObject,
+		isSymbol = types.isSymbol;
+
+	var INFINITY = 1 / 0,
+	    MAX_SAFE_INTEGER = 9007199254740991,
+	    MAX_INTEGER = 1.7976931348623157e+308,
+	    NAN = 0 / 0;
+
+	/** Used to match leading and trailing whitespace. */
+	var reTrim = /^\s+|\s+$/g;
+
+	/** Used to detect bad signed hexadecimal string values. */
+	var reIsBadHex = /^[-+]0x[0-9a-f]+$/i;
+
+	/** Used to detect binary string values. */
+	var reIsBinary = /^0b[01]+$/i;
+
+	/** Used to detect octal string values. */
+	var reIsOctal = /^0o[0-7]+$/i;
+
+	/** Used to detect unsigned integer values. */
+	var reIsUint = /^(?:0|[1-9]\d*)$/;
+
+	/** Built-in method references without a dependency on `root`. */
+	var freeParseInt = parseInt;
+
+	/**
+	 * Converts `value` to a finite number.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.12.0
+	 * @category Lang
+	 * @param {*} value The value to convert.
+	 * @returns {number} Returns the converted number.
+	 * @example
+	 *
+	 * _.toFinite(3.2);
+	 * // => 3.2
+	 *
+	 * _.toFinite(Number.MIN_VALUE);
+	 * // => 5e-324
+	 *
+	 * _.toFinite(Infinity);
+	 * // => 1.7976931348623157e+308
+	 *
+	 * _.toFinite('3.2');
+	 * // => 3.2
+	 */
+	function toFinite(value) {
+	  if (!value) {
+	    return value === 0 ? value : 0;
+	  }
+	  value = toNumber(value);
+	  if (value === INFINITY || value === -INFINITY) {
+	    var sign = (value < 0 ? -1 : 1);
+	    return sign * MAX_INTEGER;
+	  }
+	  return value === value ? value : 0;
+	}
+
+	/**
+	 * Converts `value` to an integer.
+	 *
+	 * **Note:** This method is loosely based on
+	 * [`ToInteger`](http://www.ecma-international.org/ecma-262/7.0/#sec-tointeger).
+	 *
+	 * @static
+	 * @memberOf _
+	 * @param {*} value The value to convert.
+	 * @returns {number} Returns the converted integer.
+	 * @example
+	 *
+	 * _.toInteger(3.2);
+	 * // => 3
+	 *
+	 * _.toInteger(Number.MIN_VALUE);
+	 * // => 0
+	 *
+	 * _.toInteger(Infinity);
+	 * // => 1.7976931348623157e+308
+	 *
+	 * _.toInteger('3.2');
+	 * // => 3
+	 */
+	function toInteger(value) {
+	  var result = toFinite(value),
+	      remainder = result % 1;
+
+	  return result === result ? (remainder ? result - remainder : result) : 0;
+	}	
+
+	/**
+	 * Converts `value` to a number.
+	 *
+	 * @static
+	 * @memberOf _
+	 * @since 4.0.0
+	 * @category Lang
+	 * @param {*} value The value to process.
+	 * @returns {number} Returns the number.
+	 * @example
+	 *
+	 * _.toNumber(3.2);
+	 * // => 3.2
+	 *
+	 * _.toNumber(Number.MIN_VALUE);
+	 * // => 5e-324
+	 *
+	 * _.toNumber(Infinity);
+	 * // => Infinity
+	 *
+	 * _.toNumber('3.2');
+	 * // => 3.2
+	 */
+	function toNumber(value) {
+	  if (typeof value == 'number') {
+	    return value;
+	  }
+	  if (isSymbol(value)) {
+	    return NAN;
+	  }
+	  if (isObject(value)) {
+	    var other = typeof value.valueOf == 'function' ? value.valueOf() : value;
+	    value = isObject(other) ? (other + '') : other;
+	  }
+	  if (typeof value != 'string') {
+	    return value === 0 ? value : +value;
+	  }
+	  value = value.replace(reTrim, '');
+	  var isBinary = reIsBinary.test(value);
+	  return (isBinary || reIsOctal.test(value))
+	    ? freeParseInt(value.slice(2), isBinary ? 2 : 8)
+	    : (reIsBadHex.test(value) ? NAN : +value);
+	}
+
+	return  {
+		toFinite : toFinite,
+		toNumber : toNumber,
+		toInteger : toInteger
+	}
+});
+define('skylark-langx/objects',[
+	"./types",
+    "./numbers"
+],function(types,numbers){
 	var hasOwnProperty = Object.prototype.hasOwnProperty,
         slice = Array.prototype.slice,
         isBoolean = types.isBoolean,
         isFunction = types.isFunction,
 		isObject = types.isObject,
 		isPlainObject = types.isPlainObject,
-		isArray = types.isArray;
+		isArray = types.isArray,
+        isArrayLike = types.isArrayLike,
+        isString = types.isString,
+        toInteger = numbers.toInteger;
 
      // An internal function for creating assigner functions.
     function createAssigner(keysFunc, defaults) {
@@ -445,6 +869,50 @@ define('skylark-langx/objects',[
         return !!length;
     }
 
+    /**
+     * Checks if `value` is in `collection`. If `collection` is a string, it's
+     * checked for a substring of `value`, otherwise
+     * [`SameValueZero`](http://ecma-international.org/ecma-262/7.0/#sec-samevaluezero)
+     * is used for equality comparisons. If `fromIndex` is negative, it's used as
+     * the offset from the end of `collection`.
+     *
+     * @static
+     * @memberOf _
+     * @since 0.1.0
+     * @category Collection
+     * @param {Array|Object|string} collection The collection to inspect.
+     * @param {*} value The value to search for.
+     * @param {number} [fromIndex=0] The index to search from.
+     * @param- {Object} [guard] Enables use as an iteratee for methods like `_.reduce`.
+     * @returns {boolean} Returns `true` if `value` is found, else `false`.
+     * @example
+     *
+     * _.includes([1, 2, 3], 1);
+     * // => true
+     *
+     * _.includes([1, 2, 3], 1, 2);
+     * // => false
+     *
+     * _.includes({ 'a': 1, 'b': 2 }, 1);
+     * // => true
+     *
+     * _.includes('abcd', 'bc');
+     * // => true
+     */
+    function includes(collection, value, fromIndex, guard) {
+      collection = isArrayLike(collection) ? collection : values(collection);
+      fromIndex = (fromIndex && !guard) ? toInteger(fromIndex) : 0;
+
+      var length = collection.length;
+      if (fromIndex < 0) {
+        fromIndex = nativeMax(length + fromIndex, 0);
+      }
+      return isString(collection)
+        ? (fromIndex <= length && collection.indexOf(value, fromIndex) > -1)
+        : (!!length && baseIndexOf(collection, value, fromIndex) > -1);
+    }
+
+
    // Perform a deep comparison to check if two objects are equal.
     function isEqual(a, b) {
         return eq(a, b);
@@ -567,8 +1035,6 @@ define('skylark-langx/objects',[
         return values;
     }
 
-
-    
     function clone( /*anything*/ src,checkCloneMethod) {
         var copy;
         if (src === undefined || src === null) {
@@ -606,7 +1072,9 @@ define('skylark-langx/objects',[
 
         has: has,
 
-        isEqual: isEqual,
+        isEqual: isEqual,   
+
+        includes: includes,
 
         isMatch: isMatch,
 
@@ -623,127 +1091,8 @@ define('skylark-langx/objects',[
         values: values
     };
 
-});
-define('skylark-langx/arrays',[
-	"./types",
-    "./objects"
-],function(types,objects){
-	var filter = Array.prototype.filter,
-		isArrayLike = types.isArrayLike;
 
-    function compact(array) {
-        return filter.call(array, function(item) {
-            return item != null;
-        });
-    }
 
-    function flatten(array) {
-        if (isArrayLike(array)) {
-            var result = [];
-            for (var i = 0; i < array.length; i++) {
-                var item = array[i];
-                if (isArrayLike(item)) {
-                    for (var j = 0; j < item.length; j++) {
-                        result.push(item[j]);
-                    }
-                } else {
-                    result.push(item);
-                }
-            }
-            return result;
-        } else {
-            return array;
-        }
-        //return array.length > 0 ? concat.apply([], array) : array;
-    }
-
-    function grep(array, callback) {
-        var out = [];
-
-        each(array, function(i, item) {
-            if (callback(item, i)) {
-                out.push(item);
-            }
-        });
-
-        return out;
-    }
-
-    function inArray(item, array) {
-        if (!array) {
-            return -1;
-        }
-        var i;
-
-        if (array.indexOf) {
-            return array.indexOf(item);
-        }
-
-        i = array.length;
-        while (i--) {
-            if (array[i] === item) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    function makeArray(obj, offset, startWith) {
-       if (isArrayLike(obj) ) {
-        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
-      }
-
-      // array of single index
-      return [ obj ];             
-    }
-
-    function map(elements, callback) {
-        var value, values = [],
-            i, key
-        if (isArrayLike(elements))
-            for (i = 0; i < elements.length; i++) {
-                value = callback.call(elements[i], elements[i], i);
-                if (value != null) values.push(value)
-            }
-        else
-            for (key in elements) {
-                value = callback.call(elements[key], elements[key], key);
-                if (value != null) values.push(value)
-            }
-        return flatten(values)
-    }
-
-    function uniq(array) {
-        return filter.call(array, function(item, idx) {
-            return array.indexOf(item) == idx;
-        })
-    }
-
-    return {
-        compact: compact,
-
-        first : function(items,n) {
-            if (n) {
-                return items.slice(0,n);
-            } else {
-                return items[0];
-            }
-        },
-
-	    each: objects.each,
-
-        flatten: flatten,
-
-        inArray: inArray,
-
-        makeArray: makeArray,
-
-        map : map,
-        
-        uniq : uniq
-
-    }
 });
 define('skylark-langx/klass',[
     "./arrays",
@@ -755,6 +1104,52 @@ define('skylark-langx/klass',[
         mixin = objects.mixin,
         isArray = types.isArray,
         isDefined = types.isDefined;
+
+/* for reference 
+ function klass(props,parent) {
+    var ctor = function(){
+        this._construct();
+    };
+    ctor.prototype = props;
+    if (parent) {
+        ctor._proto_ = parent;
+        props.__proto__ = parent.prototype;
+    }
+    return ctor;
+}
+
+// Type some JavaScript code here.
+let animal = klass({
+  _construct(){
+      this.name = this.name + ",hi";
+  },
+    
+  name: "Animal",
+  eat() {         // [[HomeObject]] == animal
+    alert(`${this.name} eats.`);
+  }
+    
+    
+});
+
+
+let rabbit = klass({
+  name: "Rabbit",
+  _construct(){
+      super._construct();
+  },
+  eat() {         // [[HomeObject]] == rabbit
+    super.eat();
+  }
+},animal);
+
+let longEar = klass({
+  name: "Long Ear",
+  eat() {         // [[HomeObject]] == longEar
+    super.eat();
+  }
+},rabbit);
+*/
     
     function inherit(ctor, base) {
         var f = function() {};
@@ -768,7 +1163,8 @@ define('skylark-langx/klass',[
             // Copy the properties to the prototype of the class.
             var proto = ctor.prototype,
                 _super = ctor.superclass.prototype,
-                noOverrided = options && options.noOverrided;
+                noOverrided = options && options.noOverrided,
+                overrides = options && options.overrides || {};
 
             for (var name in props) {
                 if (name === "constructor") {
@@ -797,7 +1193,7 @@ define('skylark-langx/klass',[
                             };
                         })(name, prop, _super[name]) :
                         prop;
-                } else if (typeof prop == "object" && prop!==null && (prop.get)) {
+                } else if (types.isPlainObject(prop) && prop!==null && (prop.get)) {
                     Object.defineProperty(proto,name,prop);
                 } else {
                     proto[name] = prop;
@@ -1484,6 +1880,69 @@ define('skylark-langx/funcs',[
         };
     })();
 
+  var templateSettings = {
+    evaluate: /<%([\s\S]+?)%>/g,
+    interpolate: /<%=([\s\S]+?)%>/g,
+    escape: /<%-([\s\S]+?)%>/g
+  };
+
+
+  function template(text, settings, oldSettings) {
+    if (!settings && oldSettings) settings = oldSettings;
+    settings = objects.defaults({}, settings,templateSettings);
+
+    // Combine delimiters into one regular expression via alternation.
+    var matcher = RegExp([
+      (settings.escape || noMatch).source,
+      (settings.interpolate || noMatch).source,
+      (settings.evaluate || noMatch).source
+    ].join('|') + '|$', 'g');
+
+    // Compile the template source, escaping string literals appropriately.
+    var index = 0;
+    var source = "__p+='";
+    text.replace(matcher, function(match, escape, interpolate, evaluate, offset) {
+      source += text.slice(index, offset).replace(escapeRegExp, escapeChar);
+      index = offset + match.length;
+
+      if (escape) {
+        source += "'+\n((__t=(" + escape + "))==null?'':_.escape(__t))+\n'";
+      } else if (interpolate) {
+        source += "'+\n((__t=(" + interpolate + "))==null?'':__t)+\n'";
+      } else if (evaluate) {
+        source += "';\n" + evaluate + "\n__p+='";
+      }
+
+      // Adobe VMs need the match returned to produce the correct offset.
+      return match;
+    });
+    source += "';\n";
+
+    // If a variable is not specified, place data values in local scope.
+    if (!settings.variable) source = 'with(obj||{}){\n' + source + '}\n';
+
+    source = "var __t,__p='',__j=Array.prototype.join," +
+      "print=function(){__p+=__j.call(arguments,'');};\n" +
+      source + 'return __p;\n';
+
+    var render;
+    try {
+      render = new Function(settings.variable || 'obj', '_', source);
+    } catch (e) {
+      e.source = source;
+      throw e;
+    }
+
+    var template = function(data) {
+      return render.call(this, data, _);
+    };
+
+    // Provide the compiled source as a convenience for precompilation.
+    var argument = settings.variable || 'obj';
+    template.source = 'function(' + argument + '){\n' + source + '}';
+
+    return template;
+  };
 
     return {
         debounce: debounce,
@@ -1502,7 +1961,10 @@ define('skylark-langx/funcs',[
 
         returnFalse: function() {
             return false;
-        }
+        },
+
+        templateSettings : templateSettings,
+        template : template
     };
 });
 define('skylark-langx/Deferred',[
@@ -1512,7 +1974,8 @@ define('skylark-langx/Deferred',[
 ],function(arrays,funcs,objects){
     "use strict";
     
-    var  PGLISTENERS = Symbol ? Symbol() : '__pglisteners';
+    var  PGLISTENERS = Symbol ? Symbol() : '__pglisteners',
+         PGNOTIFIES = Symbol ? Symbol() : '__pgnotifies';
 
     var slice = Array.prototype.slice,
         proxy = funcs.proxy,
@@ -1527,8 +1990,10 @@ define('skylark-langx/Deferred',[
             this.then(handler,handler);
             return this;
         },
-        done : function(handler) {
-            this.then(handler);
+        done : function() {
+            for (var i = 0;i<arguments.length;i++) {
+                this.then(arguments[i]);
+            }
             return this;
         },
         fail : function(handler) { 
@@ -1536,7 +2001,7 @@ define('skylark-langx/Deferred',[
             //return this.then(null,handler);
             this.catch(handler);
             return this;
-        }
+         }
     });
 
 
@@ -1550,6 +2015,7 @@ define('skylark-langx/Deferred',[
         wrapPromise(p,self);
 
         this[PGLISTENERS] = [];
+        this[PGNOTIFIES] = [];
 
         //this.resolve = Deferred.prototype.resolve.bind(this);
         //this.reject = Deferred.prototype.reject.bind(this);
@@ -1572,7 +2038,7 @@ define('skylark-langx/Deferred',[
                     if (onProgress) {
                         this.progress(onProgress);
                     }
-                    return mixin(Promise.prototype.then.call(this,
+                    return wrapPromise(Promise.prototype.then.call(this,
                             onResolved && function(args) {
                                 if (args && args.__ctx__ !== undefined) {
                                     return onResolved.apply(args.__ctx__,args);
@@ -1586,9 +2052,12 @@ define('skylark-langx/Deferred',[
                                 } else {
                                     return onRejected(args);
                                 }
-                            }),added);
+                            }));
                 },
                 progress : function(handler) {
+                    d[PGNOTIFIES].forEach(function (value) {
+                        handler(value);
+                    });
                     d[PGLISTENERS].push(handler);
                     return this;
                 }
@@ -1613,11 +2082,13 @@ define('skylark-langx/Deferred',[
         return this;
     };
 
-    Deferred.prototype.progress = function(value) {
+    Deferred.prototype.notify = function(value) {
         try {
-          return this[PGLISTENERS].forEach(function (listener) {
-            return listener(value);
-          });
+            this[PGNOTIFIES].push(value);
+
+            return this[PGLISTENERS].forEach(function (listener) {
+                return listener(value);
+            });
         } catch (error) {
           this.reject(error);
         }
@@ -1650,10 +2121,33 @@ define('skylark-langx/Deferred',[
         return p.then(callback, errback, progback);
     };
 
-    Deferred.prototype.done  = Deferred.prototype.then;
+    Deferred.prototype.progress = function(progback){
+        var p = result(this,"promise");
+        return p.progress(progback);
+    };
+   
+    Deferred.prototype.catch = function(errback) {
+        var p = result(this,"promise");
+        return p.catch(errback);
+    };
+
+
+    Deferred.prototype.done  = function() {
+        var p = result(this,"promise");
+        return p.done.apply(p,arguments);
+    };
+
+    Deferred.prototype.fail = function(errback) {
+        var p = result(this,"promise");
+        return p.fail(errback);
+    };
+
 
     Deferred.all = function(array) {
-        return wrapPromise(Promise.all(array));
+        //return wrapPromise(Promise.all(array));
+        var d = new Deferred();
+        Promise.all(array).then(d.resolve.bind(d),d.reject.bind(d));
+        return result(d,"promise");
     };
 
     Deferred.first = function(array) {
@@ -1673,7 +2167,7 @@ define('skylark-langx/Deferred',[
             }
         } else if (!nativePromise) {
             var deferred = new Deferred(valueOrPromise.cancel);
-            valueOrPromise.then(proxy(deferred.resolve,deferred), proxy(deferred.reject,deferred), deferred.progress);
+            valueOrPromise.then(proxy(deferred.resolve,deferred), proxy(deferred.reject,deferred), deferred.notify);
             valueOrPromise = deferred.promise;
         }
 
@@ -1701,9 +2195,9 @@ define('skylark-langx/Deferred',[
 });
 define('skylark-langx/async',[
     "./Deferred",
-    "./arrays"
-],function(Deferred,arrays){
-    var each = arrays.each;
+    "./objects"
+],function(Deferred,objects){
+    var each = objects.each;
     
     var async = {
         parallel : function(arr,args,ctx) {
@@ -1755,12 +2249,77 @@ define('skylark-langx/async',[
 
 	return async;	
 });
+define('skylark-langx/datetimes',[],function(){
+     function parseMilliSeconds(str) {
+
+        var strs = str.split(' ');
+        var number = parseInt(strs[0]);
+
+        if (isNaN(number)){
+            return 0;
+        }
+
+        var min = 60000 * 60;
+
+        switch (strs[1].trim().replace(/\./g, '')) {
+            case 'minutes':
+            case 'minute':
+            case 'min':
+            case 'mm':
+            case 'm':
+                return 60000 * number;
+            case 'hours':
+            case 'hour':
+            case 'HH':
+            case 'hh':
+            case 'h':
+            case 'H':
+                return min * number;
+            case 'seconds':
+            case 'second':
+            case 'sec':
+            case 'ss':
+            case 's':
+                return 1000 * number;
+            case 'days':
+            case 'day':
+            case 'DD':
+            case 'dd':
+            case 'd':
+                return (min * 24) * number;
+            case 'months':
+            case 'month':
+            case 'MM':
+            case 'M':
+                return (min * 24 * 28) * number;
+            case 'weeks':
+            case 'week':
+            case 'W':
+            case 'w':
+                return (min * 24 * 7) * number;
+            case 'years':
+            case 'year':
+            case 'yyyy':
+            case 'yy':
+            case 'y':
+                return (min * 24 * 365) * number;
+            default:
+                return 0;
+        }
+    };
+	
+	return {
+		parseMilliSeconds
+	};
+});
 define('skylark-langx/Evented',[
     "./klass",
+    "./arrays",
     "./objects",
 	"./types"
-],function(klass,objects,types){
+],function(klass,arrays,objects,types){
 	var slice = Array.prototype.slice,
+        compact = arrays.compact,
         isDefined = types.isDefined,
         isPlainObject = types.isPlainObject,
 		isFunction = types.isFunction,
@@ -1999,6 +2558,86 @@ define('skylark-langx/Evented',[
 	return Evented;
 
 });
+define('skylark-langx/hoster',[
+],function(){
+	// The javascript host environment, brower and nodejs are supported.
+	var hoster = {
+		"isBrowser" : true, // default
+		"isNode" : null,
+		"global" : this,
+		"browser" : null,
+		"node" : null
+	};
+
+	if (typeof process == "object" && process.versions && process.versions.node && process.versions.v8) {
+		hoster.isNode = true;
+		hoster.isBrowser = false;
+	}
+
+	hoster.global = (function(){
+		if (typeof global !== 'undefined' && typeof global !== 'function') {
+			// global spec defines a reference to the global object called 'global'
+			// https://github.com/tc39/proposal-global
+			// `global` is also defined in NodeJS
+			return global;
+		} else if (typeof window !== 'undefined') {
+			// window is defined in browsers
+			return window;
+		}
+		else if (typeof self !== 'undefined') {
+			// self is defined in WebWorkers
+			return self;
+		}
+		return this;
+	})();
+
+	var _document = null;
+
+	Object.defineProperty(hoster,"document",function(){
+		if (!_document) {
+			var w = typeof window === 'undefined' ? require('html-element') : window;
+			_document = w.document;
+		}
+
+		return _document;
+	});
+
+	if (hoster.isBrowser) {
+	    function uaMatch( ua ) {
+		    ua = ua.toLowerCase();
+
+		    var match = /(chrome)[ \/]([\w.]+)/.exec( ua ) ||
+		      /(webkit)[ \/]([\w.]+)/.exec( ua ) ||
+		      /(opera)(?:.*version|)[ \/]([\w.]+)/.exec( ua ) ||
+		      /(msie) ([\w.]+)/.exec( ua ) ||
+		      ua.indexOf('compatible') < 0 && /(mozilla)(?:.*? rv:([\w.]+)|)/.exec( ua ) ||
+		      [];
+
+		    return {
+		      browser: match[ 1 ] || '',
+		      version: match[ 2 ] || '0'
+		    };
+	  	};
+
+	    var matched = uaMatch( navigator.userAgent );
+
+	    var browser = hoster.browser = {};
+
+	    if ( matched.browser ) {
+	      browser[ matched.browser ] = true;
+	      browser.version = matched.version;
+	    }
+
+	    // Chrome is Webkit, but Webkit is also Safari.
+	    if ( browser.chrome ) {
+	      browser.webkit = true;
+	    } else if ( browser.webkit ) {
+	      browser.safari = true;
+	    }
+	}
+
+	return  hoster;
+});
 define('skylark-langx/strings',[
 ],function(){
 
@@ -2029,6 +2668,7 @@ define('skylark-langx/strings',[
             return value;
         }
     }
+
 
     function trim(str) {
         return str == null ? "" : String.prototype.trim.call(str);
@@ -2086,13 +2726,18 @@ define('skylark-langx/strings',[
             }); // String
     }
 
+    var idCounter = 0;
+    function uniqueId (prefix) {
+        var id = ++idCounter + '';
+        return prefix ? prefix + id : id;
+    }
+
 	return {
         camelCase: function(str) {
             return str.replace(/-([\da-z])/g, function(a) {
                 return a.toUpperCase().replace('-', '');
             });
         },
-
 
         dasherize: dasherize,
 
@@ -2111,6 +2756,8 @@ define('skylark-langx/strings',[
 
         trim: trim,
 
+        uniqueId: uniqueId,
+
         upperFirst: function(str) {
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
@@ -2125,7 +2772,7 @@ define('skylark-langx/Xhr',[
     "./funcs",
     "./types"
 ],function(arrays,Deferred,Evented,objects,funcs,types){
-    var each = arrays.each,
+    var each = objects.each,
         mixin = objects.mixin,
         noop = funcs.noop,
         isArray = types.isArray,
@@ -2356,7 +3003,7 @@ define('skylark-langx/Xhr',[
 
                 var onprogress = function(evt) {
                     if (deferred) {
-                        deferred.progress(evt,xhr.status,xhr);
+                        deferred.notify(evt,xhr.status,xhr);
                     }
                 }
 
@@ -2596,10 +3243,19 @@ define('skylark-langx/Restful',[
     return Restful;
 });
 define('skylark-langx/Stateful',[
-	"./Evented"
-],function(Evented){
+	"./Evented",
+  "./strings",
+  "./objects"
+],function(Evented,strings,objects){
+    var isEqual = objects.isEqual,
+        mixin = objects.mixin,
+        result = objects.result,
+        isEmptyObject = objects.isEmptyObject,
+        clone = objects.clone,
+        uniqueId = strings.uniqueId;
+
     var Stateful = Evented.inherit({
-        init : function(attributes, options) {
+        _construct : function(attributes, options) {
             var attrs = attributes || {};
             options || (options = {});
             this.cid = uniqueId(this.cidPrefix);
@@ -2798,23 +3454,57 @@ define('skylark-langx/Stateful',[
 
 	return Stateful;
 });
+define('skylark-langx/topic',[
+	"./Evented"
+],function(Evented){
+	var hub = new Evented();
+
+	return {
+	    publish: function(name, arg1,argn) {
+	        var data = [].slice.call(arguments, 1);
+
+	        return hub.trigger({
+	            type : name,
+	            data : data
+	        });
+	    },
+
+        subscribe: function(name, listener,ctx) {
+        	var handler = function(e){
+                listener.apply(ctx,e.data);
+            };
+            hub.on(name, handler);
+            return {
+            	remove : function(){
+            		hub.off(name,handler);
+            	}
+            }
+
+        }
+
+	}
+});
 define('skylark-langx/langx',[
     "./skylark",
     "./arrays",
     "./ArrayStore",
     "./aspect",
     "./async",
+    "./datetimes",
     "./Deferred",
     "./Evented",
     "./funcs",
+    "./hoster",
     "./klass",
+    "./numbers",
     "./objects",
     "./Restful",
     "./Stateful",
     "./strings",
+    "./topic",
     "./types",
     "./Xhr"
-], function(skylark,arrays,ArrayStore,aspect,async,Deferred,Evented,funcs,klass,objects,Restful,Stateful,strings,types,Xhr) {
+], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,Restful,Stateful,strings,types,topic,Xhr) {
     "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
@@ -2865,13 +3555,6 @@ define('skylark-langx/langx',[
         return obj._uid || (obj._uid = _uid++);
     }
 
-    var idCounter = 0;
-    function uniqueId (prefix) {
-        var id = ++idCounter + '';
-        return prefix ? prefix + id : id;
-    }
-
-
     function langx() {
         return langx;
     }
@@ -2887,14 +3570,12 @@ define('skylark-langx/langx',[
 
         uid: uid,
 
-        uniqueId: uniqueId,
-
         URL: typeof window !== "undefined" ? window.URL || window.webkitURL : null
 
     });
 
 
-    mixin(langx, arrays,aspect,funcs,objects,strings,types,{
+    mixin(langx, arrays,aspect,datetimes,funcs,numbers,objects,strings,types,{
         ArrayStore : ArrayStore,
 
         async : async,
@@ -2903,11 +3584,15 @@ define('skylark-langx/langx',[
 
         Evented: Evented,
 
+        hoster : hoster,
+
         klass : klass,
 
         Restful: Restful,
         
         Stateful: Stateful,
+
+        topic : topic,
 
         Xhr: Xhr
 
@@ -2934,6 +3619,8 @@ define('skylark-utils-dom/browser',[
     "./langx"
 ], function(dom,langx) {
     "use strict";
+
+    var browser = langx.hoster.browser;
  
     var checkedCssProperties = {
             "transitionproperty": "TransitionProperty",
@@ -3016,10 +3703,6 @@ define('skylark-utils-dom/browser',[
 
     function normalizeStyleProperty(name) {
         return cssStyles[name] || name;
-    }
-
-    function browser() {
-        return browser;
     }
 
     langx.mixin(browser, {
@@ -3122,7 +3805,7 @@ define('skylark-utils-dom/styler',[
         if (!elementDisplay[nodeName]) {
             element = document.createElement(nodeName)
             document.body.appendChild(element)
-            display = getComputedStyle(element, '').getPropertyValue("display")
+            display = getStyles(element).getPropertyValue("display")
             element.parentNode.removeChild(element)
             display == "none" && (display = "block")
             elementDisplay[nodeName] = display
@@ -3179,6 +3862,22 @@ define('skylark-utils-dom/styler',[
 
         return this;
     }
+
+    function getStyles( elem ) {
+
+        // Support: IE <=11 only, Firefox <=30 (#15098, #14150)
+        // IE throws on elements created in popups
+        // FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
+        var view = elem.ownerDocument.defaultView;
+
+        if ( !view || !view.opener ) {
+            view = window;
+        }
+
+        return view.getComputedStyle( elem);
+    }
+
+
     /*
      * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
      * @param {HTMLElement} elm
@@ -3188,7 +3887,7 @@ define('skylark-utils-dom/styler',[
     function css(elm, property, value) {
         if (arguments.length < 3) {
             var computedStyle,
-                computedStyle = getComputedStyle(elm, '')
+                computedStyle = getStyles(elm)
             if (langx.isString(property)) {
                 return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
             } else if (langx.isArrayLike(property)) {
@@ -3657,14 +4356,20 @@ define('skylark-utils-dom/noder',[
     }
 
     /*   
-     * Check to see if a dom node is a descendant of another dom node.
+     * Check to see if a dom node is a document.
      * @param {Node} node
-     * @param {Node} parent
-     * @param {Node} directly
      */
-    function isDoc(node) {
+    function isDocument(node) {
         return node != null && node.nodeType == node.DOCUMENT_NODE
     }
+
+    /*   
+     * Check to see if a dom node is in the document
+     * @param {Node} node
+     */
+    function isInDocument(node) {
+      return (node === document.body) ? true : document.body.contains(node);
+    }        
 
     /*   
      * Get the owner document object for the specified element.
@@ -3959,7 +4664,9 @@ define('skylark-utils-dom/noder',[
 
         isChildOf: isChildOf,
 
-        isDoc: isDoc,
+        isDocument: isDocument,
+
+        isInDocument: isInDocument,
 
         isWindow: langx.isWindow,
 
@@ -5095,9 +5802,9 @@ define('skylark-utils-dom/finder',[
 
         parent: parent,
 
-        previousSibling: previousSibling,
+        previousSibling,
 
-        previousSiblings: previousSiblings,
+        previousSiblings,
 
         pseudos: local.pseudos,
 
@@ -5264,13 +5971,17 @@ define('skylark-utils-dom/datax',[
      * @param {Array} names
      */
     function removeData(elm, names) {
-        if (langx.isString(names)) {
-            names = names.split(/\s+/);
+        if (names) {
+            if (langx.isString(names)) {
+                names = names.split(/\s+/);
+            }
+            var store = _store(elm, true);
+            names.forEach(function(name) {
+                delete store[name];
+            });            
+        } else {
+            cleanData(elm);
         }
-        var store = _store(elm, true);
-        names.forEach(function(name) {
-            delete store[name];
-        });
         return this;
     }
 
@@ -7552,7 +8263,7 @@ define('skylark-utils-dom/fx',[
         });
 
         return this;
-    };
+    }
 
     /*   
      * Hide an element with a sliding motion.
@@ -7614,7 +8325,7 @@ define('skylark-utils-dom/fx',[
             });
         }
         return this;
-    };
+    }
 
 
     /*   
@@ -7634,8 +8345,22 @@ define('skylark-utils-dom/fx',[
             slideUp(elm, duration, callback);
         }
         return this;
-    };
+    }
 
+    function emulateTransitionEnd(elm,duration) {
+        var called = false;
+        eventer.one(elm,'transitionEnd', function () { 
+            called = true;
+        })
+        var callback = function () { 
+            if (!called) {
+                eventer.trigger(elm,'transitionEnd') 
+            }
+        };
+        setTimeout(callback, duration);
+        
+        return this;
+    } 
 
     function fx() {
         return fx;
@@ -7650,19 +8375,20 @@ define('skylark-utils-dom/fx',[
             slow: 600
         },
 
-        animate: animate,
-        fadeIn: fadeIn,
-        fadeOut: fadeOut,
-        fadeTo: fadeTo,
-        fadeToggle: fadeToggle,
-        hide: hide,
-        scrollToTop: scrollToTop,
+        animate,
+        emulateTransitionEnd,
+        fadeIn,
+        fadeOut,
+        fadeTo,
+        fadeToggle,
+        hide,
+        scrollToTop,
 
-        slideDown: slideDown,
-        slideToggle: slideToggle,
-        slideUp: slideUp,
-        show: show,
-        toggle: toggle
+        slideDown,
+        slideToggle,
+        slideUp,
+        show,
+        toggle
     });
 
     return dom.fx = fx;
@@ -7898,7 +8624,7 @@ define('skylark-utils-dom/query',[
                         nodes = finder.descendants(context, selector);
                     }
                 } else {
-                    if (isArray(selector)) {
+                    if (selector !== window && isArrayLike(selector)) {
                         // a dom node array is expected
                         nodes = selector;
                     } else {
@@ -8108,8 +8834,6 @@ define('skylark-utils-dom/query',[
                 return ret;
             },
             
-            show: wrapper_every_act(fx.show, fx),
-
             replaceWith: function(newContent) {
                 return this.before(newContent).remove();
             },
@@ -8451,6 +9175,7 @@ define('skylark-utils-dom/query',[
         };
 
         $.fn.animate = wrapper_every_act(fx.animate, fx);
+        $.fn.emulateTransitionEnd = wrapper_every_act(fx.emulateTransitionEnd, fx);
 
         $.fn.show = wrapper_every_act(fx.show, fx);
         $.fn.hide = wrapper_every_act(fx.hide, fx);
@@ -8627,11 +9352,6 @@ define('skylark-totaljs-jcomponent/jc',[
 ],function(skylark,langx,$){
 	var totaljs = skylark.totaljs = {};
 	var M = totaljs.jc = {
-		isPRIVATEMODE : false,
-		isMOBILE : /Mobi/.test(navigator.userAgent),
-		isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
-		isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
-		isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
 	}; // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	// Internal cache
@@ -8691,9 +9411,6 @@ define('skylark-totaljs-jcomponent/jc',[
     //- Ex
 
 
-	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
-
-
 	//- queryex
 
 
@@ -8705,12 +9422,12 @@ define('skylark-totaljs-jcomponent/jc',[
 	//- Plugin
 
 
-	M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
-	M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
+	//M.months 
+	//M.days 
 
 	//M.skipproxy = '';
 
-	M.loaded = false;
+	//M.loaded = false;
 	M.version = 16.044;
 	//M.$localstorage = 'jc';
 	M.$version = '';
@@ -8721,14 +9438,6 @@ define('skylark-totaljs-jcomponent/jc',[
 	//M.compiler = C;
 
 	//M.compile = compile;
-
-	M.environment = function(name, version, language, env) {
-		M.$localstorage = name;
-		M.$version = version || '';
-		M.$language = language || '';
-		env && ENV(env);
-		return M;
-	};
 
 
 	M.prototypes = function(fn) {
@@ -9241,6 +9950,10 @@ define('skylark-totaljs-jcomponent/langx/ArrayEx',[
 define('skylark-totaljs-jcomponent/langx/DateEx',[
 	"./regexp"
 ],function(regexp){
+
+	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
+	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
+
 
 	window.$jcdatempam = function(value) {  // TODO: will be changed
 		return value >= 12 ? value - 12 : value;
@@ -9999,7 +10712,6 @@ define('skylark-totaljs-jcomponent/langx',[
 	var statics = {};
 	var waits = {};
 
-
 	function async(arr, fn, done) {
 		var item = arr.shift();
 		if (item == null) {
@@ -10310,9 +11022,15 @@ define('skylark-totaljs-jcomponent/langx',[
 
 	return jc.langx = {
 
-		mixin : slangx.mixin,
+		Evented : slangx.Evented,
+		hoster : hoster,
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
+		isObject : slangx.isObject,
+		isString : slangx.isString,
+		klass : slangx.klass,
+		mixin : slangx.mixin,
+		topic : slangx.topic,
 
 		async:async,
 		clearTimeout2:clearTimeout2,
@@ -10333,38 +11051,41 @@ define('skylark-totaljs-jcomponent/langx',[
 	};
 
 });
-define('skylark-totaljs-jcomponent/defaults',[
-	"./jc"
-],function(jc){
-	var defaults =  {
-		delay : 555,
-		delaywatcher : 555,
-		delaybinder : 200,
-		localstorage : true,
-		version : '',
-		importcache : 'session',
-		root : '' , // String or Function
-		keypress : true,
-		jsoncompress : false,
-		dateformat : null
+define('skylark-totaljs-jcomponent/plugins/_registry',[],function(){
+	var registry = {}; // W.PLUGINS
 
-	};
+	return registry;
+});
 
-	try {
-		var pmk = 'jc.test';
-		Window.localStorage.setItem(pmk, '1');
-		defaults.isPRIVATEMODE = Window.localStorage.getItem(pmk) !== '1'; //W.isPRIVATEMODE
-		Window.localStorage.removeItem(pmk);
-	} catch (e) {
-		defaults.isPRIVATEMODE = true; //W.isPRIVATEMODE
+define('skylark-totaljs-jcomponent/utils/localStorage',[
+	"../langx"
+],function(langx){
+
+	var $localstorage = 'jc.'; //M.$localstorage
+
+
+	function get(key) {
+		var value = localStorage.getItem($localstorage + key);
+		if (value && langx.isString(value)) {
+			value = langx.parse(value); // PARSE
+		}
+		return value;
 	}
-	
-	return jc.defaults = defaults;
+
+	function set(key,value) {
+		localStorage.setItem($localstorage + key, JSON.stringify(value)); // M.$localstorage
+		return this;
+	}
+
+	return  {
+		"get" : get,
+		"set" : set
+	};
 });
 define('skylark-totaljs-jcomponent/utils/cache',[
-	"../defaults",
-	"../langx"
-],function(defaults,langx){
+	"../langx",
+	"./localStorage"
+],function(langx, localStorage){
 	//var M = jc,
 	//	MD = defaults;
 
@@ -10372,11 +11093,72 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 		session = {} ,
 		storage = {};
 
+	function cachestorage(key, value, expire) {
+
+		var now = Date.now();
+
+		if (value !== undefined) {
+
+			if (expire === 'session') {
+				caches.set('$session' + key, value);
+				return value;
+			}
+
+			if (langx.isString(expire)) {
+				expire = expire.parseExpire();
+			}
+
+			storage[key] = { expire: now + expire, value: value };
+			save();
+			return value;
+		}
+
+		var item = caches.get('$session' + key);
+		if (item) {
+			return item;
+		}
+
+		item = storage[key];
+		if (item && item.expire > now) {
+			return item.value;
+		}
+	}
+
+	function get(key) {
+		return cachestorage(key);
+	}	
+
+	function put(key, value, expire) { //W.CACHE = 
+		return cachestorage(key, value, expire);
+	}
+
+
+	function remove(key, isSearching) { // W.REMOVECACHE = 
+		if (isSearching) {
+			for (var m in storage) {
+				if (m.indexOf(key) !== -1)
+					delete storage[key];
+			}
+		} else {
+			delete storage[key];
+		}
+		save();
+		return this;
+	};
+
+	function save() {
+		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
+		localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
+		//}
+	}
+
 
 	function cache(key, value, expire) {  //W.CACHE = 
 
 		if (value !== undefined) {
-
+			return cache.set(key,value,expire)
+		} else {
+			return cache.get(key);
 		}
 
 	}
@@ -10455,7 +11237,6 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 		return this;
 	};
 
-
 	cache.getPageData = function(key) {
 		return page[key];
 	};
@@ -10493,8 +11274,83 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 		}
 	};
 
+	cache.getSessionData = function(key) {
+		return session[key];
+	};
 
-	function load() {
+	cache.setSessionData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	cache.clearSessionData = function() {
+
+		if (!arguments.length) {
+			session = {};
+			return;
+		}
+
+		var keys = langx.keys(page);
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i];
+			var remove = false;
+			var a = arguments;
+
+			for (var j = 0; j < a.length; j++) {
+				if (key.substring(0, a[j].length) !== a[j]) {
+					continue;
+				}
+				remove = true;
+				break;
+			}
+
+			if (remove) {
+				delete session[key];
+			}
+		}
+	};
+
+
+	cache.getStorageData = function(key) {
+		return session[key];
+	};
+
+	cache.setStorageData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	cache.clearStorageData = function() {
+
+		if (!arguments.length) {
+			session = {};
+		} else {
+			var keys = langx.keys(page);
+
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				var remove = false;
+				var a = arguments;
+
+				for (var j = 0; j < a.length; j++) {
+					if (key.substring(0, a[j].length) !== a[j]) {
+						continue;
+					}
+					remove = true;
+					break;
+				}
+
+				if (remove) {
+					delete session[key];
+				}
+			}
+		}
+		save();
+
+	};
+
+	cache.load = function () {
 		clearTimeout($ready);
 		if (MD.localstorage) {
 			var cache;
@@ -10518,295 +11374,6 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 	}
 
 	return cache;
-});
-define('skylark-totaljs-jcomponent/topic',[
-	"./jc",
-	"./langx"
-],function(jc, langx){
-	var events = {};
-
-	// ===============================================================
-	// Eventer
-	// ===============================================================
-
-
-	function on(name, path, fn, init, context) {
-
-		if (name.indexOf(MULTIPLE) !== -1) {
-			//ex: ON('name1 + name2 + name3', function() {});
-			var arr = name.split(MULTIPLE).trim();
-			for (var i = 0; i < arr.length; i++) {
-				on(arr[i], path, fn, init, context);
-			}
-			return this; //W;
-		}
-
-		var push = true;
-
-		if (name.substring(0, 1) === '^') {
-			push = false;
-			name = name.substring(1);
-		}
-
-		var owner = null;
-		var index = name.indexOf('#');
-
-		if (index) {
-			owner = name.substring(0, index).trim();
-			name = name.substring(index + 1).trim();
-		}
-
-		if (langx.isFunction(path)) {
-			fn = path;
-			path = name === 'watch' ? '*' : '';
-		} else {
-			path = path.replace('.*', '');
-		}
-
-		var obj = { name: name, fn: fn, owner: owner || current_owner, context: context || (current_com == null ? undefined : current_com) };
-
-		if (name === 'watch') {
-			var arr = [];
-
-			var tmp = findFormat(path);
-			if (tmp) {
-				path = tmp.path;
-				obj.format = tmp.fn;
-			}
-
-			if (path.substring(path.length - 1) === '.') {
-				path = path.substring(0, path.length - 1);
-			}
-
-			// Temporary
-			if (path.charCodeAt(0) === 37) {
-				path = 'jctmp.' + path.substring(1);
-			}
-
-			path = path.env();
-
-			// !path = fixed path
-			if (path.charCodeAt(0) === 33) {
-				path = path.substring(1);
-				arr.push(path);
-			} else {
-				var p = path.split('.');
-				var s = [];
-				for (var j = 0; j < p.length; j++) {
-					var b = p[j].lastIndexOf('[');
-					if (b !== -1) {
-						var c = s.join('.');
-						arr.push(c + (c ? '.' : '') + p[j].substring(0, b));
-					}
-					s.push(p[j]);
-					arr.push(s.join('.'));
-				}
-			}
-
-			obj.path = path;
-			obj.$path = arr;
-
-			if (push) {
-				watches.push(obj);
-			} else {
-				watches.unshift(obj);
-			}
-
-			init && fn.call(context || M, path, obj.format ? obj.format(get(path), path, 0) : get(path), 0);
-		} else {
-			if (events[name]) {
-				if (push) {
-					events[name].push(obj);
-				} else {
-					events[name].unshift(obj);
-				}
-			} else {
-				events[name] = [obj];
-			}
-			(!C.ready && (name === 'ready' || name === 'init')) && fn();
-		}
-		return this; //W;
-	}
-
-	function off(name, path, fn) {
-
-		if (name.indexOf('+') !== -1) {
-			var arr = name.split('+').trim();
-			for (var i = 0; i < arr.length; i++) {
-				off(arr[i], path, fn); //W.OFF
-			}
-			return this; //W;
-		}
-
-		if (lang.isFunction(path)) {
-			fn = path;
-			path = '';
-		}
-
-		if (path === undefined) {
-			path = '';
-		}
-
-		var owner = null;
-		var index = name.indexOf('#');
-		if (index) {
-			owner = name.substring(0, index).trim();
-			name = name.substring(index + 1).trim();
-		}
-
-		if (path) {
-			path = path.replace('.*', '').trim();
-			var tmp = findFormat(path);
-			if (tmp) {
-				path = tmp.path;
-			}
-			if (path.substring(path.length - 1) === '.') {
-				path = path.substring(0, path.length - 1);
-			}
-		}
-
-		var type = 0;
-
-		if (owner && !path && !fn && !name)
-			type = 1;
-		else if (owner && name && !fn && !path)
-			type = 2;
-		else if (owner && name && path)
-			type = 3;
-		else if (owner && name && path && fn)
-			type = 4;
-		else if (name && path && fn)
-			type = 5;
-		else if (name && path)
-			type = 7;
-		else if (fn)
-			type = 6;
-
-		var cleararr = function(arr, key) {
-			return arr.remove(function(item) {
-				if (type > 2 && type < 5) {
-					if (item.path !== path)
-						return false;
-				}
-				var v = false;
-				if (type === 1)
-					v = item.owner === owner;
-				else if (type === 2)
-					v = key === name && item.owner === owner;
-				else if (type === 3)
-					v = key === name && item.owner === owner;
-				else if (type === 4)
-					v = key === name && item.owner === owner && item.fn === fn;
-				else if (type === 5 || type === 6)
-					v = key === name && item.fn === fn;
-				else if (type === 6)
-					v = item.fn === fn;
-				else if (type === 7)
-					v = key === name && item.path === path;
-				else
-					v = key === name;
-				return v;
-			});
-		};
-
-		Object.keys(events).forEach(function(p) {
-			events[p] = cleararr(events[p], p);
-			if (!events[p].length) {
-				delete events[p];
-			}
-		});
-
-		watches = cleararr(watches, 'watch');
-		return this; //W;
-	}
-
-	function emit(name) {
-
-		var e = events[name];
-		if (!e) {
-			return false;
-		}
-
-		var args = [];
-
-		for (var i = 1, length = arguments.length; i < length; i++) {
-			args.push(arguments[i]);
-		}
-
-		for (var i = 0, length = e.length; i < length; i++) {
-			var context = e[i].context;
-			if (context !== undefined && (context === null || context.$removed)) {
-				continue;
-			}
-			e[i].fn.apply(context || window, args);
-		}
-
-		return true;
-	}
-
-	function each(fn) {
-
-		var keys = Object.keys(events);
-		var length = keys.length;
-
-		for (var i = 0; i < length; i++) {
-			var key = keys[i];
-			arr = events[key];
-			fn(key,arr);
-
-			if (!arr.length) {
-				delete events[key];
-			}
-
-		}
-
-	}
-
-	var watches = [];
-
-	function unwatch(path, fn) { //W.UNWATCH 
-
-		if (path.indexOf(MULTIPLE) !== -1) {
-			var arr = path.split(MULTIPLE).trim();
-			for (var i = 0; i < arr.length; i++)
-				unwatch(arr[i], fn);
-			return this; //W;
-		}
-
-		return topic.off('watch', path, fn); //OFF
-	};
-
-	function watch(path, fn, init) { // W.WATCH
-
-		if (path.indexOf(MULTIPLE) !== -1) {
-			var arr = path.split(MULTIPLE).trim();
-			for (var i = 0; i < arr.length; i++)
-				watch(arr[i], fn, init);
-			return this; //W;
-		}
-
-		if (langx.isFunction(path)) { //if (typeof(path) === TYPE_FN) {
-			init = fn;
-			fn = path;
-			path = '*';
-		}
-
-		var push = '';
-
-		if (path.substring(0, 1) === '^') {
-			path = path.substring(1);
-			push = '^';
-		}
-
-		path = pathmaker(path, true);
-		topic.on(push + 'watch', path, fn, init);  // ON
-		return this; //W;
-	}
-	return jc.topic = {
-		on,
-		off,
-		emit
-	}
 });
 define('skylark-totaljs-jcomponent/plugins/schedulers',[
 	"../jc",
@@ -10884,9 +11451,10 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 	"skylark-utils-dom/query",
 	"../jc",
 	"../utils/cache",
-	"../topic",
+	"./_registry",
 	"./schedulers"
-],function($, jc, caches, topic, schedulers){
+],function($, jc, caches, registry,schedulers){
+	
 	function Plugin(name, fn) {
 		if ((/\W/).test(name)) {
 			warn('Plugin name must contain A-Z chars only.');
@@ -10895,15 +11463,15 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 			registry[name].$remove(true);
 		}
 		var t = this;
-		t.element = $(caches.current.element || document.body);
+		//t.element = $(caches.current.element || document.body); // TODO
 		t.id = 'plug' + name;
 		t.name = name;
 		registry[name] = t;
-		var a = caches.current.owner;
-		caches.current.owner = t.id;
+		//var a = caches.current.owner;
+		//caches.current.owner = t.id;
 		fn.call(t, t);
-		caches.current.owner = a;
-		topic.emit('plugin', t); // EMIT
+		//caches.current.owner = a;
+		// topic.emit('plugin', t); // EMIT TODO
 	}
 
 	Plugin.prototype.$remove = function() {
@@ -10913,6 +11481,7 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 			return true;
 		}
 
+		/* TODO
 		topic.emit('plugin.destroy', self); // EMIT
 		if (self.destroy) {
 			self.destroy();
@@ -10930,7 +11499,8 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 		watches = watches.remove('owner', self.id);
 
 		// Remove events
-		topic.off(self.id + '#watch'); // OFF
+		topic.off(self.id + '#watch'); // OFF 
+		*/
 
 		// Remove schedulers
 		//schedulers = schedulers.remove('owner', self.id);
@@ -10949,9 +11519,9 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 define('skylark-totaljs-jcomponent/plugins',[
 	"skylark-utils-dom/query",
 	"./jc",
+	"./plugins/_registry",
 	"./plugins/Plugin"
-],function($, jc, Plugin){
-	var registry = {}; // W.PLUGINS
+],function($, jc, registry,Plugin){
 
 	function plugin(name, fn) { //W.PLUGIN = 
 		return fn ? new Plugin(name, fn) : registry[name]; // W.PLUGINS
@@ -10961,19 +11531,11 @@ define('skylark-totaljs-jcomponent/plugins',[
 		return registry[name];
 	}
 
-	function add(plugin) {
-		registry[plugin.name] = plugin;
-
-	}
-
-	function remove() {
-
-	}
 	
-	return {
-		Plugin: Plugin,
-		plugin,
-		find
+	return jc.plugins = {
+		"Plugin" : Plugin,
+		"plugin" : plugin,
+		"find" : find
 	};
 });
 define('skylark-totaljs-jcomponent/utils/query',[
@@ -11243,99 +11805,23 @@ define('skylark-totaljs-jcomponent/binding/Binder',[
 
 	return jBinder;
 });
+define('skylark-totaljs-jcomponent/stores/Store',[
+	"../langx"
+],function(langx){
+	var Store = langx.Evented.inherit({
+		_construct : function(options) {
+			this.data = options.data;
+		}
+
+	});
+});
 define('skylark-totaljs-jcomponent/stores',[
 	"skylark-langx/langx",
 	"./jc",
-	"./utils/cache"
-],function(langx, jc, caches){
-	var changed = {
-		onupdate : null,
-		onset : null
-	};
-
-	var stores = {
-		},
-		paths = {},
-		$parser = [];
+	"./stores/Store"
+],function(langx, jc, Store){
 
 
-	//get... 
-
-	function get(path, scope) {
-
-		if (path == null) {
-			return;
-		}
-
-		var code = path.charCodeAt(0);
-		if (code === 37)　{  // % 
-			path = 'jctmp.' + path.substring(1);
-		}
-
-		var key = '=' + path;
-		if (paths[key]) {
-			return paths[key](scope || stores.root);
-		}
-
-		if (path.indexOf('?') !== -1) {
-			return;
-		}
-
-		var arr = parsepath(path);
-		var builder = [];
-
-		for (var i = 0, length = arr.length - 1; i < length; i++) {
-			var item = arr[i];
-			if (item.substring(0, 1) !== '[') {
-				item = '.' + item;
-			}
-			builder.push('if(!w' + item + ')return');
-		}
-
-		var v = arr[arr.length - 1];
-		if (v.substring(0, 1) !== '['){
-			v = '.' + v;
-		}
-
-		var fn = (new Function('w', builder.join(';') + ';return w' + v));
-		paths[key] = fn;
-		return fn(scope || MD.scope);
-	}
-
-   /**
-   * Evaluate String expression as JavaScript code.
-   * @param  {String/Object} path Can be object if "path_is_real_value" is "true"
-   * @param  {String} expression A condition.
-   * @param  {Boolean} path_is_real_value Optional, default: false
-   * @returns {Boolean}   
-   */
-	function evaluate(path, expression, nopath) { //W.EVALUATE = 
-
-		var key = 'eval' + expression;
-		var exp = caches.temp[key];
-		var val = null;
-
-		if (nopath) {
-			val = path;
-		} else {
-			val = get(path);
-		}
-
-		if (exp) {
-			return exp.call(val, val, path);
-		}
-
-		if (expression.indexOf('return') === -1) {
-			expression = 'return ' + expression;
-		}
-
-		exp = new Function('value', 'path', expression);
-		caches.temp[key] = exp;
-		return exp.call(val, val, path);
-	}
-
-
-	
 	// paths -> view model
 
 	var REGPARAMS = /\{{1,2}[a-z0-9_.-\s]+\}{1,2}/gi;
@@ -11347,25 +11833,7 @@ define('skylark-totaljs-jcomponent/stores',[
 	// PRIVATE FUNCTIONS
 	// ===============================================================
 
-	var MULTIPLE = ' + ';
 	var REGISARR = /\[\d+\]$/;
-
-	var paths = {}; // saved paths from get() and set()
-
-	var binders = {};
-	var bindersnew = [];
-
-	function binderbind(path, absolutePath, ticks) {
-		var arr = binders[path];
-		for (var i = 0; i < arr.length; i++) {
-			var item = arr[i];
-			if (item.ticks !== ticks) {
-				item.ticks = ticks;
-				item.exec(getx(item.path), absolutePath);  //GET
-			}
-		}
-	}
-
 
 
 	Array.prototype.findValue = function(cb, value, path, def, cache) {
@@ -11411,687 +11879,10 @@ define('skylark-totaljs-jcomponent/stores',[
 	};
 
 
-	// set...
-	function set(path, value, is) {
 
-		if (path == null) {
-			return;
-		}
-
-		var key = '+' + path;
-
-		if (paths[key]) {
-			return paths[key](MD.scope, value, path, binders, binderbind, is);
-		}
-
-		if (path.indexOf('?') !== -1) {
-			path = '';
-			return;
-		}
-
-		var arr = parsepath(path);
-		var builder = [];
-		var binder = [];
-
-		for (var i = 0; i < arr.length - 1; i++) {
-			var item = arr[i];
-			var type = arr[i + 1] ? (REGISARR.test(arr[i + 1]) ? '[]' : '{}') : '{}';
-			var p = 'w' + (item.substring(0, 1) === '[' ? '' : '.') + item;
-			builder.push('if(typeof(' + p + ')!==\'object\'||' + p + '==null)' + p + '=' + type);
-		}
-
-		for (var i = 0; i < arr.length - 1; i++) {
-			var item = arr[i];
-			binder.push('binders[\'' + item + '\']&&binderbind(\'' + item + '\',\'' + path + '\',$ticks)');
-		}
-
-		var v = arr[arr.length - 1];
-		binder.push('binders[\'' + v + '\']&&binderbind(\'' + v + '\',\'' + path + '\',$ticks)');
-		binder.push('binders[\'!' + v + '\']&&binderbind(\'!' + v + '\',\'' + path + '\',$ticks)');
-
-		if (v.substring(0, 1) !== '['){
-			v = '.' + v;
-		}
-
-		var fn = (new Function('w', 'a', 'b', 'binders', 'binderbind', 'nobind', 'var $ticks=Math.random().toString().substring(2,8);if(!nobind){' + builder.join(';') + ';var v=typeof(a)==\'function\'?a(MAIN.compiler.get(b)):a;w' + v + '=v}' + binder.join(';') + ';return a'));
-		paths[key] = fn;
-		fn(stores.root, value, path, binders, binderbind, is);
-
-		return this; //C
+	return jc.stores  = {
+		"Store" : Store
 	}
-
-	function set2(scope, path, value) {
-
-		if (path == null) {
-			return;
-		}
-
-		var key = '++' + path;
-
-		if (paths[key]) {
-			return paths[key](scope, value, path);
-		}
-
-		var arr = parsepath(path);
-		var builder = [];
-
-		for (var i = 0; i < arr.length - 1; i++) {
-			var item = arr[i];
-			var type = arr[i + 1] ? (REGISARR.test(arr[i + 1]) ? '[]' : '{}') : '{}';
-			var p = 'w' + (item.substring(0, 1) === '[' ? '' : '.') + item;
-			builder.push('if(typeof(' + p + ')!==\'object\'||' + p + '==null)' + p + '=' + type);
-		}
-
-		var v = arr[arr.length - 1];
-
-		if (v.substring(0, 1) !== '[')
-			v = '.' + v;
-
-		var fn = (new Function('w', 'a', 'b', builder.join(';') + ';w' + v + '=a;return a'));
-		paths[key] = fn;
-		fn(scope, value, path);
-		return scope;
-	}
-
-
- 	//cache
-	function cache(path, expire, rebind) { // W.CACHEPATH = 
-		var key = '$jcpath';
-		WATCH(path, function(p, value) {
-			var obj = storages.get(key); // cachestorage(key);
-			if (obj) {
-				obj[path] = value;
-			}else {
-				obj = {};
-				obj[path] = value;
-			}
-			storages.put(key, obj, expire); // cachestorage(key, obj, expire);
-		});
-
-		if (rebind === undefined || rebind) {
-			var cache = storages.get(key); // cachestorage(key);
-			if (cache && cache[path] !== undefined && cache[path] !== get(path)){
-				immSetx(path, cache[path], true);	
-			} 
-		}
-		return this; //W 
-	};
-
-
-	function parsepath(path) {
-
-		var arr = path.split('.');
-		var builder = [];
-		var all = [];
-
-		for (var i = 0; i < arr.length; i++) {
-			var p = arr[i];
-			var index = p.indexOf('[');
-			if (index === -1) {
-				if (p.indexOf('-') === -1) {
-					all.push(p);
-					builder.push(all.join('.'));
-				} else {
-					var a = all.splice(all.length - 1);
-					all.push(a + '[\'' + p + '\']');
-					builder.push(all.join('.'));
-				}
-			} else {
-				if (p.indexOf('-') === -1) {
-					all.push(p.substring(0, index));
-					builder.push(all.join('.'));
-					all.splice(all.length - 1);
-					all.push(p);
-					builder.push(all.join('.'));
-				} else {
-					all.push('[\'' + p.substring(0, index) + '\']');
-					builder.push(all.join(''));
-					all.push(p.substring(index));
-					builder.push(all.join(''));
-				}
-			}
-		}
-
-		return builder;
-	}
-	
-   /**
-   * Creates a watcher for all changes.
-   * @param  {String} path 
-   */
-	function create(path) { //W.CREATE
-
-		var is = false;
-		var callback;
-
-		if (langx.isString(path)) {
-			if (proxy[path]) {
-				return proxy[path];
-			}
-			is = true;
-			callback = function(key) {
-
-				var p = path + (key ? '.' + key : '');
-				if (M.skipproxy === p) {
-					M.skipproxy = '';
-					return;
-				}
-				setTimeout(function() {
-					if (M.skipproxy === p) {
-						M.skipproxy = '';
-					} else {
-						notify(p);  // NOTIFY
-						reset(p);   // REEST
-					}
-				}, MD.delaybinder);
-			};
-
-		} else {
-			callback = path;
-		}
-
-		var blocked = false;
-		var obj = path ? (get2(path) || {}) : {};
-		var handler = {
-			get: function(target, property, receiver) {
-				try {
-					return new Proxy(target[property], handler);
-				} catch (err) {
-					return Reflect.get(target, property, receiver);
-				}
-			},
-			defineProperty: function(target, property, descriptor) {
-				!blocked && callback(property, descriptor);
-				return Reflect.defineProperty(target, property, descriptor);
-			},
-			deleteProperty: function(target, property) {
-				!blocked && callback(property);
-				return Reflect.deleteProperty(target, property);
-			},
-			apply: function(target, thisArg, argumentsList) {
-				if (BLACKLIST[target.name]) {
-					blocked = true;
-					var result = Reflect.apply(target, thisArg, argumentsList);
-					callback('', argumentsList[0]);
-					blocked = false;
-					return result;
-				}
-				return Reflect.apply(target, thisArg, argumentsList);
-			}
-		};
-
-		var o = new Proxy(obj, handler);
-
-		if (is) {
-			M.skipproxy = path;
-			getx(path) == null && setx(path, obj, true);  // GET SET
-			return proxy[path] = o;
-		} else
-			return o;
-	}
-
-   /**
-   * Creates an object on the path and notifies all components
-   * @param  {String} path 
-   * @param  {Function} fn 
-   * @param  {Boolean} update Optional Optional, default "true"
-   */
-	function make(obj, fn, update) { // W.MAKE
-
-		switch (typeof(obj)) {
-			case 'function':
-				fn = obj;
-				obj = {};
-				break;
-			case 'string':
-				var p = obj;
-				var is = true;
-				obj = get(p);
-				if (obj == null) {
-					is = false;
-					obj = {};
-				}
-				fn.call(obj, obj, p, function(path, value) {
-					setx(obj, path, value);
-				});
-				if (is && (update === undefined || update === true))
-					immUpdate(p, true);
-				else {
-					if (C.ready)
-						$set(p, obj);
-					else
-						immSetx(p, obj, true);
-				}
-				return obj;
-		}
-
-		fn.call(obj, obj, '');
-		return obj;
-	}
-
-  /**
-   * Notifies a setter in all components on the path.
-   * @param  {String} path 
-   */
-	function notify() { // W.NOTIFY
-
-		var arg = arguments;
-		var all = M.components.all;//M.components;
-
-		var $ticks = Math.random().toString().substring(2, 8);
-		for (var j = 0; j < arg.length; j++) {
-			var p = arg[j];
-			binders[p] && binderbind(p, p, $ticks);
-		}
-
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-			if (!com || com.$removed || com.disabled || !com.$loaded || !com.path)
-				continue;
-
-			var is = 0;
-			for (var j = 0; j < arg.length; j++) {
-				if (com.path === arg[j]) {
-					is = 1;
-					break;
-				}
-			}
-
-			if (is) {
-				var val = com.get();
-				com.setter && com.setterX(val, com.path, 1);
-				com.state && com.stateX(1, 6);
-				com.$interaction(1);
-			}
-		}
-
-		for (var j = 0; j < arg.length; j++) {
-			emitwatch(arg[j], getx(arg[j]), 1);  // GET
-		}
-
-		return this;  // W
-	};
-
-	function validate(path, except) { //W.VALIDATE =
-
-		var arr = [];
-		var valid = true;
-
-		path = pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
-
-		var flags = null;
-		if (except) {
-			var is = false;
-			flags = {};
-			except = except.remove(function(item) {
-				if (item.substring(0, 1) === '@') {
-					flags[item.substring(1)] = true;
-					is = true;
-					return true;
-				}
-				return false;
-			});
-			!is && (flags = null);
-			!except.length && (except = null);
-		}
-
-		var all = M.components.all;//M.components;
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-			if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path))
-				continue;
-
-			if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
-				continue;
-
-			com.state && arr.push(com);
-
-			if (com.$valid_disabled)
-				continue;
-
-			com.$validate = true;
-			if (com.validate) {
-				com.$valid = com.validate(get(com.path));
-				com.$interaction(102);
-				if (!com.$valid)
-					valid = false;
-			}
-		}
-
-		clear('valid');
-		state(arr, 1, 1);
-		return valid;
-	}
-
-   /**
-   * Sets default values for all declared components listen on the path.
-   * All components need to have declared data-jc-value="VALUE" attribute. 
-   * @param  {String} path 
-   * @param  {Number} delay Optional, default: 0 
-   * @param  {Boolean} reset Optional, default: true
-   */
-	function defaultValue(path, timeout, reset) { //W.DEFAULT = 
-		var arr = path.split(REGMETA);
-		if (arr.length > 1) {
-			var def = arr[1];
-			path = arr[0];
-			var index = path.indexOf('.*');
-			if (index !== -1)　{
-				path = path.substring(0, index);
-			}
-			SET(path, new Function('return ' + def)(), timeout > 10 ? timeout : 3, timeout > 10 ? 3 : null);
-		}
-		return M.default(arr[0], timeout, null, reset);
-	}
-
-
-	var nmCache = {};  // notmodified cache 
-
-   /**
-   * Checks whether the value has not been modified on the path.
-   * @param  {String} path 
-   * @param {Object} value  Optional
-   * @param {Array<String>} fields  Optional, field names
-   * @returns {Booean}   
-   */
-	function notmodified(path, value, fields) { // W.NOTMODIFIED = 
-
-		if (value === undefined) {
-			value = get(path);
-		}
-
-		if (value === undefined) {
-			value = null;
-		}
-
-		if (fields) {
-			path = path.concat('#', fields);
-		}
-
-		var s = langx.stringify(value, false, fields); // STRINGIFY
-		var hash = langx.hashCode(s); // HASH
-		var key =  path; // 'notmodified.' + path
-
-		if (nmCache[key] === hash) { // cache
-			return true;
-		}
-
-		nmCache[key] = hash; //cache 
-		return false;
-	};
-
-
-	function rewrite(path, value, type) { // W.REWRITE = 
-		path = pathmaker(path);
-		if (path) {
-			M.skipproxy = path;
-			set(path, value);
-			emitwatch(path, value, type);
-		}
-		return this; // W
-	}
-
-
-	// inc.. 
-	function immInc(path, value, type) {  // M.inc
-
-		if (path instanceof Array) {
-			for (var i = 0; i < path.length; i++)
-				immInc(path[i], value, type);
-			return this; // M
-		}
-
-		//path = pathmaker(path); ---
-
-		if (!path)
-			return this; // M
-
-		var current = get(path);
-		if (!current) {
-			current = 0;
-		} else if (!langx.isNumber(current)) {
-			current = parseFloat(current);
-			if (isNaN(current))
-				current = 0;
-		}
-
-		current += value;
-		immSetx(path, current, type);
-		return this; // M
-	}
-
-
-	// extend...
-	function immExtend(path, value, type) { // M.extend
-		path = pathmaker(path);
-		if (path) {
-			var val = get(path);
-			if (val == null) {
-				val = {};
-			}
-			immSetx(path, $.extend(val, value), type);
-		}
-		return this; // M
-	}
-
-
-	function immPush(path, value, type) { // M.push
-
-		if (path instanceof Array) {
-			for (var i = 0; i < path.length; i++) {
-				immPush(path[i], value, type);
-			}
-			return this; // M
-		}
-
-		var arr = get(path);
-		var n = false;
-
-		if (!(arr instanceof Array)) {
-			arr = [];
-			n = true;
-		}
-
-		var is = true;
-		M.skipproxy = path;
-
-		if (value instanceof Array) {
-			if (value.length)
-				arr.push.apply(arr, value);
-			else {
-				is = false;
-			}
-		} else {
-			arr.push(value);
-		}
-
-		if (n) {
-			immSetx(path, arr, type);
-		} else if (is) {
-			immUpdate(path, undefined, type);
-		}
-
-		return this; // M
-	}
-
-
-	// 1 === manually
-	// 2 === by input
-	function immUpdate(path, reset, type, wasset) { // M.update = 
-
-		if (path instanceof Array) {
-			for (var i = 0; i < path.length; i++)
-				immUpdate(path[i], reset, type);
-			return M;
-		}
-
-		path = pathmaker(path);
-		if (!path) {
-			return M;
-		}
-
-		var is = path.charCodeAt(0) === 33; // !
-		if (is) {
-			path = path.substring(1);
-		}
-
-		path = path.replaceWildcard();
-		if (!path)
-			return M;
-
-		!wasset && $set(path, $get(path), true);
-
-		var state = [];
-
-		if (type === undefined) {
-			type = 1; // manually
-		}
-
-		M.skipproxy = path;
-
-		var all = M.components.all;//M.components;
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-
-			if (!com || com.disabled || com.$removed || !com.$loaded || !com.path || !com.$compare(path))
-				continue;
-
-			var result = com.get();
-			if (com.setter) {
-				com.$skip = false;
-				com.setterX(result, path, type);
-				com.$interaction(type);
-			}
-
-			if (!com.$ready) {
-				com.$ready = true;
-			}
-
-			if (reset === true) {
-
-				if (!com.$dirty_disabled) {
-					com.$dirty = true;
-					com.$interaction(101);
-				}
-
-				if (!com.$valid_disabled) {
-					com.$valid = true;
-					com.$validate = false;
-					if (com.validate) {
-						com.$valid = com.validate(result);
-						com.$interaction(102);
-					}
-				}
-
-				findcontrol2(com);
-
-			} else if (com.validate && !com.$valid_disabled)
-				com.valid(com.validate(result), true);
-
-			com.state && state.push(com);
-		}
-
-		reset && clear('dirty', 'valid');
-
-		for (var i = 0, length = state.length; i < length; i++) {
-			state[i].stateX(1, 4);
-		}
-
-		emitwatch(path, get(path), type);
-
-		return M;
-	}
-
-
-	// ===============================================================
-	// MAIN FUNCTIONS
-	// ===============================================================
-
-   /**
-   * Evaluates a global parser.
-   * @param  {String} path 
-   * @param  {Object} value
-   * @param  {String} type 
-   * @returns {Boolean}   
-   * OR
-   * Registers a global parser.
-   * @param  {Function} value 
-   */
-	function parser(value, path, type) { //W.PARSER = M.parser =  
-
-		if (langx.isFunction(value)) {
-
-			// Prepend
-			if (path === true) {
-				$parser.unshift(value);
-			} else {
-				$parser.push(value);
-			}
-
-			return this;
-		}
-
-		var a = $parser;
-		if (a && a.length) {
-			for (var i = 0, length = a.length; i < length; i++) {
-				value = a[i].call(this, path, value, type);
-			}
-		}
-
-		return value;
-	}
-
-
-	setInterval(function() {
-//		temp = {};
-		paths = {};
-//		cleaner();
-	}, (1000 * 60) * 5);	
-
-	return jc.stores  = stores = {
-		root : Window,
-
-		unwatch : unwatch,
-		watch : watch,
-
-		get,
-		getx,
-		getr,
-
-		set,
-		set2,
-		immSetx,
-		setx,
-		setx2,
-		setr,
-
-		toggle,
-		toogle2,
-
-		cache,
-
-		immInc,
-
-
-		immExtend,
-
-		immPush,
-
-		immUpdate,
-
-		bind,
-		create,
-		defaultValue,
-		errors,
-		make,
-		evaluate,
-		make,
-		modified,
-//		notmodified,
-		pathmaker,
-		rewrite,
-		validate
-	};
 });
 define('skylark-totaljs-jcomponent/binding/pathmaker',[
 	"../plugins"
@@ -12300,6 +12091,8 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 ],function(langx, $,func,pathmaker,findFormat,jBinder){
 	
 	var REGMETA = /_{2,}/;
+	
+	var bindersnew = [];
 	
 	function parsebinderskip(str) {
 		var a = arguments;
@@ -12796,7 +12589,6 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 	var REGCSS = /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
 	var REGSCRIPT = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>|<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
 	var mediaqueriescounter = 0;
-	var knockknockcounter = 0;
 
  	var mediaqueries = [];
 	var $domready = false;
@@ -13295,27 +13087,19 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 			return t;
 		};
 
-		$.components = M;
-
-		setInterval(function() {
-			//W.DATETIME = W.NOW = new Date();
-			langx.now(true);
-			var c = M.components;
-			for (var i = 0, length = c.length; i < length; i++)
-				c[i].knockknock && c[i].knockknock(knockknockcounter);
-			EMIT('knockknock', knockknockcounter++);
-		}, 60000);
-
 		function resize() {
-			var w = $(window);
-			W.WW = w.width();
-			W.WH = w.height();
+			//var w = $(window); // TODO
+			//W.WW = w.width();
+			//W.WH = w.height(); 
 			mediaquery();
 		}
 
 		resize();
 
 		$(window).on('resize', resize);
+
+
+		$(window).on('orientationchange', mediaquery);
 	//}, 100);
 
 	return jc.domx = {
@@ -13351,590 +13135,6 @@ define('skylark-totaljs-jcomponent/binding/vbind',[
 	return vbind;
 });
 
-define('skylark-totaljs-jcomponent/components/registry',[
-], function() {
-    var types = {},
-        instances = [] ,
-        extensions = [],
-        namespaceInit;
-    return {
-        /**
-         * Adds a new control instance type to the factory.
-         *
-         * @method add
-         * @param {String} type Type name for example "button".
-         * @param {function} typeClass Class type function.
-         */
-        addType: function(type, typeClass) {
-            types[type.toLowerCase()] = typeClass;
-        },
-
-        /**
-         * Returns true/false if the specified type exists or not.
-         *
-         * @method has
-         * @param {String} type Type to look for.
-         * @return {Boolean} true/false if the control by name exists.
-         */
-        hasType: function(type) {
-            return !!types[type.toLowerCase()];
-        },
-
-        /**
-         * Creates a new control instance based on the settings provided. The instance created will be
-         * based on the specified type property it can also create whole structures of components out of
-         * the specified JSON object.
-         *
-         * @example
-         * tinymce.ui.Factory.create({
-         *     type: 'button',
-         *     text: 'Hello world!'
-         * });
-         *
-         * @method create
-         * @param {Object/String} settings Name/Value object with items used to create the type.
-         * @return {tinymce.ui.Control} Control instance based on the specified type.
-         */
-        createInstance: function(type, settings) {
-            var ControlType, name, namespace;
-
-            // Build type lookup
-            if (!namespaceInit) {
-                namespace = tinymce.ui;
-
-                for (name in namespace) {
-                    types[name.toLowerCase()] = namespace[name];
-                }
-
-                namespaceInit = true;
-            }
-
-            // If string is specified then use it as the type
-            if (typeof type == 'string') {
-                settings = settings || {};
-                settings.type = type;
-            } else {
-                settings = type;
-                type = settings.type;
-            }
-
-            // Find control type
-            type = type.toLowerCase();
-            ControlType = types[type];
-
-            // #if debug
-
-            if (!ControlType) {
-                throw new Error("Could not find control by type: " + type);
-            }
-
-            // #endif
-
-            ControlType = new ControlType(settings);
-            ControlType.type = type; // Set the type on the instance, this will be used by the Selector engine
-
-            return ControlType;
-        },
-
-        types : types,
-        instances : instances,
-
-        addInstance : function(inst) {
-            instances.push(inst);
-        },
-
-        allInstances : function() {
-            return instances;
-        }
-    };
-
-});
-
-define('skylark-totaljs-jcomponent/components/paths',[
-	"./registry",
-	"../binding/pathmaker"
-],function(compRegistry,pathmaker){
-
-   /**
-   * Resets dirty and valid state in all components on the path.
-   * @param  {String} path 
-   * @param  {Number} delay  Optional, in milliseconds (default: 0)
-   */
-	function reset(path, timeout, onlyComponent) { //W.RESET = M.reset
-
-		if (timeout > 0) {
-			setTimeout(function() {
-				reset(path);
-			}, timeout);
-			return this;
-		}
-
-		path = pathmaker(path).replaceWildcard();
-
-		var arr = [];
-		var all = compRegistry.allInstances();//M.components;
-
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-			if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path)) {
-				continue;
-			}
-
-			com.state && arr.push(com);
-
-			if (onlyComponent && onlyComponent._id !== com._id) {
-				continue;
-			}
-
-			findcontrol2(com);
-
-			if (!com.$dirty_disabled) {
-				com.$dirty = true;
-				com.$interaction(101);
-			}
-
-			if (!com.$valid_disabled) {
-				com.$valid = true;
-				com.$validate = false;
-				if (com.validate) {
-					com.$valid = com.validate(com.get());
-					com.$interaction(102);
-				}
-			}
-		}
-
-		clear('valid', 'dirty');
-		state(arr, 1, 3);
-		return this;
-	}
-
-	function each(fn, path) {   // M.each
-		var wildcard = path ? path.lastIndexOf('*') !== -1 : false;
-		if (wildcard)
-			path = path.replace('.*', '');
-		var all = components;//M.components;
-		var index = 0;
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-			if (!com || !com.$loaded || com.$removed || (path && (!com.path || !com.$compare(path))))
-				continue;
-			var stop = fn(com, index++, wildcard);
-			if (stop === true)
-				return this;
-		}
-		return this;
-	}
-
-	function used(path) {   //M.used
-		each(function(obj) {
-			!obj.disabled && obj.used();
-		}, path);
-		return this;
-	};
-
-   /**
-   * Returns all modified components by user on the path.
-   * @param  {String} path 
-   * @returns {Array<String>}   
-   */
-	function modified(path) { //W.MODIFIED = 
-		var output = [];
-		M.each(function(obj) {
-			if (!(obj.disabled || obj.$dirty_disabled)) {
-				obj.$dirty === false && output.push(obj.path);
-			}
-		}, pathmaker(path));
-		return output;
-	}
-
-	function errors(path, except, highlight) { //W.ERRORS = 
-
-		if (path instanceof Array) {
-			except = path;
-			path = undefined;
-		}
-
-		if (except === true) {
-			except = highlight instanceof Array ? highlight : null;
-			highlight = true;
-		}
-
-		var arr = [];
-
-		each(function(obj) { // M.each
-			if (!obj.disabled && (!except || !obj.$except(except)) && obj.$valid === false && !obj.$valid_disabled)
-				arr.push(obj);
-		}, pathmaker(path));
-
-		highlight && langx.state(arr, 1, 1);
-		return arr;
-	}
-
-  /**
-   * Reads a value according to the path.
-   * @param  {String} path 
-   */
-	function getx(path, scope) { // W.GET = M.get
-		path = pathmaker(path);
-		if (scope === true) {
-			scope = null;
-			reset(path, true); // RESET
-		}
-		return get(path, scope); 
-	}
-
-  /**
-   * Reads value and resets all components according to the path.
-   * @param  {String} path 
-   */
-	function getr(path) {  //W.GETR =
-		return getx(path, true); //GET
-	}
-
-
-	// 1 === manually
-	// 2 === by input
-	// 3 === default
-	function immSetx(path, value, type) {  // M.set
-
-		if (path instanceof Array) {
-			for (var i = 0; i < path.length; i++) 
-				immSetx(path[i], value, type);
-			return M;
-		}
-
-		path = pathmaker(path);
-
-		if (!path) {
-			return M;
-		}
-
-		var is = path.charCodeAt(0) === 33; // !
-		if (is) {
-			path = path.substring(1);
-		}
-
-		if (path.charCodeAt(0) === 43) { // +
-			path = path.substring(1);
-			return M.push(path, value, type);
-		}
-
-		if (!path) {
-			return M;
-		}
-
-		var isUpdate = (typeof(value) === 'object' && !(value instanceof Array) && value != null);
-		var reset = type === true;
-		if (reset) {
-			type = 1;
-		}
-
-		M.skipproxy = path;
-		set(path, value);
-
-		if (isUpdate) {
-			return immUpdate(path, reset, type, true);
-		}
-
-		var result = get(path);
-		var state = [];
-
-		if (type === undefined) {
-			type = 1;
-		}
-
-		var all = M.components.all;//M.components;
-
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-
-			if (!com || com.disabled || com.$removed || !com.$loaded || !com.path || !com.$compare(path))
-				continue;
-
-			if (com.setter) {
-				if (com.path === path) {
-					if (com.setter) {
-						com.setterX(result, path, type);
-						com.$interaction(type);
-					}
-				} else {
-					if (com.setter) {
-						com.setterX(get(com.path), path, type);
-						com.$interaction(type);
-					}
-				}
-			}
-
-			if (!com.$ready) {
-				com.$ready = true;
-			}
-
-			type !== 3 && com.state && state.push(com);
-
-			if (reset) {
-				if (!com.$dirty_disabled)
-					com.$dirty = true;
-				if (!com.$valid_disabled) {
-					com.$valid = true;
-					com.$validate = false;
-					if (com.validate) {
-						com.$valid = com.validate(result);
-						com.$interaction(102);
-					}
-				}
-
-				findcontrol2(com);
-
-			} else if (com.validate && !com.$valid_disabled) {
-				com.valid(com.validate(result), true);
-			}
-		}
-
-		if (reset) {
-			caches.clear('dirty', 'valid');
-		}
-
-		for (var i = 0, length = state.length; i < length; i++) {
-			state[i].stateX(type, 5);
-		}
-
-		emitwatch(path, result, type);
-		return M;
-	}
-
-   /**
-   * Sets a new value according to the path..
-   * @param  {String} path 
-   * @param  {Object} value.
-   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
-   * @param {Boolean} reset Optional  default: false
-   */
-	function setx(path, value, timeout, reset) {   // W.SET
-		var t = typeof(timeout);
-		if (t === 'boolean')
-			return immSetx(path, value, timeout);
-		if (!timeout || timeout < 10 || t !== 'number') // TYPE
-			return immSetx(path, value, timeout);
-		setTimeout(function() {
-			immSetx(path, value, reset);
-		}, timeout);
-		return this; // W
-	};
-
-   /**
-   * Sets a new value according to the path and performs CHANGE() for all components 
-   * which are listening on the path.
-   * @param  {String} path 
-   * @param  {Object} value.
-   * @param  {String/Number} type  Optional, value > 10 will be used as delay
-   */
-	function setx2(path, value, type) { //W.SET2 = 
-		setx(path, value, type); // SET
-		change(path);
-		return this;
-	};
-
-   /**
-   * Sets a new value according to the path and resets the state. 
-   * @param  {String} path 
-   * @param  {Object} value.
-   * @param  {String/Number} type  Optional, value > 10 will be used as delay
-   */
-	function setr(path, value, type) { //  W.SETR
-		immSetx(path, value, type);
-		reset(path); // RESET
-		return this;
-	};
-
-   /**
-   * Performs SET() and CHANGE() together.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	function modify(path, value, timeout) { // W.MODIFY =
-		if (path && typeof(path) === TYPE_O) {
-			Object.keys(path).forEach(function(k) {
-				modify(k, path[k], value);
-			});
-		} else {
-			if (langx.isFunction(value)) {
-				value = value(get2(path));
-			}
-			setx(path, value, timeout); // SET
-			if (timeout) {
-				langx.setTimeout(change, timeout + 5, path);
-			} else {
-				change(path);
-			}
-		}
-		return this;
-	};
-
-
-   /**
-   * Performs toggle for the path. A value must be Boolean.
-   * @param  {String} path 
-   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
-   * @param {Boolean} reset Optional  default: false
-   */
-	function toggle(path, timeout, reset) { // W.TOGGLE = 
-		var v = getx(path);  // GET
-		setx(path, !v, timeout, reset); // SET
-		return this;
-	};
-
-   /**
-   * Performs toggle for the path and performs CHANGE() for all components which are listening on the path.
-   * A value must be Boolean.
-   * @param  {String} path 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	function toogle2(path, type) { //W.TOGGLE2 = 
-		toogle(path, type);
-		change(path);
-		return this;
-	};
-
-   /**
-   * Pushs a new item into the Array according to the path.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	function inc(path, value, timeout, reset) { // W.INC = 
-
-		if (value == null)
-			value = 1;
-
-		var t = typeof(timeout);
-		if (t === 'boolean')
-			return immInc(path, value, timeout);
-		if (!timeout || timeout < 10 || t !== TYPE_N) // TYPE
-			return immInc(path, value, timeout);
-		setTimeout(function() {
-			immInc(path, value, reset);
-		}, timeout);
-		return W;
-	}
-
-   /**
-   * Pushs a new item into the Array according to the path.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	function extend(path, value, timeout, reset) { // W.EXTEND = 
-		var t = typeof(timeout);
-		if (t === 'boolean')
-			return immExtend(path, value, timeout);
-		if (!timeout || timeout < 10 || t !== 'number') // TYPE
-			return immExtend(path, value, timeout);
-		setTimeout(function() {
-			immExtend(path, value, reset);
-		}, timeout);
-		return this; // W
-	}
-
-   /**
-   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
-   * @param  {String} path 
-   * @param  {Object} value 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	function extend2(path, value, type) { // W.EXTEND2 = 
-		extend(path, value, type); // W.EXTEND
-		change(path);
-		return this;
-	}
-
-  /**
-   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
-   * @param  {String} path 
-   * @param  {Object} value 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	 function inc2(path, value, type) {  // W.INC2 = 
-		inc(path, value, type);
-		change(path);
-		return this;
-	}	
-
-   /**
-   * Pushs a new item into the Array according to the path.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	function push(path, value, timeout, reset) {  // W.PUSH = 
-		var t = typeof(timeout);
-		if (t === 'boolean')
-			return M.push(path, value, timeout);
-		if (!timeout || timeout < 10 || t !== 'number') // TYPE
-			return M.push(path, value, timeout);
-		setTimeout(function() {
-			M.push(path, value, reset);
-		}, timeout);
-		return this; // W
-	};
-
-
-	function update(path, timeout, reset) { // W.UPDATE
-		var t = typeof(timeout); 
-		if (t === 'boolean')
-			return immUpdate(path, timeout);
-		if (!timeout || timeout < 10 || t !== TYPE_N) // TYPE
-			return immUpdate(path, reset, timeout);
-		setTimeout(function() {
-			immUpdate(path, reset);
-		}, timeout);
-	};
-
-	function update2(path, type) { //W.UPDATE2 = 
-		update(path, type); // W.UPDATE
-		W.CHANGE(path); 
-		return this; // W
-	};	
-
-   /**
-   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
-   * @param  {String} path 
-   * @param  {Object} value 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	function push2(path, value, type) { // W.PUSH2 = 
-		push(path, value, type);
-		change(path);
-		return this; // W
-	};
-
-
-	return {
-		cleaner2,
-		default2,
-		each,
-		find,
-		refresh,
-		reset,
-		setter,
-		usage,
-		version,
-
-		extend,
-		extend2,
-		inc,
-		inc2,
-		push,
-		push2,
-		update,
-		update2
-
-	};
-});
 define('skylark-totaljs-jcomponent/components/Usage',[
 	"../langx"
 ],function(langx){
@@ -14001,15 +13201,11 @@ define('skylark-totaljs-jcomponent/components/Usage',[
 	return Usage;
 });
 define('skylark-totaljs-jcomponent/components/Component',[
-	"../jc",
 	"../langx",
-	"../topic",
-	"./paths",
+	"../binding/findFormat",
 	"./Usage"
-],function(jc,langx, topic, paths, Usage){
-	var	configs =  [],
-		extensions = {},
-		tmp = {};
+],function(langx, findFormat, Usage){
+	var temp = {};
 
 	var counter = 0;
 
@@ -14045,8 +13241,8 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	// COMPONENT DECLARATION
 	// ===============================================================
 
-	var Component = langx.Evented.inherit({
-		_construct(name) {
+	var Component = langx.klass({
+		_construct(name,view) {
 			var self = this;
 			self._id = self.ID = 'jc' + (counter++);
 			self.usage = new Usage();
@@ -14065,6 +13261,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 			var version = name.lastIndexOf('@');
 
+			self.view = view;
 			self.name = name;
 			self.$name = version === -1 ? name : name.substring(0, version);
 			self.version = version === -1 ? '' : name.substring(version + 1);
@@ -14268,7 +13465,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		}
 
 		if (self.$ppc) {
-			var c = Component.components.all; //M.components;
+			var c = self.view.components.all; //M.components;
 			for (var i = 0; i < c.length; i++) {
 				var com = c[i];
 				if (com.owner === self && com.$pp && key === com.path)
@@ -14478,7 +13675,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.import = function(url, callback, insert, preparator) {
 		var self = this;
-		M.import(url, self.element, callback, insert, preparator);
+		this.view.import(url, self.element, callback, insert, preparator);
 		return self;
 	};
 
@@ -14970,8 +14167,9 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		if (tmp) {
 			path = tmp.path;
 			self.$format = tmp.fn;
-		} else if (!type)
+		} else if (!type) {
 			self.$format = null;
+		}
 
 		var arr = [];
 
@@ -15010,7 +14208,10 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 		self.path = path;
 		self.$path = arr;
-		type !== 1 && C.ready && refresh();
+		
+		if (type !== 1 && C.ready) {
+			refresh(); // TODO
+		}
 		return self;
 	};
 
@@ -15100,10 +14301,11 @@ define('skylark-totaljs-jcomponent/components/Component',[
 				if (!init && self.config[k] !== v)
 					self.config[k] = v;
 				self.data('config.' + k, v);
-				if (callback)
+				if (callback) {
 					callback(k, v, init, init ? undefined : prev);
-				else if (self.configure)
+				} else if (self.configure) {
 					self.configure(k, v, init, init ? undefined : prev);
+				}
 			});
 		}
 
@@ -15127,9 +14329,17 @@ define('skylark-totaljs-jcomponent/components/Component',[
 			self.$init = cfg.$init;
 		}
 
-		cfg.$class && self.tclass(cfg.$class);
-		cfg.$released && self.release(cfg.$released == true);
-		cfg.$reconfigure && EXEC.call(cfg.$reconfigure, cfg);
+		if (cfg.$class) {
+			self.tclass(cfg.$class);
+		}
+		
+		if (cfg.$released) {
+			self.release(cfg.$released == true);
+		}
+		
+		if (cfg.$reconfigure) {
+			EXEC.call(cfg.$reconfigure, cfg); // TODO
+		}
 		return self;
 	};
 
@@ -15147,10 +14357,12 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 	PPC.html = function(value) {
 		var el = this.element;
-		if (value === undefined)
+		if (value === undefined) {
 			return el.html();
-		if (value instanceof Array)
+		}
+		if (value instanceof Array) {
 			value = value.join('');
+		}
 		var type = typeof(value);
 		//caches.current.element = el[0];
 		var v = (value || TNB[type]) ? el.empty().append(value) : el.empty();
@@ -15198,8 +14410,9 @@ define('skylark-totaljs-jcomponent/components/Component',[
 //	PPC.append = SCP.append = function(value) {
 	PPC.append = function(value) {
 		var el = this.element;
-		if (value instanceof Array)
+		if (value instanceof Array) {
 			value = value.join('');
+		}
 		//caches.current.element = el[0];
 		var v = value ? el.append(value) : el;
 		//caches.current.element = null;
@@ -15212,9 +14425,9 @@ define('skylark-totaljs-jcomponent/components/Component',[
 //	PPC.event = SCP.event = function() {
 	PPC.event = function() {
 		var self = this;
-		if (self.element)
+		if (self.element) {
 			self.element.on.apply(self.element, arguments);
-		else {
+		} else {
 			setTimeout(function(arg) {
 				self.event(self, arg);
 			}, 500, arguments);
@@ -15237,8 +14450,9 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	PPC.isInvalid = function() {
 		var self = this;
 		var is = !self.$valid;
-		if (is && !self.$validate)
+		if (is && !self.$validate) {
 			is = !self.$dirty;
+		}
 		return is;
 	};
 
@@ -15247,7 +14461,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.unwatch = function(path, fn) {
 		var self = this;
-		OFF('com' + self._id + '#watch', path, fn);
+		self.pathing.off('com' + self._id + '#watch', path, fn);  // OFF
 		return self;
 	};
 
@@ -15274,7 +14488,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 * Sets the state of this component to invalid and it contacts all components listen on the path.
 	 */
 	PPC.invalid = function() {
-		return INVALID(this.path, this);
+		return this.view.invalid(this.path, this);
 	};
 
 	PPC.valid = function(value, noEmit) {
@@ -15292,13 +14506,17 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		self.$valid = value;
 		self.$validate = false;
 		self.$interaction(102);
-		clear('valid');
-		!noEmit && self.state && self.stateX(1, 1);
+		
+		self.view.clear('valid');
+		
+		if (!noEmit && self.state) {
+			self.stateX(1, 1);
+		}
 		return self;
 	};
 
 	PPC.style = function(value) {
-		STYLE(value, this._id);
+		domx.style(value, this._id);
 		return this;
 	};
 
@@ -15310,7 +14528,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		var self = this;
 		self.$dirty_disabled = false;
 		self.$dirty = true;
-		CHANGE(self.path, value === undefined ? true : value, self);
+		self.view.change(self.path, value === undefined ? true : value, self);
 		return self;
 	};
 
@@ -15338,8 +14556,10 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 		self.$dirty = value;
 		self.$interaction(101);
-		clear('dirty');
-		!noEmit && self.state && self.stateX(2, 2);
+		self.view.clear('dirty');
+		if (!noEmit && self.state) {
+			self.stateX(2, 2);
+		}
 		return self;
 	};
 
@@ -15349,7 +14569,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.reset = function() {
 		var self = this;
-		M.reset(self.path, 0, self);
+		self.view.reset(self.path, 0, self);
 		return self;
 	};
 
@@ -15365,7 +14585,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.default = function(reset) {
 		var self = this;
-		M.default(self.path, 0, self, reset);
+		self.view.default(self.path, 0, self, reset);
 		return self;
 	};
 
@@ -15384,10 +14604,10 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 		self.$removed = 1;
 		self.removed = true;
-		OFF('com' + self._id + '#');
+		self.pathing.off('com' + self._id + '#'); // OFF
 		
 		if(!noClear) {
-			setTimeout2('$cleaner', cleaner2, 100);
+			langx.setTimeout2('$cleaner', cleaner2, 100);
 		}
 		return true;
 	};
@@ -15408,7 +14628,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 			name = name.substring(1);
 		}
 
-		topic.on(push + 'com' + self._id + '#' + name, path, fn, init, self); // ON
+		self.pathing.on(push + 'com' + self._id + '#' + name, path, fn, init, self); // ON
 		return self;
 	};
 
@@ -15435,12 +14655,15 @@ define('skylark-totaljs-jcomponent/components/Component',[
 			}
 		}
 
+		/*
 		a = M.$formatter;
 		if (a && a.length) {
 			for (var i = 0, length = a.length; i < length; i++) {
 				value = a[i].call(self, self.path, value, self.type);
 			}
-		}
+		}*/
+
+		value = self.view.format(self.path,value,self.type); // TODO
 
 		return value;
 	};
@@ -15480,7 +14703,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		//		value = a[i].call(self, self.path, value, self.type);
 		//	}
 		//}
-		value = paths.parser(self.path,value,self.type);
+		value = self.view.parser(self.path,value,self.type);
 
 		return value;
 	};
@@ -15489,7 +14712,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 * Emits an event within jComponent. Is alias for EMIT() method.
 	 */
 	PPC.emit = function() {
-		topic.emit.apply(M, arguments); // W>EMIT
+		self.pathing.emit.apply(self.pathing, arguments); // W>EMIT
 		return this;
 	};
 
@@ -15498,7 +14721,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 			expression = path;
 			path = this.path;
 		}
-		return EVALUATE(path, expression, nopath);
+		return self.view.evaluate(path, expression, nopath);
 	};
 
 	/*
@@ -15515,13 +14738,13 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		}
 
 		if (path) {
-			return paths.get(path);
+			return self.view.get(path);
 		}
 	};
 
 	PPC.skip = function(path) {
 		var self = this;
-		skip(path || self.path); // SKIP
+		self.view.skip(path || self.path); // SKIP
 		return self;
 	};
 
@@ -15540,9 +14763,9 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 		// Backwards compatibility
 		if (arg.length === 3) {
-			paths.immSetx(arg[0], arg[1], arg[2]);
+			self.view.setx(arg[0], arg[1], arg[2]);
 		} else {
-			paths.immSetx(self.path, value, type);
+			self.view.setx(self.path, value, type);
 		}
 
 		return self;
@@ -15553,7 +14776,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.inc = function(value, type) {
 		var self = this;
-		paths.immInc(self.path, value, type);
+		self.view.inc(self.path, value, type);
 		return self;
 	};
 
@@ -15562,7 +14785,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.extend = function(value, type) {
 		var self = this;
-		paths.immExtend(self.path, value, type); // M.extend
+		self.view.extend(self.path, value, type); // M.extend
 		return self;
 	};
 
@@ -15571,7 +14794,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.rewrite = function(value) {
 		var self = this;
-		REWRITE(self.path, value);
+		self.view.rewrite(self.path, value);
 		return self;
 	};
 
@@ -15580,144 +14803,11 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.push = function(value, type) {
 		var self = this;
-		paths.immPush(self.path, value, type);
+		self.view.push(self.path, value, type);
 		return self;
 	};
 
-
-	var $components = registry = {}; //	M.$components = {};
-
-	function register(name, config, declaration, dependencies) { // W.COMPONENT =
-
-		if (langx.isFunction(config)) {
-			dependencies = declaration;
-			declaration = config;
-			config = null;
-		}
-
-		// Multiple versions
-		if (name.indexOf(',') !== -1) {
-			name.split(',').forEach(function(item, index) {
-				item = item.trim();
-				if (item) {
-					register(item, config, declaration, index ? null : dependencies);	
-				} 
-			});
-			return;
-		}
-
-		if ($components[name]){ // M.$components
-			warn('Components: Overwriting component:', name);	
-		} 
-		var a = $components[name] = { //M.$components
-			name: name, 
-			config: config, 
-			declaration: declaration, 
-			shared: {}, 
-			dependencies: dependencies instanceof Array ? dependencies : null 
-		};
-		topic.emit('component.compile', name, a);
-	};
-
-   /**
-   * Extend a component by adding new features.
-   * @param  {String} name 
-   * @param  {String/Object} config A default configuration
-   * @param  {Function} declaration 
-   */
-	function extend(name, config, declaration) { //W.COMPONENT_EXTEND = 
-
-		if (typeof(config) === TYPE_FN) {
-			var tmp = declaration;
-			declaration = config;
-			config = tmp;
-		}
-
-		if (extensions[name]) {
-			extensions[name].push({ config: config, fn: declaration });
-		} else {
-			extensions[name] = [{ config: config, fn: declaration }];
-		}
-
-		for (var i = 0, length = all.length; i < length; i++) { // M.components.length
-			var m = all[i]; // M.components[i];
-			if (!m.$removed || name === m.name){
-				config && m.reconfigure(config, undefined, true);
-				declaration.call(m, m, m.config);
-			}
-		}
-
-		RECOMPILE();
-	};
-
-   /**
-   * Sets a default configuration for all components according to the selector
-   * @param  {String} selector 
-   * @param  {String/Object} config A default configuration
-   */
-	function configure(selector, config) { //W.COMPONENT_CONFIG = 
-
-		if (langx.isString(selector)) {
-			var fn = [];
-			selector.split(' ').forEach(function(sel) {
-				var prop = '';
-				switch (sel.trim().substring(0, 1)) {
-					case '*':
-						fn.push('com.path.indexOf(\'{0}\')!==-1'.format(sel.substring(1)));
-						return;
-					case '.':
-						// path
-						prop = 'path';
-						break;
-					case '#':
-						// id
-						prop = 'id';
-						break;
-					default:
-						// name
-						prop = '$name';
-						break;
-				}
-				fn.push('com.{0}==\'{1}\''.format(prop, prop === '$name' ? sel : sel.substring(1)));
-			});
-			selector = FN('com=>' + fn.join('&&'));
-		}
-
-		configs.push({ fn: selector, config: config });
-	};
-
-	var skips = {};
-
-   /**
-   * skips component.setter for future update. It's incremental.
-   * @param  {String} pathA Absolute path according to the component "data-jc-path"  
-   * @param  {String} pathB Absolute path according to the component "data-jc-path"  
-   * @param  {String} pathN Absolute path according to the component "data-jc-path"  
-   */
-	function skip() { // W.SKIP = 
-		for (var j = 0; j < arguments.length; j++) {
-			var arr = arguments[j].split(',');
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var p = arr[i].trim();
-				if (skips[p]) {
-					skips[p]++;
-				} else {
-					skips[p] = 1;
-				}
-			}
-		}
-	};
-
-	langx.mixin(Component,{
-		extend : extend,
-		configure : configure,
-		registry : registry,
-		register : register,
-		extensions : extensions,
-		skip : skip
-	});
-
-	return jc.Component = Component;
+	return Component;
 });
 define('skylark-totaljs-jcomponent/binding/vbindArray',[
 	"../utils/domx",
@@ -15904,2287 +14994,151 @@ define('skylark-totaljs-jcomponent/binding',[
 	};
 
 });
-define('jc',[
-	"skylark-langx/skylark",
-	"skylark-langx/langx",
-	"skylark-utils-dom/query"
-],function(skylark,langx,$){
-	var totaljs = skylark.totaljs = {};
-	var M = totaljs.jc = {
-		isPRIVATEMODE : false,
-		isMOBILE : /Mobi/.test(navigator.userAgent),
-		isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
-		isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
-		isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
-	}; // W.MAIN = W.M = W.jC = W.COM = M = {};
+define('skylark-totaljs-jcomponent/components/configs',[],function(){
+	var configs = {};
 
-	// Internal cache
-	//var blocked = {};
-	//var storage = {};
-	//var extensions = {}; // COMPONENT_EXTEND()
-	//var configs = [];
-	//var cache = {};
-	//var paths = {}; // saved paths from get() and set()
-	//var events = {};
-	//var temp = {};
-	//var toggles = [];
-	//var versions = {};
-	//var autofill = [];
-	//var defaults = {};
-	//var skips = {};
-
-	//var current_owner = null;
-	//var current_element = null;
-	//var current_com = null;
-
-	//W.EMPTYARRAY = [];
-	//W.EMPTYOBJECT = {};
-	//W.DATETIME = W.NOW = new Date();
-
-	//- defaults
-
-	//- M
-	
-	//- C
-
-
-
-	//- VBinder
-
-	//- W
-
-
-
-
-	//- Scope
-
-
-	//- Component
-
-	//- Usage
-
-
-	//- Windows
-
-	//- Arrayx
-
-	// ===============================================================
-	// PROTOTYPES
-	// ===============================================================
-    
-    //- Ex
-
-
-	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
-
-
-	//- queryex
-
-
-
-	//- parseBinder
-	//- jBinder
-
-
-	//- Plugin
-
-
-	M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
-	M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
-
-	//M.skipproxy = '';
-
-	M.loaded = false;
-	M.version = 16.044;
-	//M.$localstorage = 'jc';
-	M.$version = '';
-	M.$language = '';
-
-	//M.$parser = [];
-	//M.transforms = {};
-	//M.compiler = C;
-
-	//M.compile = compile;
-
-	M.environment = function(name, version, language, env) {
-		M.$localstorage = name;
-		M.$version = version || '';
-		M.$language = language || '';
-		env && ENV(env);
-		return M;
-	};
-
-
-	M.prototypes = function(fn) {
-		var obj = {};
-		obj.Component = PPC;
-		obj.Usage = USAGE.prototype;
-		obj.Plugin = Plugin.prototype;
-		fn.call(obj, obj);
-		return M;
-	};
-
-
-	return M;
+	return configs;
 });
-define('langx/regexp',[],function(){
-	var MR = {};
-	MR.int = /(-|\+)?[0-9]+/;
-	MR.float = /(-|\+)?[0-9.,]+/;
-	MR.date = /yyyy|yy|MMMM|MMM|MM|M|dddd|ddd|dd|d|HH|H|hh|h|mm|m|ss|s|a|ww|w/g;
-	MR.pluralize = /#{1,}/g;
-	MR.format = /\{\d+\}/g;
-
-	return MR;
-});
-
-define('langx/now',[],function(){
-	var _n = null
-
-	return function(n) {
-		if (n !== undefined) {
-			if (typeof n === "boolean"){
-				//reset
-				_n = new Date();
-			} else {
-				_n = n;
-			}
-		}
-		return _n;
-	}
-
-});
-define('langx/ArrayEx',[
-	"skylark-langx/langx",
-	"./regexp"
-],function(slangx,regexp){
-
-	var AP = Array.prototype;
-	AP.wait = AP.waitFor = function(onItem, callback, thread, tmp) {
-
-		var self = this;
-		var init = false;
-
-		// INIT
-		if (!tmp) {
-
-			if (!slangx.isFunction(callback)) {
-				thread = callback;
-				callback = null;
-			}
-
-			tmp = {};
-			tmp.pending = 0;
-			tmp.index = 0;
-			tmp.thread = thread;
-
-			// thread === Boolean then array has to be removed item by item
-			init = true;
-		}
-
-		var item = thread === true ? self.shift() : self[tmp.index++];
-
-		if (item === undefined) {
-			if (!tmp.pending) {
-				callback && callback();
-				tmp.cancel = true;
-			}
-			return self;
-		}
-
-		tmp.pending++;
-		onItem.call(self, item, function() {
-			setTimeout(next_wait, 1, self, onItem, callback, thread, tmp);
-		}, tmp.index);
-
-		if (!init || tmp.thread === 1){
-			return self;
-		}
-
-		for (var i = 1; i < tmp.thread; i++) {
-			self.wait(onItem, callback, 1, tmp);
-		}
-
-		return self;
-	};
-
-	function next_wait(self, onItem, callback, thread, tmp) {
-		tmp.pending--;
-		self.wait(onItem, callback, thread, tmp);
-	}
-
-	AP.limit = function(max, fn, callback, index) {
-
-		if (index === undefined)
-			index = 0;
-
-		var current = [];
-		var self = this;
-		var length = index + max;
-
-		for (var i = index; i < length; i++) {
-			var item = self[i];
-
-			if (item !== undefined) {
-				current.push(item);
-				continue;
-			}
-
-			if (!current.length) {
-				callback && callback();
-				return self;
-			}
-
-			fn(current, function() { callback && callback(); }, index, index + max);
-			return self;
-		}
-
-		if (!current.length) {
-			callback && callback();
-			return self;
-		}
-
-		fn(current, function() {
-			if (length < self.length)
-				self.limit(max, fn, callback, length);
-			else
-				callback && callback();
-		}, index, index + max);
-
-		return self;
-	};
-
-	AP.async = function(context, callback) {
-
-		if (slangx.isFunction(context)) {
-			var tmp = callback;
-			callback = context;
-			context = tmp;
-		}
-
-		if (!context) {
-			context = {};
-		}
-
-		var arr = this;
-		var index = 0;
-
-		var c = function() {
-			var fn = arr[index++];
-			if (fn) {
-				fn.call(context, c, index - 1);
-			} else {
-				return callback && callback.call(context);
-			}
-		};
-
-		c();
-		return this;
-	};
-
-	AP.take = function(count) {
-		var arr = [];
-		var self = this;
-		var length = self.length;
-		for (var i = 0; i < length; i++) {
-			arr.push(self[i]);
-			if (arr.length >= count) {
-				return arr;
-			}
-		}
-		return arr;
-	};
-
-	AP.skip = function(count) {
-		var arr = [];
-		var self = this;
-		var length = self.length;
-		for (var i = 0; i < length; i++) {
-			i >= count && arr.push(self[i]);
-		}
-		return arr;
-	};
-
-	AP.takeskip = function(take, skip) {
-		var arr = [];
-		var self = this;
-		var length = self.length;
-		for (var i = 0; i < length; i++) {
-			if (i < skip)
-				continue;
-			if (arr.length >= take)
-				return arr;
-			arr.push(self[i]);
-		}
-		return arr;
-	};
-
-	AP.trim = function(empty) {
-		var self = this;
-		var output = [];
-		for (var i = 0, length = self.length; i < length; i++) {
-			if (slangx.isString(self[i]))
-				self[i] = self[i].trim();
-			if (empty || self[i])
-				output.push(self[i]);
-		}
-		return output;
-	};
-
-	AP.findIndex = function(cb, value) {
-
-		var self = this;
-		var isFN = slangx.isFunction(cb);
-		var isV = value !== undefined;
-
-		for (var i = 0, length = self.length; i < length; i++) {
-			if (isFN) {
-				if (cb.call(self, self[i], i)) {
-					return i;
-				}
-			} else if (isV) {
-				if (self[i][cb] === value) {
-					return i;
-				}
-			} else if (self[i] === cb) {
-				return i;
-			}
-		}
-		return -1;
-	};
-
-	AP.findAll = function(cb, value) {
-
-		var self = this;
-		var isFN = slangx.isFunction(cb);
-		var isV = value !== undefined;
-		var arr = [];
-
-		for (var i = 0, length = self.length; i < length; i++) {
-			if (isFN) {
-				cb.call(self, self[i], i) && arr.push(self[i]);
-			} else if (isV) {
-				self[i][cb] === value && arr.push(self[i]);
-			} else {
-				self[i] === cb && arr.push(self[i]);
-			}
-		}
-		return arr;
-	};
-
-	AP.findItem = function(cb, value) {
-		var index = this.findIndex(cb, value);
-		if (index !== -1)
-			return this[index];
-	};
-
-
-	AP.remove = function(cb, value) {
-
-		var self = this;
-		var arr = [];
-		var isFN = slangx.isFunction(cb);
-		var isV = value !== undefined;
-
-		for (var i = 0, length = self.length; i < length; i++) {
-			if (isFN) {
-				!cb.call(self, self[i], i) && arr.push(self[i]);
-			} else if (isV) {
-				self[i][cb] !== value && arr.push(self[i]);
-			} else {
-				self[i] !== cb && arr.push(self[i]);
-			}
-		}
-		return arr;
-	};
-
-	AP.last = function(def) {
-		var item = this[this.length - 1];
-		return item === undefined ? def : item;
-	};
-
-	AP.quicksort = function(name, asc, type) {
-
-		var self = this;
-		var length = self.length;
-		if (!length || length === 1) {
-			return self;
-		}
-
-		if (typeof(name) === 'boolean') {
-			asc = name;
-			name = undefined;
-		}
-
-		if (asc == null || asc === 'asc')
-			asc = true;
-		else if (asc === 'desc')
-			asc = false;
-
-		switch (type) {
-			case 'date':
-				type = 4;
-				break;
-			case 'string':
-				type = 1;
-				break;
-			case 'number':
-				type = 2;
-				break;
-			case 'bool':
-			case 'boolean':
-				type = 3;
-				break;
-			default:
-				type = 0;
-				break;
-		}
-
-		if (!type) {
-			var index = 0;
-			while (!type) {
-				var field = self[index++];
-				if (field === undefined)
-					return self;
-				if (name)
-					field = field[name];
-				switch (typeof(field)) {
-					case 'string':
-						type = field.isJSONDate() ? 4 : 1;
-						break;
-					case 'number':
-						type = 2;
-						break;
-					case 'boolean':
-						type = 3;
-						break;
-					default:
-						if (field instanceof Date)
-							type = 4;
-						break;
-				}
-			}
-		}
-
-		self.sort(function(a, b) {
-
-			var va = name ? a[name] : a;
-			var vb = name ? b[name] : b;
-
-			if (va == null)
-				return asc ? -1 : 1;
-
-			if (vb == null)
-				return asc ? 1 : -1;
-
-			// String
-			if (type === 1) {
-				return va && vb ? (asc ? LCOMPARER(va, vb) : LCOMPARER(vb, va)) : 0;
-			} else if (type === 2) {
-				return va > vb ? (asc ? 1 : -1) : va < vb ? (asc ? -1 : 1) : 0;
-			} else if (type === 3) {
-				return va === true && vb === false ? (asc ? 1 : -1) : va === false && vb === true ? (asc ? -1 : 1) : 0;
-			} else if (type === 4) {
-				if (!va || !vb)
-					return 0;
-				if (!va.getTime) {
-					va = new Date(va);
-				}
-				if (!vb.getTime) {
-					vb = new Date(vb);
-				}
-				var at = va.getTime();
-				var bt = vb.getTime();
-				return at > bt ? (asc ? 1 : -1) : at < bt ? (asc ? -1 : 1) : 0;
-			}
-			return 0;
-		});
-
-		return self;
-	};
-
-	AP.attr = function(name, value) {
-
-		var self = this;
-
-		if (arguments.length === 2) {
-			if (value == null)
-				return self;
-		} else if (value === undefined)
-			value = name.toString();
-
-		self.push(name + '="' + value.toString().env().toString().replace(/[<>&"]/g, function(c) {
-			switch (c) {
-				case '&': return '&amp;';
-				case '<': return '&lt;';
-				case '>': return '&gt;';
-				case '"': return '&quot;';
-			}
-			return c;
-		}) + '"');
-
-		return self;
-	};
-
-	AP.scalar = function(type, key, def) {
-
-		var output = def;
-		var isDate = false;
-		var isAvg = type === 'avg' || type === 'average';
-		var isDistinct = type === 'distinct';
-		var self = this;
-
-		for (var i = 0, length = self.length; i < length; i++) {
-			var val = key ? self[i][key] : self[i];
-
-			if (slangx.isString(val))
-				val = val.parseFloat();
-
-			if (val instanceof Date) {
-				isDate = true;
-				val = val.getTime();
-			}
-
-			if (isDistinct) {
-				if (!output)
-					output = [];
-				output.indexOf(val) === -1 && output.push(val);
-				continue;
-			}
-
-			if (type === 'median') {
-				if (!output)
-					output = [];
-				output.push(val);
-				continue;
-			}
-
-			if (type === 'sum' || isAvg) {
-				if (output)
-					output += val;
-				else
-					output = val;
-				continue;
-			}
-
-			if (type !== 'range') {
-				if (!output)
-					output = val;
-			} else {
-				if (!output) {
-					output = new Array(2);
-					output[0] = val;
-					output[1] = val;
-				}
-			}
-
-			switch (type) {
-				case 'range':
-					output[0] = Math.min(output[0], val);
-					output[1] = Math.max(output[1], val);
-					break;
-				case 'min':
-					output = Math.min(output, val);
-					break;
-				case 'max':
-					output = Math.max(output, val);
-					break;
-			}
-		}
-
-		if (isDistinct)
-			return output;
-
-		if (isAvg) {
-			output = output / self.length;
-			return isDate ? new Date(output) : output;
-		}
-
-		if (type === 'median') {
-			if (!output)
-				output = [0];
-			output.sort(function(a, b) {
-				return a - b;
-			});
-			var half = Math.floor(output.length / 2);
-			output = output.length % 2 ? output[half] : (output[half - 1] + output[half]) / 2.0;
-		}
-
-		if (isDate) {
-			if (slangx.isNumber(output))
-				return new Date(output);
-			output[0] = new Date(output[0]);
-			output[1] = new Date(output[1]);
-		}
-
-		return output;
-	};
-
-	
-});
-define('langx/DateEx',[
-	"./regexp"
-],function(regexp){
-
-	window.$jcdatempam = function(value) {  // TODO: will be changed
-		return value >= 12 ? value - 12 : value;
-	};
-
-
-	var DP = Date.prototype;
-	DP.toNumber = function(format) {
-		return +this.format(format || 'yyyyMMdd');
-	};
-
-	DP.parseDate = function() {
-		return this;
-	};
-
-	DP.add = function(type, value) {
-
-		if (value === undefined) {
-			var arr = type.split(' ');
-			type = arr[1];
-			value = parseInt(arr[0]);
-		}
-
-		if (typeof(value) === TYPE_S)
-			value = value.env();
-
-		var self = this;
-		var dt = new Date(self.getTime());
-
-		switch(type.substring(0, 3)) {
-			case 's':
-			case 'ss':
-			case 'sec':
-				dt.setSeconds(dt.getSeconds() + value);
-				return dt;
-			case 'm':
-			case 'mm':
-			case 'min':
-				dt.setMinutes(dt.getMinutes() + value);
-				return dt;
-			case 'h':
-			case 'hh':
-			case 'hou':
-				dt.setHours(dt.getHours() + value);
-				return dt;
-			case 'd':
-			case 'dd':
-			case 'day':
-				dt.setDate(dt.getDate() + value);
-				return dt;
-			case 'w':
-			case 'ww':
-			case 'wee':
-				dt.setDate(dt.getDate() + (value * 7));
-				return dt;
-			case 'M':
-			case 'MM':
-			case 'mon':
-				dt.setMonth(dt.getMonth() + value);
-				return dt;
-			case 'y':
-			case 'yy':
-			case 'yyy':
-			case 'yea':
-				dt.setFullYear(dt.getFullYear() + value);
-				return dt;
-		}
-		return dt;
-	};
-
-	DP.toUTC = function(ticks) {
-		var self = this;
-		var dt = self.getTime() + self.getTimezoneOffset() * 60000;
-		return ticks ? dt : new Date(dt);
-	};
-
-	DP.format = function(format, utc) {
-
-		var self = utc ? this.toUTC() : this;
-
-		if (format == null)
-			format = MD.dateformat;
-
-		if (!format)
-			return self.getFullYear() + '-' + (self.getMonth() + 1).toString().padLeft(2, '0') + '-' + self.getDate().toString().padLeft(2, '0') + 'T' + self.getHours().toString().padLeft(2, '0') + ':' + self.getMinutes().toString().padLeft(2, '0') + ':' + self.getSeconds().toString().padLeft(2, '0') + '.' + self.getMilliseconds().toString().padLeft(3, '0') + 'Z';
-
-		var key = 'dt_' + format;
-
-		if (statics[key])
-			return statics[key](self);
-
-		var half = false;
-
-		format = format.env();
-
-		if (format && format.substring(0, 1) === '!') {
-			half = true;
-			format = format.substring(1);
-		}
-
-		var beg = '\'+';
-		var end = '+\'';
-		var before = [];
-
-		var ismm = false;
-		var isdd = false;
-		var isww = false;
-
-		format = format.replace(regexp.date, function(key) {
-			switch (key) {
-				case 'yyyy':
-					return beg + 'd.getFullYear()' + end;
-				case 'yy':
-					return beg + 'd.getFullYear().toString().substring(2)' + end;
-				case 'MMM':
-					ismm = true;
-					return beg + 'mm.substring(0, 3)' + end;
-				case 'MMMM':
-					ismm = true;
-					return beg + 'mm' + end;
-				case 'MM':
-					return beg + '(d.getMonth() + 1).padLeft(2, \'0\')' + end;
-				case 'M':
-					return beg + '(d.getMonth() + 1)' + end;
-				case 'ddd':
-					isdd = true;
-					return beg + 'dd.substring(0, 2).toUpperCase()' + end;
-				case 'dddd':
-					isdd = true;
-					return beg + 'dd' + end;
-				case 'dd':
-					return beg + 'd.getDate().padLeft(2, \'0\')' + end;
-				case 'd':
-					return beg + 'd.getDate()' + end;
-				case 'HH':
-				case 'hh':
-					return beg + (half ? 'window.$jcdatempam(d.getHours()).padLeft(2, \'0\')' : 'd.getHours().padLeft(2, \'0\')') + end;
-				case 'H':
-				case 'h':
-					return beg + (half ? 'window.$jcdatempam(d.getHours())' : 'd.getHours()') + end;
-				case 'mm':
-					return beg + 'd.getMinutes().padLeft(2, \'0\')' + end;
-				case 'm':
-					return beg + 'd.getMinutes()' + end;
-				case 'ss':
-					return beg + 'd.getSeconds().padLeft(2, \'0\')' + end;
-				case 's':
-					return beg + 'd.getSeconds()' + end;
-				case 'w':
-				case 'ww':
-					isww = true;
-					return beg + (key === 'ww' ? 'ww.padLeft(2, \'0\')' : 'ww') + end;
-				case 'a':
-					var b = '\'PM\':\'AM\'';
-					return beg + '(d.getHours() >= 12 ? ' + b + ')' + end;
-			}
-		});
-
-		ismm && before.push('var mm = M.months[d.getMonth()];');
-		isdd && before.push('var dd = M.days[d.getDay()];');
-		isww && before.push('var ww = new Date(+d);ww.setHours(0, 0, 0);ww.setDate(ww.getDate() + 4 - (ww.getDay() || 7));ww = Math.ceil((((ww - new Date(ww.getFullYear(), 0, 1)) / 8.64e7) + 1) / 7);');
-
-		statics[key] = new Function('d', before.join('\n') + 'return \'' + format + '\';');
-		return statics[key](self);
-	};
-	
-});
-define('langx/NumberEx',[
-	"./regexp"
-],function(regexp){
-	var NP = Number.prototype;
-
-	var	thousandsseparator = ' ',
-		decimalseparator = '.' ;
-
-	NP.pluralize = function(zero, one, few, other) {
-
-		if (zero instanceof Array) {
-			one = zero[1];
-			few = zero[2];
-			other = zero[3];
-			zero = zero[0];
-		}
-
-		var num = this;
-		var value = '';
-
-		if (num == 0)
-			value = zero || '';
-		else if (num == 1)
-			value = one || '';
-		else if (num > 1 && num < 5)
-			value = few || '';
-		else
-			value = other;
-
-		return value.indexOf('#') === -1 ? value : value.replace(regexp.pluralize, function(text) {
-			return text === '##' ? num.format() : num.toString();
-		});
-	};
-
-	NP.format = function(decimals, separator, separatorDecimal) {
-
-		var self = this;
-		var num = self.toString();
-		var dec = '';
-		var output = '';
-		var minus = num.substring(0, 1) === '-' ? '-' : '';
-		if (minus)
-			num = num.substring(1);
-
-		var index = num.indexOf('.');
-
-		if (typeof(decimals) === 'string') {
-			var tmp;
-			if (decimals.substring(0, 1) === '[') {
-				tmp = ENV(decimals.substring(1, decimals.length - 1));
-				if (tmp) {
-					decimals = tmp.decimals;
-					if (tmp.separator)
-						separator = tmp.separator;
-					if (tmp.decimalseparator)
-						separatorDecimal = tmp.decimalseparator;
-				}
-			} else {
-				tmp = separator;
-				separator = decimals;
-				decimals = tmp;
-			}
-		}
-
-		if (separator === undefined)
-			separator = MD.thousandsseparator;
-
-		if (index !== -1) {
-			dec = num.substring(index + 1);
-			num = num.substring(0, index);
-		}
-
-		index = -1;
-		for (var i = num.length - 1; i >= 0; i--) {
-			index++;
-			if (index > 0 && index % 3 === 0)
-				output = separator + output;
-			output = num[i] + output;
-		}
-
-		if (decimals || dec.length) {
-			if (dec.length > decimals)
-				dec = dec.substring(0, decimals || 0);
-			else
-				dec = dec.padRight(decimals || 0, '0');
-		}
-
-		if (dec.length && separatorDecimal === undefined)
-			separatorDecimal = MD.decimalseparator;
-
-		return minus + output + (dec.length ? separatorDecimal + dec : '');
-	};
-
-	NP.padLeft = function(t, e) {
-		return this.toString().padLeft(t, e || '0');
-	};
-
-	NP.padRight = function(t, e) {
-		return this.toString().padRight(t, e || '0');
-	};
-
-	NP.async = function(fn, callback) {
-		var number = this;
-		if (number >= 0)
-			fn(number, function() {
-				setTimeout(function() {
-					(number - 1).async(fn, callback);
-				}, 1);
-			});
-		else
-			callback && callback();
-		return number;
-	};
-
-	NP.add = NP.inc = function(value, decimals) {
-
-		var self = this;
-
-		if (value == null)
-			return self;
-
-		if (typeof(value) === 'number')
-			return self + value;
-
-		var first = value.charCodeAt(0);
-		var is = false;
-
-		if (first < 48 || first > 57) {
-			is = true;
-			value = value.substring(1);
-		}
-
-		var length = value.length;
-		var num;
-
-		if (value[length - 1] === '%') {
-			value = value.substring(0, length - 1);
-			if (is) {
-				var val = value.parseFloat();
-				switch (first) {
-					case 42:
-						num = self * ((self / 100) * val);
-						break;
-					case 43:
-						num = self + ((self / 100) * val);
-						break;
-					case 45:
-						num = self - ((self / 100) * val);
-						break;
-					case 47:
-						num = self / ((self / 100) * val);
-						break;
-				}
-				return decimals !== undefined ? num.floor(decimals) : num;
-			} else {
-				num = (self / 100) * value.parseFloat();
-				return decimals !== undefined ? num.floor(decimals) : num;
-			}
-
-		} else
-			num = value.parseFloat();
-
-		switch (first) {
-			case 42:
-				num = self * num;
-				break;
-			case 43:
-				num = self + num;
-				break;
-			case 45:
-				num = self - num;
-				break;
-			case 47:
-				num = self / num;
-				break;
-			default:
-				num = self;
-				break;
-		}
-
-		return decimals !== undefined ? num.floor(decimals) : num;
-	};
-
-	NP.floor = function(decimals) {
-		return Math.floor(this * Math.pow(10, decimals)) / Math.pow(10, decimals);
-	};
-
-	NP.parseDate = function(offset) {
-		return new Date(this + (offset || 0));
-	};
-	
-});
-define('langx/StringEx',[
-	"./regexp",
-	"./now"
-],function(regexp,now){
-	var REGWILDCARD = /\.\*/;
-
-	var REGEMPTY = /\s/g;
-
-
-	var REGSEARCH = /[^a-zA-Zá-žÁ-Žа-яА-Я\d\s:]/g;
-	var DIACRITICS = {225:'a',228:'a',269:'c',271:'d',233:'e',283:'e',357:'t',382:'z',250:'u',367:'u',252:'u',369:'u',237:'i',239:'i',244:'o',243:'o',246:'o',353:'s',318:'l',314:'l',253:'y',255:'y',263:'c',345:'r',341:'r',328:'n',337:'o'};
-	
-	var MV =  {}; //jc.validators =
-	MV.url = /^(https?:\/\/(?:www\.|(?!www))[^\s.#!:?+=&@!$'~*,;/()[\]]+\.[^\s#!?+=&@!$'~*,;()[\]\\]{2,}\/?|www\.[^\s#!:.?+=&@!$'~*,;/()[\]]+\.[^\s#!?+=&@!$'~*,;()[\]\\]{2,}\/?)/i;
-	MV.phone = /^[+]?[(]?[0-9]{3}[)]?[-\s.]?[0-9]{3}[-\s.]?[0-9]{4,6}$/im;
-	MV.email = /^[a-zA-Z0-9-_.+]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/i;	
-
-	var SP = String.prototype;
-	SP.trimAll = function() {
-		return this.replace(REGEMPTY, '');
-	};
-
-	SP.ROOT = function(noBase) {
-		var url = this;
-		var r = MD.root;
-		var b = MD.baseurl;
-		var ext = /(https|http|wss|ws|file):\/\/|\/\/[a-z0-9]|[a-z]:/i;
-		var replace = function(t) {
-			return t.substring(0, 1) + '/';
-		};
-		if (r)
-			url = typeof(r) === TYPE_FN ? r(url) : ext.test(url) ? url : (r + url);
-		else if (!noBase && b)
-			url = typeof(b) === TYPE_FN ? b(url) : ext.test(url) ? url : (b + url);
-		return url.replace(/[^:]\/{2,}/, replace);
-	};
-
-	SP.replaceWildcard = function() {
-		return this.replace(REGWILDCARD, '');
-	};
-
-	SP.parseConfig = SP.$config = function(def, callback) {
-
-		var output;
-
-		switch (typeof(def)) {
-			case TYPE_FN:
-				callback = def;
-				output = {};
-				break;
-			case TYPE_S:
-				output = def.parseConfig();
-				break;
-			case TYPE_O:
-				if (def != null)
-					output = def;
-				else
-					output = {};
-				break;
-			default:
-				output = {};
-				break;
-		}
-
-		var arr = this.env().replace(/\\;/g, '\0').split(';');
-		var num = /^(-)?[0-9.]+$/;
-		var colon = /(https|http|wss|ws):\/\//gi;
-
-		for (var i = 0, length = arr.length; i < length; i++) {
-
-			var item = arr[i].replace(/\0/g, ';').replace(/\\:/g, '\0').replace(colon, function(text) {
-				return text.replace(/:/g, '\0');
-			});
-
-			var kv = item.split(':');
-			var l = kv.length;
-
-			if (l !== 2)
-				continue;
-
-			var k = kv[0].trim();
-			var v = kv[1].trim().replace(/\0/g, ':').env();
-
-			if (v === 'true' || v === 'false')
-				v = v === 'true';
-			else if (num.test(v)) {
-				var tmp = +v;
-				if (!isNaN(tmp))
-					v = tmp;
-			}
-
-			output[k] = v;
-			callback && callback(k, v);
-		}
-
-		return output;
-	};
-
-	SP.render = function(a, b) {
-		return Tangular.render(this, a, b);
-	};
-
-	SP.isJSONDate = function() {
-		var t = this;
-		var l = t.length - 1;
-		return l > 18 && l < 30 && t.charCodeAt(l) === 90 && t.charCodeAt(10) === 84 && t.charCodeAt(4) === 45 && t.charCodeAt(13) === 58 && t.charCodeAt(16) === 58;
-	};
-
-	SP.parseExpire = function() {
-
-		var str = this.split(' ');
-		var number = parseInt(str[0]);
-
-		if (isNaN(number))
-			return 0;
-
-		var min = 60000 * 60;
-
-		switch (str[1].trim().replace(/\./g, '')) {
-			case 'minutes':
-			case 'minute':
-			case 'min':
-			case 'mm':
-			case 'm':
-				return 60000 * number;
-			case 'hours':
-			case 'hour':
-			case 'HH':
-			case 'hh':
-			case 'h':
-			case 'H':
-				return min * number;
-			case 'seconds':
-			case 'second':
-			case 'sec':
-			case 'ss':
-			case 's':
-				return 1000 * number;
-			case 'days':
-			case 'day':
-			case 'DD':
-			case 'dd':
-			case 'd':
-				return (min * 24) * number;
-			case 'months':
-			case 'month':
-			case 'MM':
-			case 'M':
-				return (min * 24 * 28) * number;
-			case 'weeks':
-			case 'week':
-			case 'W':
-			case 'w':
-				return (min * 24 * 7) * number;
-			case 'years':
-			case 'year':
-			case 'yyyy':
-			case 'yy':
-			case 'y':
-				return (min * 24 * 365) * number;
-			default:
-				return 0;
-		}
-	};
-
-	SP.removeDiacritics = function() {
-		var buf = '';
-		for (var i = 0, length = this.length; i < length; i++) {
-			var c = this[i];
-			var code = c.charCodeAt(0);
-			var isUpper = false;
-
-			var r = DIACRITICS[code];
-			if (r === undefined) {
-				code = c.toLowerCase().charCodeAt(0);
-				r = DIACRITICS[code];
-				isUpper = true;
-			}
-
-			if (r === undefined) {
-				buf += c;
-				continue;
-			}
-
-			c = r;
-			buf += isUpper ? c.toUpperCase() : c;
-		}
-		return buf;
-	};
-
-	SP.toSearch = function() {
-
-		var str = this.replace(REGSEARCH, '').trim().toLowerCase().removeDiacritics();
-		var buf = [];
-		var prev = '';
-
-		for (var i = 0, length = str.length; i < length; i++) {
-			var c = str.substring(i, i + 1);
-			if (c === 'y')
-				c = 'i';
-			if (c !== prev) {
-				prev = c;
-				buf.push(c);
-			}
-		}
-
-		return buf.join('');
-	};
-
-	SP.slug = function(max) {
-		max = max || 60;
-
-		var self = this.trim().toLowerCase().removeDiacritics();
-		var builder = '';
-		var length = self.length;
-
-		for (var i = 0; i < length; i++) {
-			var c = self.substring(i, i + 1);
-			var code = self.charCodeAt(i);
-
-			if (builder.length >= max)
-				break;
-
-			if (code > 31 && code < 48) {
-				if (builder.substring(builder.length - 1, builder.length) !== '-')
-					builder += '-';
-			} else if (code > 47 && code < 58)
-				builder += c;
-			else if (code > 94 && code < 123)
-				builder += c;
-		}
-
-		var l = builder.length - 1;
-		return builder[l] === '-' ? builder.substring(0, l) : builder;
-	};
-
-	SP.isEmail = function() {
-		var str = this;
-		return str.length <= 4 ? false : MV.email.test(str);
-	};
-
-	SP.isPhone = function() {
-		var str = this;
-		return str.length < 6 ? false : MV.phone.test(str);
-	};
-
-	SP.isURL = function() {
-		var str = this;
-		return str.length <= 7 ? false : MV.url.test(str);
-	};
-
-	SP.parseInt = function(def) {
-		var str = this.trim();
-		var val = str.match(regexp.int);
-		if (!val)
-			return def || 0;
-		val = +val[0];
-		return isNaN(val) ? def || 0 : val;
-	};
-
-	SP.parseFloat = function(def) {
-		var str = this.trim();
-		var val = str.match(regexp.float);
-		if (!val)
-			return def || 0;
-		val = val[0];
-		if (val.indexOf(',') !== -1)
-			val = val.replace(',', '.');
-		val = +val;
-		return isNaN(val) ? def || 0 : val;
-	};
-
-	SP.padLeft = function(t, e) {
-		var r = this.toString();
-		return Array(Math.max(0, t - r.length + 1)).join(e || ' ') + r;
-	};
-
-	SP.padRight = function(t, e) {
-		var r = this.toString();
-		return r + Array(Math.max(0, t - r.length + 1)).join(e || ' ');
-	};
-	
-	SP.format = function() {
-		var arg = arguments;
-		return this.replace(regexp.format, function(text) {
-			var value = arg[+text.substring(1, text.length - 1)];
-			return value == null ? '' : value instanceof Array ? value.join('') : value;
-		});
-	};
-
-	SP.parseDate = function() {
-		var self = this.trim();
-		if (!self)
-			return null;
-
-		var lc = self.charCodeAt(self.length - 1);
-
-		// Classic date
-		if (lc === 41)
-			return new Date(self);
-
-		// JSON format
-		if (lc === 90)
-			return new Date(Date.parse(self));
-
-		var arr = self.indexOf(' ') === -1 ? self.split('T') : self.split(' ');
-		var index = arr[0].indexOf(':');
-		var length = arr[0].length;
-
-		if (index !== -1) {
-			var tmp = arr[1];
-			arr[1] = arr[0];
-			arr[0] = tmp;
-		}
-
-		if (arr[0] === undefined)
-			arr[0] = '';
-
-		var noTime = arr[1] === undefined ? true : arr[1].length === 0;
-
-		for (var i = 0; i < length; i++) {
-			var c = arr[0].charCodeAt(i);
-			if ((c > 47 && c < 58) || c === 45 || c === 46)
-				continue;
-			if (noTime)
-				return new Date(self);
-		}
-
-		if (arr[1] === undefined)
-			arr[1] = '00:00:00';
-
-		var firstDay = arr[0].indexOf('-') === -1;
-
-		var date = (arr[0] || '').split(firstDay ? '.' : '-');
-		var time = (arr[1] || '').split(':');
-		var parsed = [];
-
-		if (date.length < 4 && time.length < 2)
-			return new Date(self);
-
-		index = (time[2] || '').indexOf('.');
-
-		// milliseconds
-		if (index !== -1) {
-			time[3] = time[2].substring(index + 1);
-			time[2] = time[2].substring(0, index);
-		} else
-			time[3] = '0';
-
-		parsed.push(+date[firstDay ? 2 : 0]); // year
-		parsed.push(+date[1]); // month
-		parsed.push(+date[firstDay ? 0 : 2]); // day
-		parsed.push(+time[0]); // hours
-		parsed.push(+time[1]); // minutes
-		parsed.push(+time[2]); // seconds
-		parsed.push(+time[3]); // miliseconds
-
-		var def = now(true); //def = W.DATETIME = W.NOW = new Date();
-
-		for (var i = 0, length = parsed.length; i < length; i++) {
-			if (isNaN(parsed[i]))
-				parsed[i] = 0;
-
-			var value = parsed[i];
-			if (value !== 0)
-				continue;
-
-			switch (i) {
-				case 0:
-					if (value <= 0)
-						parsed[i] = def.getFullYear();
-					break;
-				case 1:
-					if (value <= 0)
-						parsed[i] = def.getMonth() + 1;
-					break;
-				case 2:
-					if (value <= 0)
-						parsed[i] = def.getDate();
-					break;
-			}
-		}
-
-		return new Date(parsed[0], parsed[1] - 1, parsed[2], parsed[3], parsed[4], parsed[5]);
-	};
-});
-define('langx',[
-	"skylark-langx/langx",
-	"./jc",
-	"./langx/regexp",
-	"./langx/now",
-	"./langx/ArrayEx",
-	"./langx/DateEx",
-	"./langx/NumberEx",
-	"./langx/StringEx"
-],function(slangx,jc,regexp,now){
-	var statics = {};
-	var waits = {};
-
-
-	function async(arr, fn, done) {
-		var item = arr.shift();
-		if (item == null) {
-			return done && done();
-		}
-		fn(item, function() {
-			async(arr, fn, done);
-		});
-	}
-
-
-	function clone(obj, path) {
-
-		var type = typeof(obj);
-		switch (type) {
-			case TYPE_N:
-			case 'boolean':
-				return obj;
-			case TYPE_S:
-				return path ? obj : clone(get(obj), true);
-		}
-
-		if (obj == null)
-			return obj;
-
-		if (obj instanceof Date)
-			return new Date(obj.getTime());
-
-		return PARSE(JSON.stringify(obj));
-	}
-
-	function copy(a, b) {
-		var keys = Object.keys(a);
-		for (var i = 0; i < keys.length; i++) {
-			var key = keys[i];
-			var val = a[key];
-			var type = typeof(val);
-			b[key] = type === TYPE_O ? val ? clone(val) : val : val;
-		}
-		return b;
-	}
-
-
-	/*
-	 * Generates a unique String.
-	 *
-	 */
-	function guid(size) {
-		if (!size)
-			size = 10;
-		var l = ((size / 10) >> 0) + 1;
-		var b = [];
-		for (var i = 0; i < l; i++)
-			b.push(Math.random().toString(36).substring(2));
-		return b.join('').substring(0, size);
-	}
-
-	/*
-	 *  Generates Number hash sum.
-	 *
-	 */
-	function hashCode(s) {
-		if (!s)
-			return 0;
-		var type = typeof(s);
-		if (type === TYPE_N)
-			return s;
-		else if (type === 'boolean')
-			return s ? 1 : 0;
-		else if (s instanceof Date)
-			return s.getTime();
-		else if (type === TYPE_O)
-			s = STRINGIFY(s);
-		var hash = 0, i, char;
-		if (!s.length)
-			return hash;
-		var l = s.length;
-		for (i = 0; i < l; i++) {
-			char = s.charCodeAt(i);
-			hash = ((hash << 5) - hash) + char;
-			hash |= 0; // Convert to 32bit integer
-		}
-		return hash;
-	}
-
-	/*
-	 *  Parses JSON String to Object.
-	 *
-	 */
-	function parse(value, date) {
-
-		// Is selector?
-		var c = value.substring(0, 1);
-		if (c === '#' || c === '.')
-			return parse($(value).html(), date); // PARSE
-
-		if (date === undefined) {
-			date = MD.jsondate;
-		} 
-		try {
-			return JSON.parse(value, function(key, value) {
-				return typeof(value) === TYPE_S && date && value.isJSONDate() ? new Date(value) : value;
-			});
-		} catch (e) {
-			return null;
-		}
-	}
-
-	var LCOMPARER = window.Intl ? window.Intl.Collator().compare : function(a, b) {
-		return a.localeCompare(b);
-	};
-
-   /**
-   * Wait for a feature
-   * @param  {String|Function} path/fn  
-   * @param  {Function} callback  
-   * @param  {Number} interval  Optional, in milliseconds (default: 500)
-   * @param  {Number} timeout Optional, a timeout (default: 0 - disabled) 
-   * @return {Boolean}  
-   */ 
-	function wait(fn, callback, interval, timeout) { // W.WAIT = 
-		var key = ((Math.random() * 10000) >> 0).toString(16);
-		var tkey = timeout > 0 ? key + '_timeout' : 0;
-
-		if (typeof(callback) === TYPE_N) {
-			var tmp = interval;
-			interval = callback;
-			callback = tmp;
-		}
-
-		var is = typeof(fn) === TYPE_S;
-		var run = false;
-
-		if (is) {
-			var result = get(fn);
-			if (result)
-				run = true;
-		} else if (fn())
-			run = true;
-
-		if (run) {
-			callback(null, function(sleep) {
-				setTimeout(function() {
-					WAIT(fn, callback, interval, timeout);
-				}, sleep || 1);
-			});
-			return;
-		}
-
-		if (tkey) {
-			waits[tkey] = setTimeout(function() {
-				clearInterval(waits[key]);
-				delete waits[tkey];
-				delete waits[key];
-				callback(new Error('Timeout.'));
-			}, timeout);
-		}
-
-		waits[key] = setInterval(function() {
-
-			if (is) {
-				var result = get(fn);
-				if (result == null)
-					return;
-			} else if (!fn())
-				return;
-
-			clearInterval(waits[key]);
-			delete waits[key];
-
-			if (tkey) {
-				clearTimeout(waits[tkey]);
-				delete waits[tkey];
-			}
-
-			callback && callback(null, function(sleep) {
-				setTimeout(function() {
-					WAIT(fn, callback, interval);
-				}, sleep || 1);
-			});
-
-		}, interval || 500);
-	};
-
-
-
-	/*
-	 * Serializes Object to JSON.
-	 * @param
-	 * @param 
-	 * @param {Array|Object} fields
-	 */
-	function stringify(obj, compress, fields) {
-		if(compress === undefined) {
-			compress = MD.jsoncompress;
-		} 
-		var tf = typeof(fields);
-		return JSON.stringify(obj, function(key, value) {
-
-			if (!key) {
-				return value;
-			}
-
-			if (fields) {
-				if (fields instanceof Array) {
-					if (fields.indexOf(key) === -1) {
-						return undefined;
-					}
-				} else if (tf === TYPE_FN) {
-					if (!fields(key, value)){
-						return undefined;
-					}
-				} else if (fields[key] === false)
-					return undefined;
-			}
-
-			if (compress === true) {
-				var t = typeof(value);
-				if (t === TYPE_S) {
-					value = value.trim();
-					return value ? value : undefined;
-				} else if (value === false || value == null)
-					return undefined;
-			}
-
-			return value;
-		});
-	}
-
-	var empties = {
-		array : [],
-		object : {},
-		fn :  function() {}
-	};
-
-	var singletons = {};
-
-	function singleton(name, def) { //W.SINGLETON 
-		return singletons[name] || (singletons[name] = (new Function('return ' + (def || '{}')))());
-	};
-
-
-	if (Object.freeze) {
-		Object.freeze(empties.array);
-		Object.freeze(empties.object);
-	}
-
-
-   /**
-   * improves setTimeout method. This method cancels a previous unexecuted call.
-   * @param  {String} name 
-   * @param  {Function(name)} fn 
-   * @param  {Number} timeout 
-   * @param  {Number} limit  Optional, a maximum clear limit (default: 0)
-   * @param  {Object} param  Optional, additional argument
-   * @return {Number} 
-   */
-	function setTimeout2(name, fn, timeout, limit, param) { //W.setTimeout2 = 
-		var key = ':' + name;
-		if (limit > 0) {
-			var key2 = key + ':limit';
-			if (statics[key2] >= limit) {
-				return;
-			}
-			statics[key2] = (statics[key2] || 0) + 1;
-			statics[key] && clearTimeout(statics[key]);
-			return statics[key] = setTimeout(function(param) {
-				statics[key2] = undefined;
-				fn && fn(param);
-			}, timeout, param);
-		}
-		statics[key] && clearTimeout(statics[key]);
-		return statics[key] = setTimeout(fn, timeout, param);
-	}
-
-   /**
-   * clears a registered by setTimeout2().
-   * @param  {String} name 
-   * @return {Boolean} 
-   */
-	function clearTimeout2(name) { // W.clearTimeout2 = 
-		var key = ':' + name;
-		if (statics[key]) {
-			clearTimeout(statics[key]);
-			statics[key] = undefined;
-			statics[key + ':limit'] && (statics[key + ':limit'] = undefined);
-			return true;
-		}
-		return false;
-	}
-
-
-	// what:
-	// 1. valid
-	// 2. dirty
-	// 3. reset
-	// 4. update
-	// 5. set
-	function state(arr, type, what) {
-		if (arr && arr.length) {
-			setTimeout(function() {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					arr[i].stateX(type, what);
-				}
-			}, 2, arr);
-		}
-	}
-
-	return jc.langx = {
-
-		mixin : slangx.mixin,
-		isFunction : slangx.isFunction,
-		isNumber : slangx.isNumber,
-
-		async:async,
-		clearTimeout2:clearTimeout2,
-		clone:clone,
-		copy:copy,
-		empties:empties,
-		Evented : slangx.Evented,
-		guid:guid,
-		hashCode:hashCode,
-		now:now,
-		parse:parse,
-		regexp:regexp,
-		setTimeout2:setTimeout2,
-		singleton:singleton,
-		state:state,
-		stringify:stringify,
-		wait:wait
-	};
-
-});
-define('utils/domx',[
+define('skylark-totaljs-jcomponent/components/configure',[
 	"../langx",
-	"skylark-utils-dom/query",
-	"../jc",
-],function(langx, $, jc){
-	var $devices = { 
-		xs: { max: 768 }, 
-		sm: { min: 768, max: 992 }, 
-		md: { min: 992, max: 1200 }, 
-		lg: { min: 1200 }
-	};
+	"./configs"
+],function(langx,configs){
+   /**
+   * Sets a default configuration for all components according to the selector
+   * @param  {String} selector 
+   * @param  {String/Object} config A default configuration
+   */
+    function configure(selector, config) { //W.COMPONENT_CONFIG = 
 
-	var REGCSS = /<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
-	var REGSCRIPT = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>|<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi;
-	var mediaqueriescounter = 0;
-	var knockknockcounter = 0;
+        if (langx.isString(selector)) {
+            var fn = [];
+            selector.split(' ').forEach(function(sel) {
+                var prop = '';
+                switch (sel.trim().substring(0, 1)) {
+                    case '*':
+                        fn.push('com.path.indexOf(\'{0}\')!==-1'.format(sel.substring(1)));
+                        return;
+                    case '.':
+                        // path
+                        prop = 'path';
+                        break;
+                    case '#':
+                        // id
+                        prop = 'id';
+                        break;
+                    default:
+                        // name
+                        prop = '$name';
+                        break;
+                }
+                fn.push('com.{0}==\'{1}\''.format(prop, prop === '$name' ? sel : sel.substring(1)));
+            });
+            selector = FN('com=>' + fn.join('&&'));
+        }
 
- 	var mediaqueries = [];
-	var $domready = false;
+        configs.push({ fn: selector, config: config });
+    };  
 
-	var ACTRLS = { INPUT: true, TEXTAREA: true, SELECT: true };
-
-	function inputable(el) {
-		var tag = el.tagName || el;
-
-		return ACTRLS[tag];
-	}
+    return configure;
 	
-
-	function findInstance(t, type) {
-
-		if (!t.length) {
-			return null;
-		}
-
-		for (var i = 0; i < t.length; i++) {
-			if (t[i][type]) {
-				return t[i][type];
-			}
-		}
-
-		var el = t[0].parentElement;
-		while (el !== null) {
-			if (el[type]) {
-				return el[type];
-			}
-			el = el.parentElement;
-		}
-
-		return null;
-	}
-	
-	function mediaquery() {
-		var W = window;
-
-		if (!mediaqueries || !mediaqueries.length) {
-			return;
-		}
-
-		var orientation = W.orientation ? Math.abs(W.orientation) === 90 ? 'landscape' : 'portrait' : '';
-
-		var $w = $(W);
-		var w = $w.width();
-		var h = $w.height();
-		var d = $devices;
-
-		for (var i = 0, length = mediaqueries.length; i < length; i++) {
-			var mq = mediaqueries[i];
-			var cw = w;
-			var ch = h;
-
-			if (mq.element) {
-				cw = mq.element.width();
-				ch = mq.element.height();
-			}
-
-			if (mq.orientation) {
-				if (!orientation && mq.orientation !== 'portrait')
-					continue;
-				else if (orientation !== mq.orientation)
-					continue;
-			}
-
-			if (mq.minW && mq.minW >= cw) {
-				continue;
-			}
-			if (mq.maxW && mq.maxW <= cw) {
-				continue;
-			}
-			if (mq.minH && mq.minH >= ch) {
-				continue;
-			}
-			if (mq.maxH && mq.maxH <= ch) {
-				continue;
-			}
-
-			if (mq.oldW === cw && mq.oldH !== ch) {
-				// changed height
-				if (!mq.maxH && !mq.minH)
-					continue;
-			}
-
-			if (mq.oldH === ch && mq.oldW !== cw) {
-				// changed width
-				if (!mq.maxW && !mq.minW)
-					continue;
-			}
-
-			if (mq.oldW === cw && mq.oldH === ch) {
-				continue;
-			}
-
-			var type = null;
-
-			if (cw >= d.md.min && cw <= d.md.max) {
-				type = 'md';
-			} else if (cw >= d.sm.min && cw <= d.sm.max) {
-				type = 'sm';
-			} else if (cw > d.lg.min) {
-				type = 'lg';
-			} else if (cw <= d.xs.max) {
-				type = 'xs';
-			}
-
-			mq.oldW = cw;
-			mq.oldH = ch;
-			mq.fn(cw, ch, type, mq.id);
-		}
-	}
-
-	function inDOM(el) {
-		if (!el)
-			return;
-		if (el.nodeName === 'BODY') {
-			return true;
-		}
-		var parent = el.parentNode;
-		while (parent) {
-			if (parent.nodeName === 'BODY')
-				return true;
-			parent = parent.parentNode;
-		}
-	}
-
-	function remove(el) {
-		var dom = el[0];
-		dom.$com = null;
-		el.attr(ATTRDEL, true);
-		el.remove();
-	}
-
-	function removescripts(str) {
-		return str.replace(REGSCRIPT, function(text) {
-			var index = text.indexOf('>');
-			var scr = text.substring(0, index + 1);
-			return scr.substring(0, 6) === '<style' || (scr.substring(0, 7) === '<script' && scr.indexOf('type="') === -1) || scr.indexOf('/javascript"') !== -1 ? '' : text;
-		});
-	}
-
-	function importscripts(str) {
-
-		var beg = -1;
-		var output = str;
-		var external = [];
-		var scr;
-
-		while (true) {
-
-			beg = str.indexOf('<script', beg);
-			if (beg === -1) {
-				break;
-			}
-			var end = str.indexOf('</script>', beg + 8);
-			var code = str.substring(beg, end + 9);
-			beg = end + 9;
-			end = code.indexOf('>');
-			scr = code.substring(0, end);
-
-			if (scr.indexOf('type=') !== -1 && scr.lastIndexOf('javascript') === -1) {
-				continue;
-			}
-
-			var tmp = code.substring(end + 1, code.length - 9).trim();
-			if (!tmp) {
-				output = output.replace(code, '').trim();
-				var eid = 'external' + langx.hashCode(code);
-				if (!statics[eid]) {
-					external.push(code);
-					statics[eid] = true;
-				}
-			}
-		}
-
-		if (external.length) {
-			$('head').append(external.join('\n'));
-		}
-		return output;
-	}
-
-	function importstyles(str, id) {
-		var builder = [];
-
-		str = str.replace(REGCSS, function(text) {
-			text = text.replace('<style>', '<style type="text/css">');
-			builder.push(text.substring(23, text.length - 8).trim());
-			return '';
-		});
-
-		var key = 'css' + (id || '');
-
-		if (id) {
-			if (statics[key])
-				$('#' + key).remove();
-			else
-				statics[key] = true;
-		}
-
-		builder.length && $('<style' + (id ? ' id="' + key + '"' : '') + '>{0}</style>'.format(builder.join('\n'))).appendTo('head');
-		return str;
-	}
-
-	var $scrollbarWidth;
-	function scrollbarWidth() { //W.SCROLLBARWIDTH = 
-		var id = 'jcscrollbarwidth';
-		if ($scrollbarWidth !== undefined) {
-			return $scrollbarWidth;
-		}
-		var b = document.body;
-		$(b).append('<div id="{0}" style="width{1}height{1}overflow:scroll;position:absolute;top{2}left{2}"></div>'.format(id, ':100px;', ':9999px;'));
-		var el = document.getElementById(id);
-		$scrollbarWidth = el.offsetWidth - el.clientWidth;
-		b.removeChild(el);
-		return $scrollbarWidth;
-	}
-
-   /**
-   * Returns a current display size of the element. Display size can be:
-   * <ul>
-   *   <li>xs extra small display (mobile device)</li>
-   *   <li>sm small display (tablet)</li>
-   *   <li>md medium display (small laptop)</li>
-   *   <li>lg large display (desktop computer, laptop)</li>
-   * </ul>
-   * execute CSS() twice then the previous styles will be removed.
-   * @param  {String} value 
-   * @param  {String} id 
-   */
-	function mediaWidth(el) { //W.WIDTH = 
-		if (!el) {
-			el = $(Window);
-		}
-		var w = el.width();
-		var d = $devices;
-		return w >= d.md.min && w <= d.md.max ? 'md' : w >= d.sm.min && w <= d.sm.max ? 'sm' : w > d.lg.min ? 'lg' : w <= d.xs.max ? 'xs' : '';
-	}
-
-   /**
-   * Registers a listener for specific size of the browser window or element.
-   * @param  {String} query media CSS query string 
-   * @param  {jQuery Element} id 
-   * @param  {Function(w, h, type, id)} fn 
-   * @return {Number } an idetificator of MediaQuery
-   */
-	function watchMedia(query, element, fn) { //W.MEDIAQUERY = 
-
-		if (langx.isNumber(query)) {
-			mediaqueries.remove('id', query);
-			return true;
-		}
-
-		if (langx.isFunction(element)) {
-			fn = element;
-			element = null;
-		}
-
-		query = query.toLowerCase();
-		if (query.indexOf(',') !== -1) {
-			var ids = [];
-			query.split(',').forEach(function(q) {
-				q = q.trim();
-				q && ids.push(watchMedia(q, element, fn));
-			});
-			return ids;
-		}
-
-		var d = $devices;
-
-		if (query === 'md') {
-			query = 'min-width:{0}px and max-width:{1}px'.format(d.md.min, d.md.max);
-		} else if (query === 'lg') {
-			query = 'min-width:{0}px'.format(d.lg.min);
-		} else if (query === 'xs') {
-			query = 'max-width:{0}px'.format(d.xs.max);
-		} else if (query === 'sm') {
-			query = 'min-width:{0}px and max-width:{1}px'.format(d.sm.min, d.sm.max);
-		}
-
-		var arr = query.match(/(max-width|min-width|max-device-width|min-device-width|max-height|min-height|max-device-height|height|width):(\s)\d+(px|em|in)?/gi);
-		var obj = {};
-
-		var num = function(val) {
-			var n = parseInt(val.match(/\d+/), 10);
-			return val.match(/\d+(em)/) ? n * 16 : val.match(/\d+(in)/) ? (n * 0.010416667) >> 0 : n;
-		};
-
-		if (arr) {
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var item = arr[i];
-				var index = item.indexOf(':');
-				switch (item.substring(0, index).toLowerCase().trim()) {
-					case 'min-width':
-					case 'min-device-width':
-					case 'width':
-						obj.minW = num(item);
-						break;
-					case 'max-width':
-					case 'max-device-width':
-						obj.maxW = num(item);
-						break;
-					case 'min-height':
-					case 'min-device-height':
-					case 'height':
-						obj.minH = num(item);
-						break;
-					case 'max-height':
-					case 'max-device-height':
-						obj.maxH = num(item);
-						break;
-				}
-			}
-		}
-
-		arr = query.match(/orientation:(\s)(landscape|portrait)/gi);
-		if (arr) {
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var item = arr[i];
-				if (item.toLowerCase().indexOf('portrait') !== -1) {
-					obj.orientation = 'portrait';
-				} else {
-					obj.orientation = 'landscape';
-				}
-			}
-		}
-
-		obj.id = mediaqueriescounter++;
-		obj.fn = fn;
-
-		if (element) {
-			obj.element = element;
-		}
-
-		mediaqueries.push(obj);
-		return obj.id;
-	};
-
-   /**
-   * creates inline CSS registered in the head tag. If you use id and 
-   * execute CSS() twice then the previous styles will be removed.
-   * @param  {String} value 
-   * @param  {String} id 
-   */
-	function style(value, id) { //W.CSS = W.STYLE = 
-		if (id) {
-		 $('#css' + id).remove();
-		}
-		$('<style type="text/css"' + (id ? ' id="css' + id + '"' : '') + '>' + (value instanceof Array ? value.join('') : value) + '</style>').appendTo('head');
-	};
-
-
-	function keyPress(fn, timeout, key) { // W.KEYPRESS = 
-		if (!timeout) {
-			timeout = 300;
-		}
-		var str = fn.toString();
-		var beg = str.length - 20;
-		if (beg < 0) {
-			beg = 0;
-		}
-		var tkey = key ? key : langx.hashCode(str.substring(0, 20) + 'X' + str.substring(beg)) + '_keypress';
-		langx.setTimeout2(tkey, fn, timeout);
-	};
-
-
-	//-- Waits for jQuery
-	//WAIT(function() {
-	//	return !!W.jQuery;
-	//}, function() {
-
-	//	setInterval(function() {
-	//		temp = {};
-	//		paths = {};
-	//		cleaner();
-	//	}, (1000 * 60) * 5);
-
-		// scheduler
-
-
-
-		$.fn.aclass = function(a) {
-			return this.addClass(a);
-		};
-
-		$.fn.rclass = function(a) {
-			return a == null ? this.removeClass() : this.removeClass(a);
-		};
-
-		$.fn.rattr = function(a) {
-			return this.removeAttr(a);
-		};
-
-		$.fn.rattrd = function(a) {
-			return this.removeAttr('data-' + a);
-		};
-
-		$.fn.rclass2 = function(a) {
-
-			var self = this;
-			var arr = (self.attr('class') || '').split(' ');
-			var isReg = typeof(a) === TYPE_O;
-
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var cls = arr[i];
-				if (cls) {
-					if (isReg) {
-						a.test(cls) && self.rclass(cls);
-					} else {
-						cls.indexOf(a) !== -1 && self.rclass(cls);
-					}
-				}
-			}
-
-			return self;
-		};
-
-		$.fn.hclass = function(a) {
-			return this.hasClass(a);
-		};
-
-		$.fn.tclass = function(a, v) {
-			return this.toggleClass(a, v);
-		};
-
-		$.fn.attrd = function(a, v) {
-			a = 'data-' + a;
-			return v == null ? this.attr(a) : this.attr(a, v);
-		};
-
-		// Appends an SVG element
-		$.fn.asvg = function(tag) {
-
-			if (tag.indexOf('<') === -1) {
-				var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-				this.append(el);
-				return $(el);
-			}
-
-			var d = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
-			d.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + tag + '</svg>';
-			var f = document.createDocumentFragment();
-			while (d.firstChild.firstChild)
-				f.appendChild(d.firstChild.firstChild);
-			f = $(f);
-			this.append(f);
-			return f;
-		};
-
-		$.fn.psvg = function(tag) {
-
-			if (tag.indexOf('<') === -1) {
-				var el = document.createElementNS('http://www.w3.org/2000/svg', tag);
-				this.prepend(el);
-				return $(el);
-			}
-
-			var d = document.createElementNS('http://www.w3.org/1999/xhtml', 'div');
-			d.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg">' + tag + '</svg>';
-			var f = document.createDocumentFragment();
-			while (d.firstChild.firstChild)
-				f.appendChild(d.firstChild.firstChild);
-			f = $(f);
-			this.prepend(f);
-			return f;
-		};
-
-		$.fn.rescroll = function(offset, bottom) {
-			var t = this;
-			t.each(function() {
-				var e = this;
-				var el = e;
-				el.scrollIntoView(true);
-				if (offset) {
-					var count = 0;
-					while (el && el.scrollTop == 0 && count++ < 25) {
-						el = el.parentNode;
-						if (el && el.scrollTop) {
-
-							var off = el.scrollTop + offset;
-
-							if (bottom != false) {
-								if (el.scrollTop + el.getBoundingClientRect().height >= el.scrollHeight) {
-									el.scrollTop = el.scrollHeight;
-									return;
-								}
-							}
-
-							el.scrollTop = off;
-							return;
-						}
-					}
-				}
-			});
-			return t;
-		};
-
-		$.components = M;
-
-		setInterval(function() {
-			//W.DATETIME = W.NOW = new Date();
-			langx.now(true);
-			var c = M.components;
-			for (var i = 0, length = c.length; i < length; i++)
-				c[i].knockknock && c[i].knockknock(knockknockcounter);
-			EMIT('knockknock', knockknockcounter++);
-		}, 60000);
-
-		function resize() {
-			var w = $(window);
-			W.WW = w.width();
-			W.WH = w.height();
-			mediaquery();
-		}
-
-		resize();
-
-		$(window).on('resize', resize);
-	//}, 100);
-
-	return jc.domx = {
-		"devices" : $devices,
-		"findInstance" : findInstance,
-		"inDOM" : inDOM,
-		"importscripts" : importscripts,
-		"importstyles" : importstyles,
-		"inputable" : inputable,
-		"keyPress" : keyPress,
-		"mediaquery" : mediaquery,
-		"mediaWidth" : mediaWidth,
-		"removescripts" : removescripts,
-		"scrollbarWidth" : scrollbarWidth,
-		"style" : style,
-		"watchMedia" : watchMedia
-	}
-
 });
-define('utils/query',[
-	"skylark-utils-dom/query"
-], function($) {
-	return $;
+define('skylark-totaljs-jcomponent/components/extensions',[],function(){
+	var extensions = {};
+
+	return extensions;
+});
+define('skylark-totaljs-jcomponent/components/extend',[
+	"../langx",
+	"./extensions"
+],function(langx,extensions){
+	var topic = langx.topic;
+   /**
+   * Extend a component by adding new features.
+   * @param  {String} name 
+   * @param  {String/Object} config A default configuration
+   * @param  {Function} declaration 
+   */
+    function extend(name, config, declaration) { //W.COMPONENT_EXTEND = 
+
+        if (typeof(config) === TYPE_FN) {
+            var tmp = declaration;
+            declaration = config;
+            config = tmp;
+        }
+
+        if (extensions[name]) {
+            extensions[name].push({ config: config, fn: declaration });
+        } else {
+            extensions[name] = [{ config: config, fn: declaration }];
+        }
+
+        topic.publish("skylark.vvm.component.extend",name);
+
+    };
+
+	return extend;	
+});
+define('skylark-totaljs-jcomponent/components/registry',[
+], function() {
+    var registry = {};
+
+    return registry;
+});
+
+define('skylark-totaljs-jcomponent/components/register',[
+	"../langx",
+	"./registry"
+],function(langx,registry){
+    function register(name, config, declaration, dependencies) { // W.COMPONENT =
+
+        if (langx.isFunction(config)) {
+            dependencies = declaration;
+            declaration = config;
+            config = null;
+        }
+
+        // Multiple versions
+        if (name.indexOf(',') !== -1) {
+            name.split(',').forEach(function(item, index) {
+                item = item.trim();
+                if (item) {
+                    add(item, config, declaration, index ? null : dependencies);   
+                } 
+            });
+            return;
+        }
+
+        if (registry[name]){ // M.$components
+            warn('Components: Overwriting component:', name);   
+        } 
+        var a = registry[name] = { //M.$components
+            name: name, 
+            config: config, 
+            declaration: declaration, 
+            shared: {}, 
+            dependencies: dependencies instanceof Array ? dependencies : null 
+        };
+        //topic.emit('component.compile', name, a); //TODO
+    }
+
+    return register;
+	
 });
 define('skylark-totaljs-jcomponent/components',[
-	"./langx",
-	"../utils/domx",
-	"../utils/query",
 	"./jc",
-	"./components/Usage",
+	"./langx",
+	"./utils/domx",
+	"./utils/query",
 	"./utils/cache",
-	"./components/Component"
-],function(langx, domx, $, jc, Usage, cache, Component){
+	"./components/Component",
+	"./components/configs",
+	"./components/configure",
+	"./components/extensions",
+	"./components/extend",
+	"./components/registry",
+	"./components/register",
+	"./components/Usage"
+],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage){
 	var M = jc;
 
 	var components = Component.components = [];
@@ -18201,753 +15155,11 @@ define('skylark-totaljs-jcomponent/components',[
 	// ===============================================================
 
 
-	var	SELINPUT = 'input,textarea,select';
-
-	function exechelper(ctx, path, arg) {
+    function exechelper(ctx, path, arg) {
 		setTimeout(function() {
 			EXEC.call(ctx, true, path, arg[0], arg[1], arg[2], arg[3], arg[4], arg[5], arg[6]);
 		}, 200);
 	}
-
-	function com_dirty(path, value, onlyComponent, skipEmitState) {
-
-		var isExcept = value instanceof Array;
-		var key = 'dirty' + path + (isExcept ? '>' + value.join('|') : '');
-		var except = null;
-
-		if (isExcept) {
-			except = value;
-			value = undefined;
-		}
-
-		if (typeof(value) !== 'boolean' && cache[key] !== undefined)
-			return cache[key];
-
-		var dirty = true;
-		var arr = value !== undefined ? [] : null;
-		var flags = null;
-
-		if (isExcept) {
-			var is = false;
-			flags = {};
-			except = except.remove(function(item) {
-				if (item.substring(0, 1) === '@') {
-					flags[item.substring(1)] = true;
-					is = true;
-					return true;
-				}
-				return false;
-			});
-			!is && (flags = null);
-			isExcept = except.length > 0;
-		}
-
-		var index = path.lastIndexOf('.*');
-		var wildcard = index !== -1;
-		if (index !== -1)
-			path = path.substring(0, index);
-
-		path = pathmaker(path);
-
-		var all = components;//M.components;
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-
-			if (!com || com.$removed || !com.$loaded || !com.path || !com.$compare(path) || (isExcept && com.$except(except)))
-				continue;
-
-			if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
-				continue;
-
-			if (com.disabled || com.$dirty_disabled) {
-				arr && com.state && arr.push(com);
-				continue;
-			}
-
-			if (value === undefined) {
-				if (com.$dirty === false)
-					dirty = false;
-				continue;
-			}
-
-			com.state && arr.push(com);
-
-			if (!onlyComponent) {
-				if (wildcard || com.path === path) {
-					com.$dirty = value;
-					com.$interaction(101);
-				}
-			} else if (onlyComponent._id === com._id) {
-				com.$dirty = value;
-				com.$interaction(101);
-			}
-			if (com.$dirty === false)
-				dirty = false;
-		}
-
-		cache.clearPageData('dirty');
-		cache.setPageData(key,dirty);
-
-		// For double hitting component.state() --> look into COM.invalid()
-		!skipEmitState && state(arr, 1, 2);
-		return dirty;
-	}
-
-	function findcomponent(container, selector, callback) {
-
-		var s = (selector ? selector.split(' ') : EMPTYARRAY);
-		var path = '';
-		var name = '';
-		var id = '';
-		var version = '';
-		var index;
-
-		for (var i = 0, length = s.length; i < length; i++) {
-			switch (s[i].substring(0, 1)) {
-				case '*':
-					break;
-				case '.':
-					// path
-					path = s[i].substring(1);
-					break;
-				case '#':
-					// id;
-					id = s[i].substring(1);
-					index = id.indexOf('[');
-					if (index !== -1) {
-						path = id.substring(index + 1, id.length - 1).trim();
-						id = id.substring(0, index);
-					}
-					break;
-				default:
-					// name
-					name = s[i];
-					index = name.indexOf('[');
-
-					if (index !== -1) {
-						path = name.substring(index + 1, name.length - 1).trim();
-						name = name.substring(0, index);
-					}
-
-					index = name.lastIndexOf('@');
-
-					if (index !== -1) {
-						version = name.substring(index + 1);
-						name = name.substring(0, index);
-					}
-
-					break;
-			}
-		}
-
-		var arr = callback ? undefined : [];
-		if (container) {
-			var stop = false;
-			container.find('[data-jc]').each(function() {
-				var com = this.$com;
-
-				if (stop || !com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || (path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path))))))
-					return;
-
-				if (callback) {
-					if (callback(com) === false)
-						stop = true;
-				} else
-					arr.push(com);
-			});
-		} else {
-			for (var i = 0, length = components.length; i < length; i++) { // M.components.length
-				var com = components[i]; // M.components[i]
-				if (!com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || ((path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path)))))))
-					continue;
-
-				if (callback) {
-					if (callback(com) === false) {
-						break;
-					}
-				} else {
-					arr.push(com);
-				}
-			}
-		}
-
-		return arr;
-	}
-
-	function findcontrol2(com, input) {
-
-		if (com.$inputcontrol) {
-			if (com.$inputcontrol % 2 !== 0) {
-				com.$inputcontrol++;
-				return;
-			}
-		}
-
-		var target = input ? input : com.element;
-		findcontrol(target[0], function(el) {
-			if (!el.$com || el.$com !== com) {
-				el.$com = com;
-				com.$inputcontrol = 1;
-			}
-		});
-	}
-
-	function findcontrol(container, onElement, level) {
-
-		var arr = container.childNodes;
-		var sub = [];
-
-		domx.inputable(container) && onElement(container);
-
-		if (level == null) {
-			level = 0;
-		} else {
-			level++;
-		}
-
-		for (var i = 0, length = arr.length; i < length; i++) {
-			var el = arr[i];
-			if (el && el.tagName) {
-				el.childNodes.length && el.tagName !== 'SCRIPT' && el.getAttribute('data-jc') == null && sub.push(el);
-				if (domx.inputable(el) && el.getAttribute('data-jc-bind') != null && onElement(el) === false)
-					return;
-			}
-		}
-
-		for (var i = 0, length = sub.length; i < length; i++) {
-			el = sub[i];
-			if (el && findcontrol(el, onElement, level) === false) {
-				return;
-			}
-		}
-	}
-
-	function com_valid(path, value, onlyComponent) {
-
-		var isExcept = value instanceof Array;
-		var key = 'valid' + path + (isExcept ? '>' + value.join('|') : '');
-		var except = null;
-
-		if (isExcept) {
-			except = value;
-			value = undefined;
-		}
-
-		if (typeof(value) !== 'boolean' && cache[key] !== undefined)
-			return cache[key];
-
-		var flags = null;
-
-		if (isExcept) {
-			var is = false;
-			flags = {};
-			except = except.remove(function(item) {
-				if (item.substring(0, 1) === '@') {
-					flags[item.substring(1)] = true;
-					is = true;
-					return true;
-				}
-				return false;
-			});
-			!is && (flags = null);
-			isExcept = except.length > 0;
-		}
-
-		var valid = true;
-		var arr = value !== undefined ? [] : null;
-
-		var index = path.lastIndexOf('.*');
-		var wildcard = index !== -1;
-		if (index !== -1) {
-			path = path.substring(0, index);
-		}
-
-		path = pathmaker(path);
-
-		var all = components;//M.components;
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-
-			if (!com || com.$removed || !com.$loaded || !com.path || !com.$compare(path) || (isExcept && com.$except(except)))
-				continue;
-
-			if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
-				continue;
-
-			if (com.disabled || com.$valid_disabled) {
-				arr && com.state && arr.push(com);
-				continue;
-			}
-
-			if (value === undefined) {
-				if (com.$valid === false)
-					valid = false;
-				continue;
-			}
-
-			com.state && arr.push(com);
-
-			if (!onlyComponent) {
-				if (wildcard || com.path === path) {
-					com.$valid = value;
-					com.$interaction(102);
-				}
-			} else if (onlyComponent._id === com._id) {
-				com.$valid = value;
-				com.$interaction(102);
-			}
-			if (com.$valid === false)
-				valid = false;
-		}
-
-		cache.clearPageData('valid');
-		cache.setPageData(key, valid);  // cache[key] = valid
-		langx.state(arr, 1, 1);
-		return valid;
-	}
-
-
-   /**
-   * sets a version for specific components.
-   * ex : version('textbox@1', 'dropdown@1');
-   */
-	function version() { // W.VERSION = 
-		for (var j = 0; j < arguments.length; j++) {
-			var keys = arguments[j].split(',');
-			for (var i = 0; i < keys.length; i++) {
-				var key = keys[i].trim();
-				var tmp = key.indexOf('@');
-				if (tmp === -1) {
-					continue;
-				}
-				var version = key.substring(tmp + 1);
-				key = key.substring(0, tmp);
-				if (version) {
-					versions[key] = version;
-				}
-			}
-		}
-	};
-
-
-	$.fn.FIND = function(selector, many, callback, timeout) {
-
-		if ( langx.isFunction(many) ) {
-			timeout = callback;
-			callback = many;
-			many = undefined;
-		}
-
-		var self = this;
-		var output = findcomponent(self, selector);
-		if (langx.isFunction(callback)) {
-
-			if (output.length) {
-				callback.call(output, output);
-				return self;
-			}
-
-			WAIT(function() {
-				var val = self.FIND(selector, many);
-				return val instanceof Array ? val.length > 0 : !!val;
-			}, function(err) {
-				// timeout
-				if (!err) {
-					var val = self.FIND(selector, many);
-					callback.call(val ? val : W, val);
-				}
-			}, 500, timeout);
-
-			return self;
-		}
-
-		return many ? output : output[0];
-	};
-
-	$.fn.SETTER = function(selector, name) {
-
-		var self = this;
-		var arg = [];
-		var beg = selector === true ? 3 : 2;
-
-		for (var i = beg; i < arguments.length; i++)
-			arg.push(arguments[i]);
-
-		if (beg === 3) {
-			selector = name;
-			name = arguments[2];
-
-			if (lazycom[selector] && lazycom[selector].state !== 3) {
-
-				if (lazycom[selector].state === 1) {
-					lazycom[selector].state = 2;
-					EMIT('lazy', selector, true);
-					warn('Lazy load: ' + selector);
-					compile();
-				}
-
-				setTimeout(function(arg) {
-					$.fn.SETTER.apply(self, arg);
-				}, 555, arguments);
-
-				return self;
-			}
-
-			self.FIND(selector, true, function(arr) {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					var o = arr[i];
-					if (typeof(o[name]) === TYPE_FN)
-						o[name].apply(o, arg);
-					else
-						o[name] = arg[0];
-				}
-			});
-
-		} else {
-
-			if (lazycom[selector] && lazycom[selector].state !== 3) {
-
-				if (lazycom[selector].state === 1) {
-					lazycom[selector].state = 2;
-					EMIT('lazy', selector, true);
-					warn('Lazy load: ' + selector);
-					compile();
-				}
-
-				setTimeout(function(arg) {
-					$.fn.SETTER.apply(self, arg);
-				}, 555, arguments);
-
-				return self;
-			}
-
-			var arr = self.FIND(selector, true);
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var o = arr[i];
-				if (typeof(o[name]) === TYPE_FN)
-					o[name].apply(o, arg);
-				else
-					o[name] = arg[0];
-			}
-		}
-
-		return self;
-	};
-
-	$.fn.RECONFIGURE = function(selector, value) {
-		return this.SETTER(selector, 'reconfigure', value);
-	};
-
-
-	M.$formatter = [];
-
-
-   /**
-   * Evaluates a global formatter.
-   * @param  {String} path 
-   * @param  {Object} value
-   * @param  {String} type 
-   * @returns {Boolean}   
-   * OR
-   * Registers a global formatter.
-   * @param  {Function} value 
-   * @param  {Boolean} path 
-   */
-	W.FORMATTER = M.formatter = function(value, path, type) {
-
-		if (langx.isFunction(value)) {
-			!M.$formatter && (M.$formatter = []);
-
-			// Prepend
-			if (path === true) {
-				M.$formatter.unshift(value);
-			} else {
-				M.$formatter.push(value);
-			}
-
-			return M;
-		}
-
-		var a = M.$formatter;
-		if (a && a.length) {
-			for (var i = 0, length = a.length; i < length; i++) {
-				var val = a[i].call(M, path, value, type);
-				if (val !== undefined)
-					value = val;
-			}
-		}
-
-		return value;
-	};
-
-
-   /**
-   * Reconfigures all components according to the selector.
-   * @param  {String} selector 
-   * @param  {String/Object} config A default configuration
-   */
-	function reconfigure(selector, value) { // W.RECONFIGURE = 
-		setter(true, selector, 'reconfigure', value);
-		return RECONFIGURE;
-	};
-
-   /**
-   * Set a new value to the specific method in components.
-   * @param  {Boolean} wait Optional, can it wait for non-exist components? 
-   * @param  {String} selector  
-   * @param  {String} name Property or Method name (can't be nested) 
-   * @param  {Object} argA Optional, additional argument
-   * @param  {Object} argB Optional, additional argument
-   * @param  {Object} argN Optional, additional argument
-   */
-	function setter(selector, name) { // W.SETTER
-
-		var arg = [];
-		var beg = selector === true ? 3 : 2;
-
-		for (var i = beg; i < arguments.length; i++) {
-			arg.push(arguments[i]);
-		}
-
-		if (beg === 3) {
-
-			selector = name;
-
-			if (lazycom[selector] && lazycom[selector].state !== 3) {
-
-				if (lazycom[selector].state === 1) {
-					lazycom[selector].state = 2;
-					EMIT('lazy', selector, true);
-					warn('Lazy load: ' + selector);
-					compile();
-				}
-
-				setTimeout(function(arg) {
-					arg[0] = true;
-					W.SETTER.apply(W, arg);
-				}, 555, arguments);
-
-				return SETTER;
-			}
-
-			name = arguments[2];
-
-			FIND(selector, true, function(arr) {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					var o = arr[i];
-					if (typeof(o[name]) === TYPE_FN)
-						o[name].apply(o, arg);
-					else
-						o[name] = arg[0];
-				}
-			});
-		} else {
-
-			if (lazycom[selector] && lazycom[selector].state !== 3) {
-
-				if (lazycom[selector].state === 1) {
-					lazycom[selector].state = 2;
-					EMIT('lazy', selector, true);
-					warn('Lazy load: ' + selector);
-					compile();
-				}
-
-				setTimeout(function(arg) {
-					W.SETTER.apply(W, arg);
-				}, 555, arguments);
-
-				return SETTER;
-			}
-
-			var arr = FIND(selector, true);
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var o = arr[i];
-				if (typeof(o[name]) === TYPE_FN)
-					o[name].apply(o, arg);
-				else
-					o[name] = arg[0];
-			}
-		}
-
-		return SETTER;
-	};
-
-
-
-
-   /**
-   * Reads a state, it works with dirty state.
-   * @param  {String} path 
-   * @return {Boolean} 
-   */
-	function changed(path) {
-		return !com_dirty(path);
-	};
-
-
-   /**
-   * Set a change for the path or can read the state, it works with dirty state.
-   * @param  {String} path 
-   * @param  {Boolean} value Optional
-   * @return {Boolean} 
-   */
-	function change(path, value) {
-		if (value == null) {
-			value = true;
-		}
-		return !com_dirty(path, !value);
-	};
-
-
-	/*
-	 * This method is same like EXEC() method but it returns a function.
-	 * It must be used as a callback. All callback arguments will be used for the targeted method.
-	 */
-	function exec2(path, tmp) { //W.EXEC2 = 
-		var is = path === true;
-		return function(a, b, c, d) {
-			if (is) {
-				exec(tmp, path, a, b, c, d);
-			} else {
-				exec(path, a, b, c, d);
-			}
-		};
-	};
-
-  /**
-   * Executes a method according to the path. It wont't throw any exception if the method not exist.
-   * @param  {Boolean} wait Optional enables a waiter for the method instance (if method doesn't exist) 
-   * @param  {String} path 
-   * @param  {Object} a - Optional, additional argument
-   * @param  {Object} b - Optional, additional argument
-   * @param  {Object} c - Optional, additional argument
-   */
-	function exec(path) {   // W.EXEC = 
-
-		var arg = [];
-		var f = 1;
-		var wait = false;
-		var p;
-		var ctx = this;
-
-		if (path === true) {
-			wait = true;
-			path = arguments[1];
-			f = 2;
-		}
-
-		path = path.env();
-
-		for (var i = f; i < arguments.length; i++) {
-			arg.push(arguments[i]);
-		}
-
-		var c = path.charCodeAt(0);
-
-		// Event
-		if (c === 35) { // # , ex: EXEC('#submit', true); --> EMIT('submit', true);
-			p = path.substring(1);
-			if (wait) {
-				!events[p] && exechelper(ctx, path, arg);
-			} else {
-				EMIT.call(ctx, p, arg[0], arg[1], arg[2], arg[3], arg[4]);
-			}
-			return EXEC;
-		}
-
-		var ok = 0;
-
-		// PLUGINS
-		if (c === 64) { // @ , ex: EXEC('@PLUGIN.method_name');
-			var index = path.indexOf('.');
-			p = path.substring(1, index);
-			var ctrl = plugins.find(p); //W.PLUGINS[p];
-			if (ctrl) {
-				var fn = ctrl[path.substring(index + 1)];
-				if (langx.isFunction(fn) ) { // if (typeof(fn) === TYPE_FN) {
-					fn.apply(ctx === Window ? ctrl : ctx, arg);
-					ok = 1;
-				}
-			}
-
-			if (wait && !ok) {
-			 exechelper(ctx, path, arg);
-			}
-			return EXEC;
-		}
-
-		// PLUGINS
-		var index = path.indexOf('/'); // ex : EXEC('PLUGIN/method_name');
-		if (index !== -1) {
-			p = path.substring(0, index);
-			var ctrl = plugins.find(p); //W.PLUGINS[p];
-			var fn = path.substring(index + 1);
-			if (ctrl && typeof(ctrl[fn]) === TYPE_FN) {
-				ctrl[fn].apply(ctx === W ? ctrl : ctx, arg);
-				ok = 1;
-			}
-
-			if (wait && !ok) {
-			 exechelper(ctx, path, arg);
-			}
-			return EXEC;
-		}
-
-		var fn = paths.get(path);
-
-		if (langx.isFunction(fn)) {
-			fn.apply(ctx, arg);
-			ok = 1;
-		}
-
-		if (wait && !ok) {
-			exechelper(ctx, path, arg);
-		}
-		return exec;
-	};
-
-
-
-   /**
-   * Checks dirty and valid paths for all declared components on the path. 
-   * If the method return true then the components are validated and 
-   * some component has been changed by user (otherwise: false).
-   * @param  {String} path 
-   * @param  {String|Array} except  With absolute paths for skipping
-   * @returns {Boolean}   
-   */
-	function can(path, except) { // W.CAN = 
-		path = pathmaker(path);
-		return !com_dirty(path, except) && com_valid(path, except);
-	}
-
-   /**
-   * Checks dirty and valid paths for all declared components on the path. 
-   * If the method return false then the components are validated and 
-   * some component has been changed by user (otherwise: true).
-   * @param  {String} path 
-   * @param  {String|Array} except  With absolute paths for skipping
-   * @returns {Boolean}   
-   */
-	function disabled(path, except) { // W.DISABLED = 
-		path = pathmaker(path);
-		return com_dirty(path, except) || !com_valid(path, except);
-	}
-
-   /**
-   * Highlights all components on the path as invalid. 
-   * @param  {String} path 
-   * @param  {String|Array} except  With absolute paths for skipping
-   * @returns {Boolean}   
-   */
-	function invalid(path, onlyComponent) {  // W.INVALID = 
-		path = pathmaker(path);
-		if (path) {
-			com_dirty(path, false, onlyComponent, true);
-			com_valid(path, false, onlyComponent);
-		}
-		return W;
-	};
 
 
 	// ===============================================================
@@ -19009,232 +15221,1099 @@ define('skylark-totaljs-jcomponent/components',[
 		}
 	};
 
-	langx.mixin(components,{
-		add,
 
-		attrcom, // 
-		exec,
-		exec2,
-	});
+    function get(name) {
+        return types[name];
+    }
 
-	var cache = {}; // lwf
-
-	/*
-	 * Finds all component according to the selector.
-	 */
-	function find(value, many, noCache, callback) { //W.FIND = 
-
-		var isWaiting = false;
-
-		if (langx.isFunction(many)) {
-			isWaiting = true;
-			callback = many;
-			many = undefined;
-			// noCache = undefined;
-			// noCache can be timeout
-		} else if (langx.isFunction(noCache)) {
-			var tmp = callback;
-			isWaiting = true;
-			callback = noCache;
-			noCache = tmp;
-			// noCache can be timeout
-		}
-
-		if (isWaiting) {
-			langx.isWaiting(function() {  // WAIT
-				var val = FIND(value, many, noCache);
-				if (lazycom[value] && lazycom[value].state === 1) {
-					lazycom[value].state = 2;
-					topic.emit('lazy', value, true); // EMIT
-					warn('Lazy load: ' + value);
-					compile();
-				}
-				return val instanceof Array ? val.length > 0 : !!val;
-			}, function(err) {
-				// timeout
-				if (!err) {
-					var val = FIND(value, many);
-					callback.call(val ? val : W, val);
-				}
-			}, 500, noCache);
-			return;
-		}
-
-		// Element
-		if (typeof(value) === 'object') {
-			if (!(value instanceof jQuery)) {
-				value = $(value);
-			}
-			var output = findcomponent(value, '');
-			return many ? output : output[0];
-		}
-
-		var key, output;
-
-		if (!noCache) {
-			key = 'find.' + value + '.' + (many ? 0 : 1);
-			output = cache[key];
-			if (output) {
-				return output;
-			}
-		}
-
-		var r = findcomponent(null, value);
-		if (!many) {
-			r = r[0];
-		}
-		output = r;
-		if (!noCache) {
-			cache[key] = output;
-		}
-		return output;
-	};
-
-	function usage(name, expire, path, callback) { //W.LASTMODIFICATION = W.USAGE = M.usage = 
-
-		var type = typeof(expire);
-		if (type === TYPE_S) {
-			//var dt = W.NOW = W.DATETIME = new Date();
-			var dt = langx.now(true);
-			expire = dt.add('-' + expire.env()).getTime();
-		} else if (type === TYPE_N)
-			expire = Date.now() - expire;
-
-		if (typeof(path) === TYPE_FN) {
-			callback = path;
-			path = undefined;
-		}
-
-		var arr = [];
-		var a = null;
-
-		if (path) {
-			a = FIND('.' + path, true);
-		} else {
-			a = components;//M.components;
-		}
-
-		for (var i = 0; i < a.length; i++) {
-			var c = a[i];
-			if (c.usage[name] >= expire) {
-				if (callback)
-					callback(c);
-				else
-					arr.push(c);
-			}
-		}
-
-		return callback ? M : arr;
-	}
-
-	function default2(path, timeout, onlyComponent, reset) { //M.default = 
-
-		if (timeout > 0) {
-			setTimeout(function() {
-				default2(path, 0, onlyComponent, reset);
-			}, timeout);
-			return this;
-		}
-
-		if (typeof(onlyComponent) === 'boolean') {
-			reset = onlyComponent;
-			onlyComponent = null;
-		}
-
-		if (reset === undefined) {
-			reset = true;
-		}
-
-		path = paths.pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
-
-		// Reset scope
-		var key = path.replace(/\.\*$/, '');
-		var fn = defaults['#' + HASH(key)];
-		var tmp;
-
-		if (fn) {
-			tmp = fn();
-			set(key, tmp);
-		}
-
-		var arr = [];
-		var all = components;//M.components;
-
-		for (var i = 0, length = all.length; i < length; i++) {
-			var com = all[i];
-
-			if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path)) {
-				continue;
-			}
-
-			if (com.state) {
-				arr.push(com);
-			}
-
-			if (onlyComponent && onlyComponent._id !== com._id) {
-				continue;
-			}
-
-			if (com.$default) {
-			 com.set(com.$default(), 3);
-			}
-
-			if (!reset) {
-				return;
-			}
-
-			findcontrol2(com);
-
-			if (!com.$dirty_disabled) {
-				com.$dirty = true;
-			}
-			if (!com.$valid_disabled) {
-				com.$valid = true;
-				com.$validate = false;
-				if (com.validate) {
-					com.$valid = com.validate(com.get());
-					com.$interaction(102);
-				}
-			}
-		}
-
-		if (reset) {
-			cache.clearPageData('valid', 'dirty');
-			langx.state(arr, 3, 3);
-		}
-
-		return this;
-	}
+    /**
+     * Returns true/false if the specified type exists or not.
+     *
+     * @method has
+     * @param {String} type Type to look for.
+     * @return {Boolean} true/false if the control by name exists.
+     */
+     function has(name) {
+        return !!types[name.toLowerCase()];
+    }
 
 
 
 
-	return jc.views = {
-		components,
-		changed : changed,
-		change : change,
+	return jc.components = {
 		cleaner,
 		cleaner2,
-		default2,
 		each,
 		find,
 		refresh,
 		reset,
 		setter,
 		usage,
-		version,
-
-		extend,
-		extend2,
-		inc,
-		inc2,
-		push,
-		push2,
-		update,
-		update2
+		version
 
 	};
 
+});
+define('skylark-totaljs-jcomponent/utils/blocks',[
+	"./localStorage"
+],function(localStorage){
+	var blocked = {},
+		blocking = {};
+
+   /**
+   * Lock some code for a specific time. 
+   * This method will paths info about blocking in localStorage if the expiration is longer than 10 seconds.
+   * @param  {String} name   
+   * @param  {Number} timeout 
+   * @param  {Function} callback  
+   */
+	blocking.blocked = function (name, timeout, callback) { //W.BLOCKED = 
+		var key = name;
+		var item = blocked[key];
+		var now = Date.now();
+
+		if (item > now) {
+			return true;
+		}
+
+		if (langx.isString(timeout)) {
+			timeout = timeout.env().parseExpire();
+		}
+
+		var local = MD.localstorage && timeout > 10000;
+		blocked[key] = now + timeout;
+		if (!M.isPRIVATEMODE && local) { // W.isPRIVATEMODE
+		  //localStorage.setItem(M.$localstorage + '.blocked', JSON.stringify(blocked));
+		  localStorage.set('blocked', blocked);
+		}
+		callback && callback();
+		return false;
+	};
+
+	block.load = function() {
+		//clearTimeout($ready);
+		//if (MD.localstorage) {
+		var cache;
+		try {
+			cache = localStorage.getItem(M.$localstorage + '.blocked');
+			if (cache && langx.isString(cache)) {
+				blocked = langx.parse(cache);  // PARSE
+			}
+		} catch (e) {}
+		//}
+
+		//M.loaded = true;  //TODO
+	}
+
+	return blocking;
+
+});
+define('skylark-totaljs-jcomponent/utils/cookies',[
+	"../langx"
+],function(langx){
+
+	function get (name) {
+		name = name.env();
+		var arr = document.cookie.split(';');
+		for (var i = 0; i < arr.length; i++) {
+			var c = arr[i];
+			if (c.charAt(0) === ' ') {
+				c = c.substring(1);
+			}
+			var v = c.split('=');
+			if (v.length > 1 && v[0] === name)
+				return v[1];
+		}
+		return '';
+	}
+	
+	function set(name, value, expire) {
+		var type = typeof(expire);
+		if (type === 'number') {
+			var date = langx.now();//W.NOW;
+			date.setTime(date.getTime() + (expire * 24 * 60 * 60 * 1000));
+			expire = date;
+		} else if (type === 'string') {
+			expire = new Date(Date.now() + expire.parseExpire());
+		}
+		document.cookie = name.env() + '=' + value + '; expires=' + expire.toGMTString() + '; path=/';
+	}
+
+	function rem(name) {
+		set(name.env(), '', -1);
+	}
+
+	return { // W.COOKIES = 
+		get,
+		set,
+		rem
+	};
+
+
+});
+define('skylark-totaljs-jcomponent/utils/env',[
+	"../langx",
+	"../jc",
+],function(langx, jc){
+	var topic = langx.topic;
+
+	var KEY_ENV = 'skylark.vmm.env',
+		REGENV = /(\[.*?\])/gi;
+
+	// The follow code is not used?
+	//M.environment = function(name, version, language, env) {
+	//	M.$localstorage = name;
+	//	M.$version = version || '';
+	//	M.$language = language || '';
+	//	env && ENV(env);
+	//	return M;
+	//};
+
+
+
+	//var environment = MD.environment = {};
+	var vars = {};
+
+	function env (name, value) { // W.ENV
+
+		if (langx.isObject(name)) {
+			name && Object.keys(name).forEach(function(key) {
+				vars[key] = name[key];
+				topic.publish(KEY_ENV, key, name[key]);  // EMIT
+			});
+			return name;
+		}
+
+		if (value !== undefined) {
+			topic.publish(KEY_ENV, name, value); // EMIT
+			//ENV[name] = value;
+			return value;
+		}
+
+		return vars[name];
+	};
+
+
+	/*
+	SP.env = function() {
+		var self = this;
+		return self.replace(REGENV, function(val) {
+			return ENV[val.substring(1, val.length - 1)] || val;
+		});
+	};
+
+	SP.$env = function() {
+		var self = this;
+		var index = this.indexOf('?');
+		return index === -1 ? self.env() : self.substring(0, index).env() + self.substring(index);
+	};
+	*/
+
+	return jc.env = env;
+});
+define('skylark-totaljs-jcomponent/utils/http',[
+	"../jc",
+	"../langx",
+	"./cache"
+],function(jc,langx,topic,cache){
+	/* TODo
+	function remap(path, value) {
+
+		var index = path.replace('-->', '->').indexOf('->');
+
+		if (index !== -1) {
+			value = value[path.substring(0, index).trim()];
+			path = path.substring(index + 3).trim();
+		}
+
+		immSetx(path, value);
+	}
+	*/
+
+	var ajaxconfig = {};
+	var defaults = {
+
+	};
+	defaults.ajaxerrors = false;
+	defaults.pingdata = {};
+	defaults.baseurl = ''; // String or Function
+	defaults.makeurl = null; // Function
+	defaults.delayrepeat = 2000;
+	defaults.jsondate = true;
+	defaults.jsonconverter = {
+		'text json': function(text) {
+			return PARSE(text);
+		}
+	};
+	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
+
+	function parseHeaders(val) {
+		var h = {};
+		val.split('\n').forEach(function(line) {
+			var index = line.indexOf(':');
+			if (index !== -1) {
+				h[line.substring(0, index).toLowerCase()] = line.substring(index + 1).trim();
+			}
+		});
+		return h;
+	}
+
+	function cacherest(method, url, params, value, expire) {
+
+		if (params && !params.version && M.$version)
+			params.version = M.$version;
+
+		if (params && !params.language && M.$language)
+			params.language = M.$language;
+
+		params = langx.stringify(params);
+		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
+		return cache.set(key, value, expire);
+	}
+	
+	function makeurl(url, make) {
+
+		defaults.makeurl && (url = defaults.makeurl(url));
+
+		if (make)
+			return url;
+
+		var builder = [];
+		var en = encodeURIComponent;
+
+		M.$version && builder.push('version=' + en(M.$version));
+		M.$language && builder.push('language=' + en(M.$language));
+
+		if (!builder.length)
+			return url;
+
+		var index = url.indexOf('?');
+		if (index == -1)
+			url += '?';
+		else
+			url += '&';
+
+		return url + builder.join('&');
+	}
+
+	function makeParams(url, values, type) { //W.MAKEPARAMS = 
+
+		var l = location;
+
+		if (typeof(url) === TYPE_O) {
+			type = values;
+			values = url;
+			url = l.pathname + l.search;
+		}
+
+		var query;
+		var index = url.indexOf('?');
+		if (index !== -1) {
+			query = M.parseQuery(url.substring(index + 1));
+			url = url.substring(0, index);
+		} else
+			query = {};
+
+		var keys = Object.keys(values);
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i];
+			query[key] = values[key];
+		}
+
+		var val = $.param(query, type == null || type === true);
+		return url + (val ? '?' + val : '');
+	}
+
+	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
+
+		if (!langx.isNumber(timeout) && progress == null) {
+			progress = timeout;
+			timeout = null;
+		}
+
+		if (!url)
+			url = location.pathname;
+
+		var method = 'POST';
+		var index = url.indexOf(' ');
+		var tmp = null;
+
+		if (index !== -1) {
+			method = url.substring(0, index).toUpperCase();
+		}
+
+		var isCredentials = method.substring(0, 1) === '!';
+		if (isCredentials) {
+			method = method.substring(1);
+		}
+
+		var headers = {};
+		tmp = url.match(/\{.*?\}/g);
+
+		if (tmp) {
+			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
+			tmp = (new Function('return ' + tmp))();
+			if (typeof(tmp) === TYPE_O)
+				headers = tmp;
+		}
+
+		url = url.substring(index).trim().$env();
+
+		if (typeof(callback) === TYPE_N) {
+			timeout = callback;
+			callback = undefined;
+		}
+
+		var output = {};
+		output.url = url;
+		output.process = true;
+		output.error = false;
+		output.upload = true;
+		output.method = method;
+		output.data = data;
+
+		topic.emit('request', output);
+
+		if (output.cancel)
+			return;
+
+		setTimeout(function() {
+
+			var xhr = new XMLHttpRequest();
+
+			if (isCredentials) {
+				xhr.withCredentials = true;
+			}
+
+			xhr.addEventListener('load', function() {
+
+				var self = this;
+				var r = self.responseText;
+				try {
+					r = PARSE(r, defaults.jsondate);
+				} catch (e) {}
+
+				if (progress) {
+					/* TODO
+					if (typeof(progress) === TYPE_S) {
+						remap(progress, 100);
+					} else {
+						progress(100);
+					}
+					*/
+					progress(100);
+				}
+
+				output.response = r;
+				output.status = self.status;
+				output.text = self.statusText;
+				output.error = self.status > 399;
+				output.headers = parseHeaders(self.getAllResponseHeaders());
+
+				topic.emit('response', output);
+
+				if (!output.process || output.cancel)
+					return;
+
+				if (!r && output.error)
+					r = output.response = self.status + ': ' + self.statusText;
+
+				if (!output.error || defaults.ajaxerrors) {
+					typeof(callback) === TYPE_S ? remap(callback.env(), r) : (callback && callback(r, null, output));
+				} else {
+					topic.emit('error', output);
+					output.process && typeof(callback) === TYPE_FN && callback({}, r, output);
+				}
+
+			}, false);
+
+			xhr.upload.onprogress = function(evt) {
+				if (!progress) {
+					return;
+				}
+				var percentage = 0;
+				if (evt.lengthComputable) {
+					percentage = Math.round(evt.loaded * 100 / evt.total);
+				}
+				/* TODO
+				if (langx.isString(progress)) {
+					remap(progress.env(), percentage);
+				} else {
+					progress(percentage, evt.transferSpeed, evt.timeRemaining);
+				}
+				*/
+				progress(percentage, evt.transferSpeed, evt.timeRemaining);
+			};
+
+			xhr.open(method, makeurl(output.url));
+
+			var keys = Object.keys(defaults.headers);
+			for (var i = 0; i < keys.length; i++) {
+				xhr.setRequestHeader(keys[i].env(), defaults.headers[keys[i]].env());
+			}
+
+			if (headers) {
+				var keys = Object.keys(headers);
+				for (var i = 0; i < keys.length; i++) {
+					xhr.setRequestHeader(keys[i], headers[keys[i]]);
+				}
+			}
+
+			xhr.send(data);
+
+		}, timeout || 0);
+
+		return W;
+	}
+
+
+	function importCache(url, expire, target, callback, insert, preparator) { // W.IMPORTCACHE = 
+
+		var w;
+
+		url = url.$env().replace(/<.*?>/, function(text) {
+			w = text.substring(1, text.length - 1).trim();
+			return '';
+		}).trim();
+
+		// unique
+		var first = url.substring(0, 1);
+		var once = url.substring(0, 5).toLowerCase() === 'once ';
+
+		if (langx.isFunction(target)) {
+
+			if (langx.isFunction(callback)) {
+				preparator = callback;
+				insert = true;
+			} else if (typeof(insert) === TYPE_FN) {
+				preparator = insert;
+				insert = true;
+			}
+
+			callback = target;
+			target = 'body';
+		} else if (langx.isFunction(insert)) {
+			preparator = insert;
+			insert = true;
+		}
+
+		if (w) {
+
+			var wf = w.substring(w.length - 2) === '()';
+			if (wf) {
+				w = w.substring(0, w.length - 2);
+			}
+
+			var wo = GET(w);
+			if (wf && langx.isFunction(wo)) {
+				if (wo()) {
+					callback && callback(0);
+					return;
+				}
+			} else if (wo) {
+				callback && callback(0);
+				return;
+			}
+		}
+
+		if (url.substring(0, 2) === '//') {
+			url = location.protocol + url;
+		}
+
+		var index = url.lastIndexOf(' .');
+		var ext = '';
+
+		if (index !== -1) {
+			ext = url.substring(index).trim().toLowerCase();
+			url = url.substring(0, index).trim();
+		}
+
+		if (first === '!' || once) {
+
+			if (once) {
+				url = url.substring(5);
+			} else {
+				url = url.substring(1);
+			}
+
+			if (statics[url]) {
+				if (callback) {
+					if (statics[url] === 2)
+						callback(0);
+					else {
+						langx.wait(function() {
+							return statics[url] === 2;
+						}, function() {
+							callback(0);
+						});
+					}
+				}
+				return W;
+			}
+
+			statics[url] = 1;
+		}
+
+		if (target && target.setPath)
+			target = target.element;
+
+		if (!target) {
+			target = 'body';
+		}
+
+		if (!ext) {
+			index = url.lastIndexOf('?');
+			if (index !== -1) {
+				var index2 = url.lastIndexOf('.', index);
+				if (index2 !== -1) {
+					ext = url.substring(index2, index).toLowerCase();
+				}
+			} else {
+				index = url.lastIndexOf('.');
+				if (index !== -1) {
+					ext = url.substring(index).toLowerCase();
+				}
+			}
+		}
+
+		var d = document;
+		if (ext === '.js') {
+			var scr = d.createElement('script');
+			scr.type = 'text/javascript';
+			scr.async = false;
+			scr.onload = function() {
+				statics[url] = 2;
+				callback && callback(1);
+				setTimeout(compile, 300);//W.jQuery && 
+			};
+			scr.src = makeurl(url, true);
+			d.getElementsByTagName('head')[0].appendChild(scr);
+			topic.emit('import', url, $(scr));
+			return this;
+		}
+
+		if (ext === '.css') {
+			var stl = d.createElement('link');
+			stl.type = 'text/css';
+			stl.rel = 'stylesheet';
+			stl.href = makeurl(url, true);
+			d.getElementsByTagName('head')[0].appendChild(stl);
+			statics[url] = 2;
+			callback && setTimeout(callback, 200, 1);
+			topic.emit('import', url, $(stl));
+			return this;
+		}
+
+		langx.wait(function() {
+			return !!W.jQuery;
+		}, function() {
+
+			statics[url] = 2;
+			var id = 'import' + HASH(url);
+
+			var cb = function(response, code, output) {
+
+				if (!response) {
+					callback && callback(0);
+					return;
+				}
+
+				url = '$import' + url;
+
+				if (preparator)
+					response = preparator(response, output);
+
+				var is = REGCOM.test(response);
+				response = importscripts(importstyles(response, id)).trim();
+				target = $(target);
+
+				if (response) {
+					//caches.current.element = target[0];
+					if (insert === false) {
+						target.html(response);
+					} else {
+						target.append(response);
+					}
+					//caches.current.element = null;
+				}
+
+				setTimeout(function() {
+					// is && compile(response ? target : null);
+					// because of paths
+					is && compile();
+					callback && langx.wait(function() {
+						return C.is == false;
+					}, function() {
+						callback(1);
+					});
+					topic.emit('import', url, target);
+				}, 10);
+			};
+
+			if (expire) {
+				ajaxCache('GET ' + url, null, cb, expire);
+			}else {
+				ajax('GET ' + url, cb);
+			}
+		});
+
+		return W;
+	}
+
+	function import2(url, target, callback, insert, preparator) { //W.IMPORT = M.import = 
+		if (url instanceof Array) {
+
+			if (langx.isFunction(target)) {
+				preparator = insert;
+				insert = callback;
+				callback = target;
+				target = null;
+			}
+
+			url.wait(function(url, next) {
+				importCache(url, null, target, next, insert, preparator);
+			}, function() {
+				callback && callback();
+			});
+		} else {
+			importCache(url, null, target, callback, insert, preparator);
+		}
+
+		return this;
+	}
+
+	/* 
+	function uptodate(period, url, callback, condition) { // W.UPTODATE = 
+
+		if (langx.isFunction(url)) {
+			condition = callback;
+			callback = url;
+			url = '';
+		}
+
+		var dt = new Date().add(period);
+		topic.on('knockknock', function() {
+			if (dt > langx.now()) //W.NOW)
+				return;
+			if (!condition || !condition())
+				return;
+			var id = setTimeout(function() {
+				var l = window.location;
+				if (url)
+					l.href = url.$env();
+				else
+					l.reload(true);
+			}, 5000);
+			callback && callback(id);
+		});
+	}
+	*/
+
+	function ping(url, timeout, execute) { // W.PING = 
+
+		if (navigator.onLine != null && !navigator.onLine)
+			return;
+
+		if (typeof(timeout) === 'boolean') {
+			execute = timeout;
+			timeout = 0;
+		}
+
+		url = url.$env();
+
+		var index = url.indexOf(' ');
+		var method = 'GET';
+
+		if (index !== -1) {
+			method = url.substring(0, index).toUpperCase();
+			url = url.substring(index).trim();
+		}
+
+		var options = {};
+		var data = $.param(defaults.pingdata);
+
+		if (data) {
+			index = url.lastIndexOf('?');
+			if (index === -1)
+				url += '?' + data;
+			else
+				url += '&' + data;
+		}
+
+		options.type = method;
+		options.headers = { 'x-ping': location.pathname, 'x-cookies': navigator.cookieEnabled ? '1' : '0', 'x-referrer': document.referrer };
+
+		options.success = function(r) {
+			if (r) {
+				try {
+					(new Function(r))();
+				} catch (e) {}
+			}
+		};
+
+		execute && $.ajax(makeurl(url), options);
+
+		return setInterval(function() {
+			$.ajax(makeurl(url), options);
+		}, timeout || 30000);
+	}
+
+	function parseQuery(value) { //M.parseQuery = W.READPARAMS = 
+
+		if (!value)
+			value = location.search;
+
+		if (!value)
+			return {};
+
+		var index = value.indexOf('?');
+		if (index !== -1)
+			value = value.substring(index + 1);
+
+		var arr = value.split('&');
+		var obj = {};
+		for (var i = 0, length = arr.length; i < length; i++) {
+			var sub = arr[i].split('=');
+			var key = sub[0];
+			var val = decodeURIComponent((sub[1] || '').replace(/\+/g, '%20'));
+
+			if (!obj[key]) {
+				obj[key] = val;
+				continue;
+			}
+
+			if (!(obj[key] instanceof Array))
+				obj[key] = [obj[key]];
+			obj[key].push(val);
+		}
+		return obj;
+	}
+
+	function configure(name, fn) {  // W.AJAXCONFIG = 
+		ajaxconfig[name] = fn;  
+		return this;
+	}
+
+	function ajax(url, data, callback, timeout) { // W.AJAX = 
+
+		if (typeof(url) === TYPE_FN) {
+			timeout = callback;
+			callback = data;
+			data = url;
+			url = location.pathname;
+		}
+
+		var td = typeof(data);
+		var arg = EMPTYARRAY;
+		var tmp;
+
+		if (!callback && (td === TYPE_FN || td === TYPE_S)) {
+			timeout = callback;
+			callback = data;
+			data = undefined;
+		}
+
+		var index = url.indexOf(' ');
+		if (index === -1)
+			return W;
+
+		var repeat = false;
+
+		url = url.replace(/\srepeat/i, function() {
+			repeat = true;
+			return '';
+		});
+
+		if (repeat)
+			arg = [url, data, callback, timeout];
+
+		var method = url.substring(0, index).toUpperCase();
+		var isCredentials = method.substring(0, 1) === '!';
+		if (isCredentials)
+			method = method.substring(1);
+
+		var headers = {};
+		tmp = url.match(/\{.*?\}/g);
+
+		if (tmp) {
+			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
+			tmp = (new Function('return ' + tmp))();
+			if (typeof(tmp) === TYPE_O)
+				headers = tmp;
+		}
+
+		url = url.substring(index).trim().$env();
+
+		setTimeout(function() {
+
+			if (method === 'GET' && data) {
+				var qs = (typeof(data) === TYPE_S ? data : jQuery.param(data, true));
+				if (qs)
+					url += '?' + qs;
+			}
+
+			var options = {};
+			options.method = method;
+			options.converters = defaults.jsonconverter;
+
+			if (method !== 'GET') {
+				if (typeof(data) === TYPE_S) {
+					options.data = data;
+				} else {
+					options.contentType = 'application/json; charset=utf-8';
+					options.data = STRINGIFY(data);
+				}
+			}
+
+			options.headers = $.extend(headers, defaults.headers);
+
+			if (url.match(/http:\/\/|https:\/\//i)) {
+				options.crossDomain = true;
+				delete options.headers['X-Requested-With'];
+				if (isCredentials)
+					options.xhrFields = { withCredentials: true };
+			} else
+				url = url.ROOT();
+
+			var custom = url.match(/\([a-z0-9\-.,]+\)/i);
+			if (custom) {
+				url = url.replace(custom, '').replace(/\s+/g, '');
+				options.url = url;
+				custom = custom.toString().replace(/\(|\)/g, '').split(',');
+				for (var i = 0; i < custom.length; i++) {
+					var opt = ajaxconfig[custom[i].trim()];
+					opt && opt(options);
+				}
+			}
+
+			if (!options.url)
+				options.url = url;
+
+			//topic.emit('request', options); //TODO
+
+			if (options.cancel)
+				return;
+
+			options.type = options.method;
+			delete options.method;
+
+			var output = {};
+			output.url = options.url;
+			output.process = true;
+			output.error = false;
+			output.upload = false;
+			output.method = method;
+			output.data = data;
+
+			delete options.url;
+
+			options.success = function(r, s, req) {
+				output.response = r;
+				output.status = req.status || 999;
+				output.text = s;
+				output.headers = parseHeaders(req.getAllResponseHeaders());
+				//topic.emit('response', output); TODO
+				if (output.process && !output.cancel) {
+					/* TODO
+					if (typeof(callback) === TYPE_S)
+						remap(callback, output.response);
+					else
+						callback && callback.call(output, output.response, undefined, output);
+					*/
+					callback && callback.call(output, output.response, undefined, output);
+				}
+			};
+
+			options.error = function(req, s) {
+
+				var code = req.status;
+
+				if (repeat && (!code || code === 408 || code === 502 || code === 503 || code === 504 || code === 509)) {
+					// internal error
+					// internet doesn't work
+					setTimeout(function() {
+						arg[0] += ' REPEAT';
+						W.AJAX.apply(M, arg);
+					}, defaults.delayrepeat);
+					return;
+				}
+
+				output.response = req.responseText;
+				output.status = code || 999;
+				output.text = s;
+				output.error = true;
+				output.headers = parseHeaders(req.getAllResponseHeaders());
+				var ct = output.headers['content-type'];
+
+				if (ct && ct.indexOf('/json') !== -1) {
+					try {
+						output.response = PARSE(output.response, defaults.jsondate);
+					} catch (e) {}
+				}
+
+				//topic.emit('response', output); TODO
+
+				if (output.cancel || !output.process)
+					return;
+
+				if (defaults.ajaxerrors) {
+					/* TODO
+					if (typeof(callback) === TYPE_S)
+						remap(callback, output.response);
+					else
+						callback && callback.call(output, output.response, output.status, output);
+					*/
+					callback && callback.call(output, output.response, output.status, output);
+				} else {
+					//topic.emit('error', output); TODO
+					if (langx.isFunction(callback)) 
+					callback.call(output, output.response, output.status, output);
+				}
+			};
+
+			$.ajax(makeurl(output.url), options);
+
+		}, timeout || 0);
+
+		return this;
+	}
+
+	function ajaxCacheReview(url, data, callback, expire, timeout, clear) { //W.AJAXCACHEREVIEW = 
+		return ajaxCache(url, data, callback, expire, timeout, clear, true);
+	}
+
+	function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
+
+
+		if (langx.isFunction(data) || (langx.isString(data) && langx.isString(callback)  && !langx.isString(expire))) {
+			clear = timeout;
+			timeout = expire;
+			expire = callback;
+			callback = data;
+			data = null;
+		}
+
+		if (langx.isBoolean(timeout)) {
+			clear = timeout === true;
+			timeout = 0;
+		}
+
+		var index = url.indexOf(' ');
+		if (index === -1)
+			return W;
+
+		var method = url.substring(0, index).toUpperCase();
+		var uri = url.substring(index).trim().$env();
+
+		setTimeout(function() {
+			var value = clear ? undefined : cacherest(method, uri, data, undefined, expire);
+			if (value !== undefined) {
+
+				var diff = review ? STRINGIFY(value) : null;
+
+				/* TODO
+				if (typeof(callback) === TYPE_S)
+					remap(callback, value);
+				else
+					callback(value, true);
+				*/
+				callback(value, true);
+
+				if (!review)
+					return;
+
+				ajax(url, data, function(r, err) {
+					if (err)
+						r = err;
+					// Is same?
+					if (diff !== STRINGIFY(r)) {
+						cacherest(method, uri, data, r, expire);
+						/* TODO
+						if (typeof(callback) === TYPE_S)
+							remap(callback, r);
+						else
+							callback(r, false, true);
+						*/
+						callback(r, false, true);
+					}
+				});
+				return;
+			}
+
+			ajax(url, data, function(r, err) {
+				if (err)
+					r = err;
+				cacherest(method, uri, data, r, expire);
+				/* TODO
+				if (typeof(callback) === TYPE_S)
+					remap(callback, r);
+				else
+					callback(r, false);
+				*/
+				callback(r, false);
+			});
+		}, timeout || 1);
+
+		return this;
+	}
+
+	return jc.http = {
+		defaults,
+		ajax,
+		ajaxCache,
+		ajaxCacheReview,
+		configure,
+		import2,
+		importCache,
+		makeParams,
+		ping,
+		parseQuery,
+		upload,
+		uptodate
+	};
+
+});
+define('skylark-totaljs-jcomponent/utils/logs',[
+	"../langx"
+],function(langx){
+	var W = langx.hoster.global;
+
+	function warn() { // W.WARN
+		if (W.console) {
+			W.console.warn.apply(W.console, arguments);
+		}
+	};
+	
+	return {
+		warn
+	}
+
+});
+define('skylark-totaljs-jcomponent/utils',[
+	"./jc",
+	"./utils/blocks",
+	"./utils/cache",
+	"./utils/cookies",
+	"./utils/domx",
+	"./utils/env",
+	"./utils/http",
+	"./utils/localStorage",
+	"./utils/logs",
+	"./utils/query"
+],function(jc,blocks,cache,cookies,domx,env,http,localStorage,logs,query){
+	
+	return jc.utils = {
+		blocks : blocks,
+		cache : cache,
+		cookies : cookies,
+		domx : domx,
+		env : env,
+		http : http,
+		localStorage : localStorage,
+		logs : logs,
+		query : query
+	};
 });
 define('skylark-totaljs-jcomponent/views/compose',[
 	"../langx"
@@ -19381,7 +16460,7 @@ define('skylark-totaljs-jcomponent/views/compose',[
 				view.imports[x] = 1;
 				view.importing++;
 
-				M.import(x, function() {
+				view.import(x, function() {
 					view.importing--;
 					view.imports[x] = 2;
 				});
@@ -19394,7 +16473,7 @@ define('skylark-totaljs-jcomponent/views/compose',[
 				delete fallback[name];
 			}
 
-			var obj = new Component(com.name);
+			var obj = new Component(com.name,view);
 			var parent = dom.parentNode;
 
 			while (true) {
@@ -19731,6 +16810,134 @@ define('skylark-totaljs-jcomponent/components/helper',[
 		return scope.$scopedata;
 	}
 
+	function findcomponent(container, selector, callback) {
+
+		var s = (selector ? selector.split(' ') : EMPTYARRAY);
+		var path = '';
+		var name = '';
+		var id = '';
+		var version = '';
+		var index;
+
+		for (var i = 0, length = s.length; i < length; i++) {
+			switch (s[i].substring(0, 1)) {
+				case '*':
+					break;
+				case '.':
+					// path
+					path = s[i].substring(1);
+					break;
+				case '#':
+					// id;
+					id = s[i].substring(1);
+					index = id.indexOf('[');
+					if (index !== -1) {
+						path = id.substring(index + 1, id.length - 1).trim();
+						id = id.substring(0, index);
+					}
+					break;
+				default:
+					// name
+					name = s[i];
+					index = name.indexOf('[');
+
+					if (index !== -1) {
+						path = name.substring(index + 1, name.length - 1).trim();
+						name = name.substring(0, index);
+					}
+
+					index = name.lastIndexOf('@');
+
+					if (index !== -1) {
+						version = name.substring(index + 1);
+						name = name.substring(0, index);
+					}
+
+					break;
+			}
+		}
+
+		var arr = callback ? undefined : [];
+		if (container) {
+			var stop = false;
+			container.find('[data-jc]').each(function() {
+				var com = this.$com;
+
+				if (stop || !com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || (path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path))))))
+					return;
+
+				if (callback) {
+					if (callback(com) === false)
+						stop = true;
+				} else
+					arr.push(com);
+			});
+		} else {
+			for (var i = 0, length = components.length; i < length; i++) { // M.components.length
+				var com = components[i]; // M.components[i]
+				if (!com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || ((path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path)))))))
+					continue;
+
+				if (callback) {
+					if (callback(com) === false) {
+						break;
+					}
+				} else {
+					arr.push(com);
+				}
+			}
+		}
+
+		return arr;
+	}
+
+	function findcontrol2(com, input) {
+
+		if (com.$inputcontrol) {
+			if (com.$inputcontrol % 2 !== 0) {
+				com.$inputcontrol++;
+				return;
+			}
+		}
+
+		var target = input ? input : com.element;
+		findcontrol(target[0], function(el) {
+			if (!el.$com || el.$com !== com) {
+				el.$com = com;
+				com.$inputcontrol = 1;
+			}
+		});
+	}
+
+	function findcontrol(container, onElement, level) {
+
+		var arr = container.childNodes;
+		var sub = [];
+
+		domx.inputable(container) && onElement(container);
+
+		if (level == null) {
+			level = 0;
+		} else {
+			level++;
+		}
+
+		for (var i = 0, length = arr.length; i < length; i++) {
+			var el = arr[i];
+			if (el && el.tagName) {
+				el.childNodes.length && el.tagName !== 'SCRIPT' && el.getAttribute('data-jc') == null && sub.push(el);
+				if (domx.inputable(el) && el.getAttribute('data-jc-bind') != null && onElement(el) === false)
+					return;
+			}
+		}
+
+		for (var i = 0, length = sub.length; i < length; i++) {
+			el = sub[i];
+			if (el && findcontrol(el, onElement, level) === false) {
+				return;
+			}
+		}
+	}
 
 	// find all nested component
 	function nested(el) {
@@ -19909,845 +17116,6 @@ define('skylark-totaljs-jcomponent/views/crawler',[
 	return crawler;
 });
 
-define('skylark-totaljs-jcomponent/utils/http',[
-	"../jc",
-	"../langx",
-	"../topic",
-	"./cache"
-],function(jc,langx,topic,cache){
-	function remap(path, value) {
-
-		var index = path.replace('-->', '->').indexOf('->');
-
-		if (index !== -1) {
-			value = value[path.substring(0, index).trim()];
-			path = path.substring(index + 3).trim();
-		}
-
-		immSetx(path, value);
-	}
-
-	var ajaxconfig = {};
-	var defaults = {
-
-	};
-	defaults.ajaxerrors = false;
-	defaults.pingdata = {};
-	defaults.baseurl = ''; // String or Function
-	defaults.makeurl = null; // Function
-	defaults.delayrepeat = 2000;
-	defaults.jsondate = true;
-	defaults.jsonconverter = {
-		'text json': function(text) {
-			return PARSE(text);
-		}
-	};
-	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
-
-	function parseHeaders(val) {
-		var h = {};
-		val.split('\n').forEach(function(line) {
-			var index = line.indexOf(':');
-			if (index !== -1) {
-				h[line.substring(0, index).toLowerCase()] = line.substring(index + 1).trim();
-			}
-		});
-		return h;
-	}
-
-	function cacherest(method, url, params, value, expire) {
-
-		if (params && !params.version && M.$version)
-			params.version = M.$version;
-
-		if (params && !params.language && M.$language)
-			params.language = M.$language;
-
-		params = langx.stringify(params);
-		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
-		return cache.set(key, value, expire);
-	}
-	
-	function makeurl(url, make) {
-
-		defaults.makeurl && (url = defaults.makeurl(url));
-
-		if (make)
-			return url;
-
-		var builder = [];
-		var en = encodeURIComponent;
-
-		M.$version && builder.push('version=' + en(M.$version));
-		M.$language && builder.push('language=' + en(M.$language));
-
-		if (!builder.length)
-			return url;
-
-		var index = url.indexOf('?');
-		if (index == -1)
-			url += '?';
-		else
-			url += '&';
-
-		return url + builder.join('&');
-	}
-
-	function makeParams(url, values, type) { //W.MAKEPARAMS = 
-
-		var l = location;
-
-		if (typeof(url) === TYPE_O) {
-			type = values;
-			values = url;
-			url = l.pathname + l.search;
-		}
-
-		var query;
-		var index = url.indexOf('?');
-		if (index !== -1) {
-			query = M.parseQuery(url.substring(index + 1));
-			url = url.substring(0, index);
-		} else
-			query = {};
-
-		var keys = Object.keys(values);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			query[key] = values[key];
-		}
-
-		var val = $.param(query, type == null || type === true);
-		return url + (val ? '?' + val : '');
-	}
-
-	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
-
-		if (!langx.isNumber(timeout) && progress == null) {
-			progress = timeout;
-			timeout = null;
-		}
-
-		if (!url)
-			url = location.pathname;
-
-		var method = 'POST';
-		var index = url.indexOf(' ');
-		var tmp = null;
-
-		if (index !== -1) {
-			method = url.substring(0, index).toUpperCase();
-		}
-
-		var isCredentials = method.substring(0, 1) === '!';
-		if (isCredentials) {
-			method = method.substring(1);
-		}
-
-		var headers = {};
-		tmp = url.match(/\{.*?\}/g);
-
-		if (tmp) {
-			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
-			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
-				headers = tmp;
-		}
-
-		url = url.substring(index).trim().$env();
-
-		if (typeof(callback) === TYPE_N) {
-			timeout = callback;
-			callback = undefined;
-		}
-
-		var output = {};
-		output.url = url;
-		output.process = true;
-		output.error = false;
-		output.upload = true;
-		output.method = method;
-		output.data = data;
-
-		topic.emit('request', output);
-
-		if (output.cancel)
-			return;
-
-		setTimeout(function() {
-
-			var xhr = new XMLHttpRequest();
-
-			if (isCredentials) {
-				xhr.withCredentials = true;
-			}
-
-			xhr.addEventListener('load', function() {
-
-				var self = this;
-				var r = self.responseText;
-				try {
-					r = PARSE(r, defaults.jsondate);
-				} catch (e) {}
-
-				if (progress) {
-					if (typeof(progress) === TYPE_S) {
-						remap(progress, 100);
-					} else {
-						progress(100);
-					}
-				}
-
-				output.response = r;
-				output.status = self.status;
-				output.text = self.statusText;
-				output.error = self.status > 399;
-				output.headers = parseHeaders(self.getAllResponseHeaders());
-
-				topic.emit('response', output);
-
-				if (!output.process || output.cancel)
-					return;
-
-				if (!r && output.error)
-					r = output.response = self.status + ': ' + self.statusText;
-
-				if (!output.error || defaults.ajaxerrors) {
-					typeof(callback) === TYPE_S ? remap(callback.env(), r) : (callback && callback(r, null, output));
-				} else {
-					topic.emit('error', output);
-					output.process && typeof(callback) === TYPE_FN && callback({}, r, output);
-				}
-
-			}, false);
-
-			xhr.upload.onprogress = function(evt) {
-				if (!progress) {
-					return;
-				}
-				var percentage = 0;
-				if (evt.lengthComputable) {
-					percentage = Math.round(evt.loaded * 100 / evt.total);
-				}
-				if (langx.isString(progress)) {
-					remap(progress.env(), percentage);
-				} else {
-					progress(percentage, evt.transferSpeed, evt.timeRemaining);
-				}
-			};
-
-			xhr.open(method, makeurl(output.url));
-
-			var keys = Object.keys(defaults.headers);
-			for (var i = 0; i < keys.length; i++) {
-				xhr.setRequestHeader(keys[i].env(), defaults.headers[keys[i]].env());
-			}
-
-			if (headers) {
-				var keys = Object.keys(headers);
-				for (var i = 0; i < keys.length; i++) {
-					xhr.setRequestHeader(keys[i], headers[keys[i]]);
-				}
-			}
-
-			xhr.send(data);
-
-		}, timeout || 0);
-
-		return W;
-	}
-
-
-	function importCache(url, expire, target, callback, insert, preparator) { // W.IMPORTCACHE = 
-
-		var w;
-
-		url = url.$env().replace(/<.*?>/, function(text) {
-			w = text.substring(1, text.length - 1).trim();
-			return '';
-		}).trim();
-
-		// unique
-		var first = url.substring(0, 1);
-		var once = url.substring(0, 5).toLowerCase() === 'once ';
-
-		if (langx.isFunction(target)) {
-
-			if (langx.isFunction(callback)) {
-				preparator = callback;
-				insert = true;
-			} else if (typeof(insert) === TYPE_FN) {
-				preparator = insert;
-				insert = true;
-			}
-
-			callback = target;
-			target = 'body';
-		} else if (langx.isFunction(insert)) {
-			preparator = insert;
-			insert = true;
-		}
-
-		if (w) {
-
-			var wf = w.substring(w.length - 2) === '()';
-			if (wf) {
-				w = w.substring(0, w.length - 2);
-			}
-
-			var wo = GET(w);
-			if (wf && langx.isFunction(wo)) {
-				if (wo()) {
-					callback && callback(0);
-					return;
-				}
-			} else if (wo) {
-				callback && callback(0);
-				return;
-			}
-		}
-
-		if (url.substring(0, 2) === '//') {
-			url = location.protocol + url;
-		}
-
-		var index = url.lastIndexOf(' .');
-		var ext = '';
-
-		if (index !== -1) {
-			ext = url.substring(index).trim().toLowerCase();
-			url = url.substring(0, index).trim();
-		}
-
-		if (first === '!' || once) {
-
-			if (once) {
-				url = url.substring(5);
-			} else {
-				url = url.substring(1);
-			}
-
-			if (statics[url]) {
-				if (callback) {
-					if (statics[url] === 2)
-						callback(0);
-					else {
-						langx.wait(function() {
-							return statics[url] === 2;
-						}, function() {
-							callback(0);
-						});
-					}
-				}
-				return W;
-			}
-
-			statics[url] = 1;
-		}
-
-		if (target && target.setPath)
-			target = target.element;
-
-		if (!target) {
-			target = 'body';
-		}
-
-		if (!ext) {
-			index = url.lastIndexOf('?');
-			if (index !== -1) {
-				var index2 = url.lastIndexOf('.', index);
-				if (index2 !== -1) {
-					ext = url.substring(index2, index).toLowerCase();
-				}
-			} else {
-				index = url.lastIndexOf('.');
-				if (index !== -1) {
-					ext = url.substring(index).toLowerCase();
-				}
-			}
-		}
-
-		var d = document;
-		if (ext === '.js') {
-			var scr = d.createElement('script');
-			scr.type = 'text/javascript';
-			scr.async = false;
-			scr.onload = function() {
-				statics[url] = 2;
-				callback && callback(1);
-				setTimeout(compile, 300);//W.jQuery && 
-			};
-			scr.src = makeurl(url, true);
-			d.getElementsByTagName('head')[0].appendChild(scr);
-			topic.emit('import', url, $(scr));
-			return this;
-		}
-
-		if (ext === '.css') {
-			var stl = d.createElement('link');
-			stl.type = 'text/css';
-			stl.rel = 'stylesheet';
-			stl.href = makeurl(url, true);
-			d.getElementsByTagName('head')[0].appendChild(stl);
-			statics[url] = 2;
-			callback && setTimeout(callback, 200, 1);
-			topic.emit('import', url, $(stl));
-			return this;
-		}
-
-		langx.wait(function() {
-			return !!W.jQuery;
-		}, function() {
-
-			statics[url] = 2;
-			var id = 'import' + HASH(url);
-
-			var cb = function(response, code, output) {
-
-				if (!response) {
-					callback && callback(0);
-					return;
-				}
-
-				url = '$import' + url;
-
-				if (preparator)
-					response = preparator(response, output);
-
-				var is = REGCOM.test(response);
-				response = importscripts(importstyles(response, id)).trim();
-				target = $(target);
-
-				if (response) {
-					//caches.current.element = target[0];
-					if (insert === false) {
-						target.html(response);
-					} else {
-						target.append(response);
-					}
-					//caches.current.element = null;
-				}
-
-				setTimeout(function() {
-					// is && compile(response ? target : null);
-					// because of paths
-					is && compile();
-					callback && langx.wait(function() {
-						return C.is == false;
-					}, function() {
-						callback(1);
-					});
-					topic.emit('import', url, target);
-				}, 10);
-			};
-
-			if (expire) {
-				ajaxCache('GET ' + url, null, cb, expire);
-			}else {
-				ajax('GET ' + url, cb);
-			}
-		});
-
-		return W;
-	}
-
-	function import2(url, target, callback, insert, preparator) { //W.IMPORT = M.import = 
-		if (url instanceof Array) {
-
-			if (langx.isFunction(target)) {
-				preparator = insert;
-				insert = callback;
-				callback = target;
-				target = null;
-			}
-
-			url.wait(function(url, next) {
-				importCache(url, null, target, next, insert, preparator);
-			}, function() {
-				callback && callback();
-			});
-		} else {
-			importCache(url, null, target, callback, insert, preparator);
-		}
-
-		return this;
-	}
-
-	function uptodate(period, url, callback, condition) { // W.UPTODATE = 
-
-		if (langx.isFunction(url)) {
-			condition = callback;
-			callback = url;
-			url = '';
-		}
-
-		var dt = new Date().add(period);
-		topic.on('knockknock', function() {
-			if (dt > langx.now()) //W.NOW)
-				return;
-			if (!condition || !condition())
-				return;
-			var id = setTimeout(function() {
-				var l = window.location;
-				if (url)
-					l.href = url.$env();
-				else
-					l.reload(true);
-			}, 5000);
-			callback && callback(id);
-		});
-	}
-
-	function ping(url, timeout, execute) { // W.PING = 
-
-		if (navigator.onLine != null && !navigator.onLine)
-			return;
-
-		if (typeof(timeout) === 'boolean') {
-			execute = timeout;
-			timeout = 0;
-		}
-
-		url = url.$env();
-
-		var index = url.indexOf(' ');
-		var method = 'GET';
-
-		if (index !== -1) {
-			method = url.substring(0, index).toUpperCase();
-			url = url.substring(index).trim();
-		}
-
-		var options = {};
-		var data = $.param(defaults.pingdata);
-
-		if (data) {
-			index = url.lastIndexOf('?');
-			if (index === -1)
-				url += '?' + data;
-			else
-				url += '&' + data;
-		}
-
-		options.type = method;
-		options.headers = { 'x-ping': location.pathname, 'x-cookies': navigator.cookieEnabled ? '1' : '0', 'x-referrer': document.referrer };
-
-		options.success = function(r) {
-			if (r) {
-				try {
-					(new Function(r))();
-				} catch (e) {}
-			}
-		};
-
-		execute && $.ajax(makeurl(url), options);
-
-		return setInterval(function() {
-			$.ajax(makeurl(url), options);
-		}, timeout || 30000);
-	}
-
-	function parseQuery(value) { //M.parseQuery = W.READPARAMS = 
-
-		if (!value)
-			value = location.search;
-
-		if (!value)
-			return {};
-
-		var index = value.indexOf('?');
-		if (index !== -1)
-			value = value.substring(index + 1);
-
-		var arr = value.split('&');
-		var obj = {};
-		for (var i = 0, length = arr.length; i < length; i++) {
-			var sub = arr[i].split('=');
-			var key = sub[0];
-			var val = decodeURIComponent((sub[1] || '').replace(/\+/g, '%20'));
-
-			if (!obj[key]) {
-				obj[key] = val;
-				continue;
-			}
-
-			if (!(obj[key] instanceof Array))
-				obj[key] = [obj[key]];
-			obj[key].push(val);
-		}
-		return obj;
-	}
-
-	function configure(name, fn) {  // W.AJAXCONFIG = 
-		ajaxconfig[name] = fn;  
-		return this;
-	}
-
-	function ajax(url, data, callback, timeout) { // W.AJAX = 
-
-		if (typeof(url) === TYPE_FN) {
-			timeout = callback;
-			callback = data;
-			data = url;
-			url = location.pathname;
-		}
-
-		var td = typeof(data);
-		var arg = EMPTYARRAY;
-		var tmp;
-
-		if (!callback && (td === TYPE_FN || td === TYPE_S)) {
-			timeout = callback;
-			callback = data;
-			data = undefined;
-		}
-
-		var index = url.indexOf(' ');
-		if (index === -1)
-			return W;
-
-		var repeat = false;
-
-		url = url.replace(/\srepeat/i, function() {
-			repeat = true;
-			return '';
-		});
-
-		if (repeat)
-			arg = [url, data, callback, timeout];
-
-		var method = url.substring(0, index).toUpperCase();
-		var isCredentials = method.substring(0, 1) === '!';
-		if (isCredentials)
-			method = method.substring(1);
-
-		var headers = {};
-		tmp = url.match(/\{.*?\}/g);
-
-		if (tmp) {
-			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
-			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
-				headers = tmp;
-		}
-
-		url = url.substring(index).trim().$env();
-
-		setTimeout(function() {
-
-			if (method === 'GET' && data) {
-				var qs = (typeof(data) === TYPE_S ? data : jQuery.param(data, true));
-				if (qs)
-					url += '?' + qs;
-			}
-
-			var options = {};
-			options.method = method;
-			options.converters = defaults.jsonconverter;
-
-			if (method !== 'GET') {
-				if (typeof(data) === TYPE_S) {
-					options.data = data;
-				} else {
-					options.contentType = 'application/json; charset=utf-8';
-					options.data = STRINGIFY(data);
-				}
-			}
-
-			options.headers = $.extend(headers, defaults.headers);
-
-			if (url.match(/http:\/\/|https:\/\//i)) {
-				options.crossDomain = true;
-				delete options.headers['X-Requested-With'];
-				if (isCredentials)
-					options.xhrFields = { withCredentials: true };
-			} else
-				url = url.ROOT();
-
-			var custom = url.match(/\([a-z0-9\-.,]+\)/i);
-			if (custom) {
-				url = url.replace(custom, '').replace(/\s+/g, '');
-				options.url = url;
-				custom = custom.toString().replace(/\(|\)/g, '').split(',');
-				for (var i = 0; i < custom.length; i++) {
-					var opt = ajaxconfig[custom[i].trim()];
-					opt && opt(options);
-				}
-			}
-
-			if (!options.url)
-				options.url = url;
-
-			topic.emit('request', options);
-
-			if (options.cancel)
-				return;
-
-			options.type = options.method;
-			delete options.method;
-
-			var output = {};
-			output.url = options.url;
-			output.process = true;
-			output.error = false;
-			output.upload = false;
-			output.method = method;
-			output.data = data;
-
-			delete options.url;
-
-			options.success = function(r, s, req) {
-				output.response = r;
-				output.status = req.status || 999;
-				output.text = s;
-				output.headers = parseHeaders(req.getAllResponseHeaders());
-				topic.emit('response', output);
-				if (output.process && !output.cancel) {
-					if (typeof(callback) === TYPE_S)
-						remap(callback, output.response);
-					else
-						callback && callback.call(output, output.response, undefined, output);
-				}
-			};
-
-			options.error = function(req, s) {
-
-				var code = req.status;
-
-				if (repeat && (!code || code === 408 || code === 502 || code === 503 || code === 504 || code === 509)) {
-					// internal error
-					// internet doesn't work
-					setTimeout(function() {
-						arg[0] += ' REPEAT';
-						W.AJAX.apply(M, arg);
-					}, defaults.delayrepeat);
-					return;
-				}
-
-				output.response = req.responseText;
-				output.status = code || 999;
-				output.text = s;
-				output.error = true;
-				output.headers = parseHeaders(req.getAllResponseHeaders());
-				var ct = output.headers['content-type'];
-
-				if (ct && ct.indexOf('/json') !== -1) {
-					try {
-						output.response = PARSE(output.response, defaults.jsondate);
-					} catch (e) {}
-				}
-
-				topic.emit('response', output);
-
-				if (output.cancel || !output.process)
-					return;
-
-				if (defaults.ajaxerrors) {
-					if (typeof(callback) === TYPE_S)
-						remap(callback, output.response);
-					else
-						callback && callback.call(output, output.response, output.status, output);
-				} else {
-					topic.emit('error', output);
-					typeof(callback) === TYPE_FN && callback.call(output, output.response, output.status, output);
-				}
-			};
-
-			$.ajax(makeurl(output.url), options);
-
-		}, timeout || 0);
-
-		return this;
-	}
-
-	function ajaxCacheReview(url, data, callback, expire, timeout, clear) { //W.AJAXCACHEREVIEW = 
-		return ajaxCache(url, data, callback, expire, timeout, clear, true);
-	}
-
-	function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
-
-		var tdata = typeof(data);
-
-		if (tdata === TYPE_FN || (tdata === TYPE_S && typeof(callback) === TYPE_S && typeof(expire) !== TYPE_S)) {
-			clear = timeout;
-			timeout = expire;
-			expire = callback;
-			callback = data;
-			data = null;
-		}
-
-		if (typeof(timeout) === 'boolean') {
-			clear = timeout === true;
-			timeout = 0;
-		}
-
-		var index = url.indexOf(' ');
-		if (index === -1)
-			return W;
-
-		var method = url.substring(0, index).toUpperCase();
-		var uri = url.substring(index).trim().$env();
-
-		setTimeout(function() {
-			var value = clear ? undefined : cacherest(method, uri, data, undefined, expire);
-			if (value !== undefined) {
-
-				var diff = review ? STRINGIFY(value) : null;
-
-				if (typeof(callback) === TYPE_S)
-					remap(callback, value);
-				else
-					callback(value, true);
-
-				if (!review)
-					return;
-
-				ajax(url, data, function(r, err) {
-					if (err)
-						r = err;
-					// Is same?
-					if (diff !== STRINGIFY(r)) {
-						cacherest(method, uri, data, r, expire);
-						if (typeof(callback) === TYPE_S)
-							remap(callback, r);
-						else
-							callback(r, false, true);
-					}
-				});
-				return;
-			}
-
-			ajax(url, data, function(r, err) {
-				if (err)
-					r = err;
-				cacherest(method, uri, data, r, expire);
-				if (typeof(callback) === TYPE_S)
-					remap(callback, r);
-				else
-					callback(r, false);
-			});
-		}, timeout || 1);
-
-		return this;
-	}
-
-	return jc.http = {
-		defaults,
-		ajax,
-		ajaxCache,
-		ajaxCacheReview,
-		configure,
-		import2,
-		importCache,
-		makeParams,
-		ping,
-		parseQuery,
-		upload,
-		uptodate
-	};
-
-});
 define('skylark-totaljs-jcomponent/views/download',[
 	"../langx",
 	"../utils/query",
@@ -20928,7 +17296,18 @@ define('skylark-totaljs-jcomponent/views/View',[
 		}, 50);
 	}
 
-	var View = Evented.inherit({
+	function keypressdelay(self) {
+		var com = self.$com;
+		// Reset timeout
+		self.$jctimeout = 0;
+		// It's not dirty
+		com.dirty(false, true);
+		// Binds a value
+		com.getter(self.value, true);
+	}
+
+
+	var View = langx.Evented.inherit({
 	    options : {
 	      elmComAttrNames: {
 	        base : "data-jc",
@@ -20939,7 +17318,7 @@ define('skylark-totaljs-jcomponent/views/View',[
 	      }
 	    },
 
-		_construct : function(options) {
+		_construct : function(elm,options) {
 
 			this.is = false;
 			this.recompile = false;
@@ -20948,6 +17327,8 @@ define('skylark-totaljs-jcomponent/views/View',[
 			this.init = [];
 			this.imports = {};
 			this.ready = [];
+
+			this.storer = storing(this);
 		},
 
 		attrcom : function(el) {
@@ -21030,9 +17411,176 @@ define('skylark-totaljs-jcomponent/views/View',[
 					return al > bl ? - 1 : al === bl ? LCOMPARER(a.path, b.path) : 1;
 				});
 			}, 200);
+		},
+
+		start : function() {
+			var $el = $(this.elm);
+			$(document).ready(function() {
+
+				if ($ready) {
+					clearTimeout($ready);
+					load();
+				}
+
+				$el.on('input', 'input[data-jc-bind],textarea[data-jc-bind]', function() {
+
+					// realtime binding
+					var self = this;
+					var com = self.$com;
+
+					if (!com || com.$removed || !com.getter || self.$jckeypress === false) {
+						return;
+					}
+
+					self.$jcevent = 2;
+
+					if (self.$jckeypress === undefined) {
+						var tmp = attrcom(self, 'keypress');
+						if (tmp)
+							self.$jckeypress = tmp === 'true';
+						else if (com.config.$realtime != null)
+							self.$jckeypress = com.config.$realtime === true;
+						else if (com.config.$binding)
+							self.$jckeypress = com.config.$binding === 1;
+						else
+							self.$jckeypress = MD.keypress;
+						if (self.$jckeypress === false)
+							return;
+					}
+
+					if (self.$jcdelay === undefined) {
+						self.$jcdelay = +(attrcom(self, 'keypress-delay') || com.config.$delay || MD.delay);
+					}
+
+					if (self.$jconly === undefined) {
+						self.$jconly = attrcom(self, 'keypress-only') === 'true' || com.config.$keypress === true || com.config.$binding === 2;
+					}
+
+					if (self.$jctimeout) {
+						clearTimeout(self.$jctimeout);	
+					} 
+					self.$jctimeout = setTimeout(keypressdelay, self.$jcdelay, self);
+				});
+
+				$el.on('focus blur', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function(e) {
+
+					var self = this;
+					var com = self.$com;
+
+					if (!com || com.$removed || !com.getter)
+						return;
+
+					if (e.type === 'focusin')
+						self.$jcevent = 1;
+					else if (self.$jcevent === 1) {
+						com.dirty(false, true);
+						com.getter(self.value, 3);
+					} else if (self.$jcskip) {
+						self.$jcskip = false;
+					} else {
+						// formatter
+						var tmp = com.$skip;
+						if (tmp)
+							com.$skip = false;
+						com.setter(com.get(), com.path, 2);
+						if (tmp) {
+							com.$skip = tmp;
+						}
+					}
+				});
+
+				$el.on('change', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function() {
+
+					var self = this;
+					var com = self.$com;
+
+					if (self.$jconly || !com || com.$removed || !com.getter)
+						return;
+
+					if (self.$jckeypress === false) {
+						// bind + validate
+						self.$jcskip = true;
+						com.getter(self.value, false);
+						return;
+					}
+
+					switch (self.tagName) {
+						case 'SELECT':
+							var sel = self[self.selectedIndex];
+							self.$jcevent = 2;
+							com.dirty(false, true);
+							com.getter(sel.value, false);
+							return;
+						case 'INPUT':
+							if (self.type === 'checkbox' || self.type === 'radio') {
+								self.$jcevent = 2;
+								com.dirty(false, true);
+								com.getter(self.checked, false);
+								return;
+							}
+							break;
+					}
+
+					if (self.$jctimeout) {
+						com.dirty(false, true);
+						com.getter(self.value, true);
+						clearTimeout(self.$jctimeout);
+						self.$jctimeout = 0;
+					} else {
+						self.$jcskip = true;
+						com.setter && com.setterX(com.get(), self.path, 2);
+					}
+				});
+
+				setTimeout(compile, 2);
+				$domready = true;
+			});
+
+		},
+
+		end : function() {
+
 		}
 
 	});
+
+	[
+		"cache",
+		"can",
+		"change",
+		"changed",
+		"create",
+		"default",
+		"disabled",
+		"errors",
+		"evaluate",
+		"exec",
+		"exec2",
+		"extend",
+		"format",
+		"get",
+		"inc",
+		"invalid",
+		"make",
+		"modify",
+		"modified",
+		"parser",
+		"push",
+		"reset",
+		"rewrite",
+		"set",
+		"set2",
+ 		"setx",
+ 		"skip",
+ 		"update",
+ 		"used",
+ 		"validate"
+ 	].forEach(function(name){
+ 		View.prototype[name] = function(){
+ 			return this.storer[name].apply(this,arguments);
+ 		}
+ 	});
+
 
 	return View;
 });
@@ -21044,106 +17592,33 @@ define('skylark-totaljs-jcomponent/views',[
 		"View" : View
 	};
 });
-define('skylark-totaljs-jcomponent/utils/env',[
-	"../jc",
-	"../topic",
-	"../defaults"
-],function(jc,topic, defaults){
-	var MD = defaults,
-		KEY_ENV = 'environment',
-		REGENV = /(\[.*?\])/gi;
+define('skylark-totaljs-jcomponent/defaults',[
+	"./jc"
+],function(jc){
+	var defaults =  {
+		delay : 555,
+		delaywatcher : 555,
+		delaybinder : 200,
+		localstorage : true,
+		version : '',
+		importcache : 'session',
+		root : '' , // String or Function
+		keypress : true,
+		jsoncompress : false,
+		dateformat : null
 
-
-
-	var environment = MD.environment = {};
-
-	function env (name, value) { // W.ENV
-
-		if (langx.isObject(name)) {
-			name && Object.keys(name).forEach(function(key) {
-				environment[key] = name[key];
-				EMIT(KEY_ENV, key, name[key]);
-			});
-			return name;
-		}
-
-		if (value !== undefined) {
-			EMIT(KEY_ENV, name, value);
-			ENV[name] = value;
-			return value;
-		}
-
-		return environment[name];
 	};
 
-	SP.env = function() {
-		var self = this;
-		return self.replace(REGENV, function(val) {
-			return ENV[val.substring(1, val.length - 1)] || val;
-		});
-	};
-
-	SP.$env = function() {
-		var self = this;
-		var index = this.indexOf('?');
-		return index === -1 ? self.env() : self.substring(0, index).env() + self.substring(index);
-	};
-
-
-	return jc.env = env;
-});
-define('skylark-totaljs-jcomponent/utils/logs',[],function(){
-
-	function warn() { // W.WARN
-		Window.console && Window.console.warn.apply(W.console, arguments);
-	};
-	
-	return {
-		warn
-	}
-
-});
-define('skylark-totaljs-jcomponent/utils/cookies',[
-	"../langx"
-],function(langx){
-
-	function get (name) {
-		name = name.env();
-		var arr = document.cookie.split(';');
-		for (var i = 0; i < arr.length; i++) {
-			var c = arr[i];
-			if (c.charAt(0) === ' ')
-				c = c.substring(1);
-			var v = c.split('=');
-			if (v.length > 1 && v[0] === name)
-				return v[1];
-		}
-		return '';
+	try {
+		var pmk = 'jc.test';
+		Window.localStorage.setItem(pmk, '1');
+		defaults.isPRIVATEMODE = Window.localStorage.getItem(pmk) !== '1'; //W.isPRIVATEMODE
+		Window.localStorage.removeItem(pmk);
+	} catch (e) {
+		defaults.isPRIVATEMODE = true; //W.isPRIVATEMODE
 	}
 	
-	function set(name, value, expire) {
-		var type = typeof(expire);
-		if (type === 'number') {
-			var date = langx.now();//W.NOW;
-			date.setTime(date.getTime() + (expire * 24 * 60 * 60 * 1000));
-			expire = date;
-		} else if (type === 'string') {
-			expire = new Date(Date.now() + expire.parseExpire());
-		}
-		document.cookie = name.env() + '=' + value + '; expires=' + expire.toGMTString() + '; path=/';
-	}
-
-	function rem(name) {
-		set(name.env(), '', -1);
-	}
-
-	return { // W.COOKIES = 
-		get,
-		set,
-		rem
-	};
-
-
+	return jc.defaults = defaults;
 });
 define('skylark-totaljs-jcomponent/globals',[
 	"./jc",
@@ -21151,18 +17626,33 @@ define('skylark-totaljs-jcomponent/globals',[
 	"./utils/env",
 	"./langx",
 	"./utils/logs",
-	"./topic",
 	"./utils/cookies",
 	"./utils/cache",
 	"./plugins",
 	"./components",
 	"./binding",
+	"./stores",
 	"./views"
-],function(jc, defaults, env,langx,logs,topic,cookies,caches,storages,transforms,plugins,Component,binders,views,compiler,schedulers,paths){
+],function(jc, defaults, env,langx,logs,cookies,caches,plugins,Components,binding,stores,views){
 
 	var M = jc,
 		W = Window;
 
+	var gs = new stores.Store({
+		data : W
+	});
+
+	var gv = new views.View(document.body,{
+		store : gs
+	});
+
+	var M = totaljs.jc = {
+		isPRIVATEMODE : false,
+		isMOBILE : /Mobi/.test(navigator.userAgent),
+		isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
+		isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
+		isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
+	}; // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	//jc
 	langx.each({
@@ -21174,7 +17664,7 @@ define('skylark-totaljs-jcomponent/globals',[
 		"MONTHS" : "months",
 		"DAYS" : "days"
 	},function(name1,name2){
-		Object.defineProperty(this, name1, {
+		Object.defineProperty(W, name1, {
 		    get() {
 		      return jc[name2];
 		    },
@@ -21221,16 +17711,9 @@ define('skylark-totaljs-jcomponent/globals',[
 	langx.mixin(W,{
 		MEDIAQUERY : domx.watchMedia,
 		SCROLLBARWIDTH : domx.scrollbarWidth,
-		WIDTH : domx.width,
+		WIDTH : domx.mediaWidth,
 		CSS : domx.style,
 		STYLE: domx.style
-	});
-
-	// topic
-	langx.mixin(W,{
-		EMIT: topic.emit,
-		OFF: topic.off,
-		ON: topic.on
 	});
 
 
@@ -21299,35 +17782,11 @@ define('skylark-totaljs-jcomponent/globals',[
 		UNWATCH : paths.unwatch,
 		WATCH : paths.watch,
 
-		GET: paths.getx,
-		GETR: paths.getr,
-
-		SET: paths.setx,
-		SET2: paths.setx2,
-		SETR: paths.setr,
-
-		TOGGLE: paths.toggle,
-		TOGGLE2: paths.toggle2,
-
-		INC: paths.inc,
-		INC2: paths.inc2,
-
-		EXTEND: paths.extend,
-		EXTEND2: paths.extend2,
 
 		MODIFY: paths.modify,
 		MODIFIED : paths.modified,
 
-		PUSH : paths.push,
-		PUSH2 : paths.push2,
-
-		UPDATE : paths.update,
-		UPDATE2 : paths.update2,
-
-		BIND: paths.bind,
 		CACHEPATH : paths.cache,
-		CREATE: paths.create,
-		DEFAULT : paths.defaultValue,
 		ERRORS : paths.errors,
 		EVALUATE : parsers.evaluate,
 		MAKE: paths.make,
@@ -21350,27 +17809,203 @@ define('skylark-totaljs-jcomponent/globals',[
 		BLOCKED : compiler.block
 	});
 
+
+//-----------------
+	//plugins
+
+	langx.mixin(W,{
+		PLUGINS : plugins.registry
+	});
+
+	W.VBIND = binders.vbind,
+
+	W.BLOCKED  = blocking.blocked;
+	
+	W.CLEARCACHE = function clearCache() { // 
+		if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
+			var rem = localStorage.removeItem;
+			var k = $localstorage; //M.$localstorage;
+			rem(k); 
+			rem(k + '.cache');
+			rem(k + '.blocked');
+		}
+		return this;
+	};
+
+	W.CHANGE = function (path, value) {
+		return gv.change(path.value);
+	};
+
+	W.CHANGED = function(path) {
+		return gv.change(path);
+	};
+
 	W.COMPILE = function(container) {
 		clearTimeout($recompile);
 		return compiler.compile(container);
 	};
 
-	var $recompile;
+	W.COMPONENT = components.register;
 
-	W.RECOMPILE = function () { 
-		$recompile && clearTimeout($recompile);
-		$recompile = setTimeout(function() {
-			COMPILE();
-			$recompile = null;
-		}, 700);
+	W.COMPONENT_CONFIG = components.configer;
+
+	W.COMPONENT_EXTEND = components.extend;
+
+	W.CREATE = function(path) {
+		return gv.create(path);
+	}
+
+
+   /**
+   * Sets default values for all declared components listen on the path.
+   * All components need to have declared data-jc-value="VALUE" attribute. 
+   * @param  {String} path 
+   * @param  {Number} delay Optional, default: 0 
+   * @param  {Boolean} reset Optional, default: true
+   */
+	W.DEFAULT = function (path, timeout, reset) { //
+		var arr = path.split(REGMETA);
+		if (arr.length > 1) {
+			var def = arr[1];
+			path = arr[0];
+			var index = path.indexOf('.*');
+			if (index !== -1)　{
+				path = path.substring(0, index);
+			}
+			SET(path, new Function('return ' + def)(), timeout > 10 ? timeout : 3, timeout > 10 ? 3 : null);
+		}
+		return gv.default(arr[0], timeout, null, reset);
+	}
+
+	W.EMIT = function(name) {
+		return gv.pathing.emit.apply(gv.pathing,arguments);
 	};
+
+   /**
+   * Pushs a new item into the Array according to the path.
+   * @param  {String} path 
+   * @param  {Object|Array} value.
+   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+   * @param {Boolean} reset Optional
+   */
+	W.EXTEND = function extend(path, value, timeout, reset) {
+		var t = typeof(timeout);
+		if (t === 'boolean') {
+			return gv.extend(path, value, timeout);
+		}
+		if (!timeout || timeout < 10 || t !== 'number') {
+			return gv.extend(path, value, timeout);
+		}
+		setTimeout(function() {
+			gv.extend(path, value, reset);
+		}, timeout);
+		return W; 
+	}
+
+   /**
+   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
+   * @param  {String} path 
+   * @param  {Object} value 
+   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+   */
+	W.EXTEND2 = function (path, value, type) {
+		W.EXTEND(path, value, type);
+		CHANGE(path);
+		return W;
+	}
+
 
 	W.FREE = function(timeout) {
 		langx.setTimeout2('$clean', cleaner, timeout || 10);
-		return this;
+		return W;
 	};
 
+   /**
+   * Reads a value according to the path.
+   * @param  {String} path 
+   */
+	W.GET = function (path, scope) {
+		path = pathmaker(path);
+		if (scope === true) {
+			scope = null;
+			RESET(path, true);
+		}
+		return gv.get(path, scope); 
+	}
 
+   /**
+   * Reads value and resets all components according to the path.
+   * @param  {String} path 
+   */
+	W.GETR = function getr(path) { 
+		return GET(path, true);
+	}
+
+   /**
+   * Pushs a new item into the Array according to the path.
+   * @param  {String} path 
+   * @param  {Object|Array} value.
+   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+   * @param {Boolean} reset Optional
+   */
+	W.INC = function (path, value, timeout, reset) {
+
+		if (value == null) {
+			value = 1;
+		}
+
+		var t = typeof(timeout);
+		if (t === 'boolean') {
+			return gv.inc(path, value, timeout);
+		}
+		if (!timeout || timeout < 10 || t !== 'number') {
+			return gv.inc(path, value, timeout);
+		}
+		setTimeout(function() {
+			gv.inc(path, value, reset);
+		}, timeout);
+		return W;
+	}
+
+  /**
+   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
+   * @param  {String} path 
+   * @param  {Object} value 
+   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+   */
+	W.INC2 = function (path, value, type) {
+		INC(path, value, type);
+		CHANGE(path);
+		return W;
+	}	
+
+	W.MODIFIED = function(path) {
+		return gv.modified(path);
+	};
+
+	W.NOTMODIFIED = function(path, value, fields) {
+
+	};	
+
+   /**
+   * Performs SET() and CHANGE() together.
+   * @param  {String} path 
+   * @param  {Object|Array} value.
+   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+   * @param {Boolean} reset Optional
+   */
+	W.MODIFY =function (path, value, timeout) {
+		gv.modify(path,value,timeout);
+		return W;
+	};
+
+	W.OFF = function(name, path, fn) {
+		return gv.pathing.off(name,path,fn);
+	};	
+
+	W.ON = function(name, path, fn, init, context) {
+		return gv.pathing.on(name,path,fn,init,context);
+	};
    /**
     * creates an object with more readable properties.
     * @param  {String} obj  
@@ -21382,27 +18017,148 @@ define('skylark-totaljs-jcomponent/globals',[
 			obj = {};
 		}
 		fn.call(obj, function(path, value) {
-			return $set2(obj, path, value);
+			return gv.set2(obj, path, value);
 		});
 		return obj;
 	};
 
-	//- binders
 
-	langx.mixin(W,{
-		VBIND : binders.vbind,
-		VBINDARRAY: binders.vbindArray
-	});
+   /**
+   * Pushs a new item into the Array according to the path.
+   * @param  {String} path 
+   * @param  {Object|Array} value.
+   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+   * @param {Boolean} reset Optional
+   */
+	W.PUSH =  function (path, value, timeout, reset) {
+		var t = typeof(timeout);
+		if (t === 'boolean') {
+			return gv.push(path, value, timeout);
+		}
+		if (!timeout || timeout < 10 || t !== 'number') {
+			return gv.push(path, value, timeout);
+		}
+		setTimeout(function() {
+			gv.push(path, value, reset);
+		}, timeout);
+		return W;
+	};
 
-//-----------------
-	//plugins
+   /**
+   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
+   * @param  {String} path 
+   * @param  {Object} value 
+   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+   */
+	W.PUSH2 = function (path, value, type) {
+		PUSH(path, value, type);
+		CHANGE(path);
+		return W;
+	};
 
-	langx.mixin(W,{
-		PLUGINS : plugins.registry
-	});
 
+	var $recompile;
 
+	W.RECOMPILE = function () { 
+		$recompile && clearTimeout($recompile);
+		$recompile = setTimeout(function() {
+			COMPILE();
+			$recompile = null;
+		}, 700);
+	};
 
+	W.REMOVECACHE = cache.remove;
+
+   /**
+   * Sets a new value according to the path..
+   * @param  {String} path 
+   * @param  {Object} value.
+   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
+   * @param {Boolean} reset Optional  default: false
+   */
+	W.SET = function (path, value, timeout, reset) { 
+		var t = typeof(timeout);
+		if (t === 'boolean') {
+			return gv.setx(path, value, timeout);
+		}
+		if (!timeout || timeout < 10 || t !== 'number') {
+			return gv.setx(path, value, timeout);
+		}
+		setTimeout(function() {
+			gv.setx(path, value, reset);
+		}, timeout);
+		return W;
+	};
+
+   /**
+   * Sets a new value according to the path and performs CHANGE() for all components 
+   * which are listening on the path.
+   * @param  {String} path 
+   * @param  {Object} value.
+   * @param  {String/Number} type  Optional, value > 10 will be used as delay
+   */
+	W.SET2 = function (path, value, type) { 
+		SET(path, value, type); 
+		CHANGE(path);
+		return W;
+	};
+
+   /**
+   * Sets a new value according to the path and resets the state. 
+   * @param  {String} path 
+   * @param  {Object} value.
+   * @param  {String/Number} type  Optional, value > 10 will be used as delay
+   */
+	W.SETR = function (path, value, type) {
+		gv.setx(path, value, type);
+		RESET(path); 
+		return W;
+	};
+
+   /**
+   * Performs toggle for the path. A value must be Boolean.
+   * @param  {String} path 
+   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
+   * @param {Boolean} reset Optional  default: false
+   */
+	W.TOGGLE = function toggle(path, timeout, reset) { 
+		var v = GET(path); 
+		SET(path, !v, timeout, reset); 
+		return W;
+	};
+
+   /**
+   * Performs toggle for the path and performs CHANGE() for all components which are listening on the path.
+   * A value must be Boolean.
+   * @param  {String} path 
+   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+   */
+	W.TOGGLE2 = function (path, type) {
+		TOGGLE(path, type);
+		CHANGE(path);
+		return W;
+	};
+
+	W.UPDATE = function (path, timeout, reset) {
+		var t = typeof(timeout); 
+		if (t === 'boolean') {
+			return gv.update(path, timeout);
+		}
+		if (!timeout || timeout < 10 || t !== 'number') {
+			return gv.update(path, reset, timeout);
+		}
+		setTimeout(function() {
+			gv.update(path, reset);
+		}, timeout);
+	};
+
+	W.UPDATE2 = function (path, type) {
+		UPDATE(path, type);
+		CHANGE(path); 
+		return W; 
+	};	
+
+	W.VBINDARRAY = binding.vbindArray;
 
 	return W;
 });
@@ -21412,7 +18168,8 @@ define('skylark-totaljs-jcomponent/main',[
 	"./components",
 	"./langx",
 	"./plugins",
-	"./topic",
+	"./stores",
+	"./utils",
 	"./views",
 	"./globals"
 ],function(jc){

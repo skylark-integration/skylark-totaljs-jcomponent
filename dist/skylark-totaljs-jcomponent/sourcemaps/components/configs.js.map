@@ -1,0 +1,1 @@
+{"version":3,"sources":["components/configs.js"],"names":["define"],"mappings":";;;;;;;AAAAA,UAAU,WAGT","file":"../../components/configs.js","sourcesContent":["define([],function(){\r\n\tvar configs = {};\r\n\r\n\treturn configs;\r\n})"]}

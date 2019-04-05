@@ -1,9 +1,9 @@
 define([
 	"skylark-utils-dom/query",
 	"./jc",
+	"./plugins/_registry",
 	"./plugins/Plugin"
-],function($, jc, Plugin){
-	var registry = {}; // W.PLUGINS
+],function($, jc, registry,Plugin){
 
 	function plugin(name, fn) { //W.PLUGIN = 
 		return fn ? new Plugin(name, fn) : registry[name]; // W.PLUGINS
@@ -13,18 +13,10 @@ define([
 		return registry[name];
 	}
 
-	function add(plugin) {
-		registry[plugin.name] = plugin;
-
-	}
-
-	function remove() {
-
-	}
 	
-	return {
-		Plugin: Plugin,
-		plugin,
-		find
+	return jc.plugins = {
+		"Plugin" : Plugin,
+		"plugin" : plugin,
+		"find" : find
 	};
 });
