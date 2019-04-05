@@ -1,44 +1,34 @@
 define([
 	"./jc",
 	"./defaults",
-	"./utils/env",
 	"./langx",
-	"./utils/logs",
-	"./utils/cookies",
-	"./utils/cache",
+	"./utils",
 	"./plugins",
 	"./components",
 	"./binding",
 	"./stores",
 	"./views"
-],function(jc, defaults, env,langx,logs,cookies,caches,plugins,Components,binding,stores,views){
+],function(jc, defaults, langx,utils,plugins,Components,binding,stores,views){
 
-	var M = jc,
-		W = Window;
-
-	var gs = new stores.Store({
-		data : W
-	});
+	var W = Window;
 
 	var gv = new views.View(document.body,{
-		store : gs
-	});
+		store : new stores.Store({
+					data : W
+				})
+		}),
+		gs = gv.storing;
 
-	var M = totaljs.jc = {
+	langx.mixin(W, {
 		isPRIVATEMODE : false,
 		isMOBILE : /Mobi/.test(navigator.userAgent),
 		isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
 		isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
 		isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
-	}; // W.MAIN = W.M = W.jC = W.COM = M = {};
+	}); // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	//jc
 	langx.each({
-		"isPRIVATEMODE" : "isPRIVATEMODE",
-		"isMOBILE" : "isMOBILE",
-		"isROBOT" : "isROBOT",
-		"isSTANDALONE" : "isSTANDALONE",
-		"isTOUCH" : "isTOUCH",
 		"MONTHS" : "months",
 		"DAYS" : "days"
 	},function(name1,name2){
@@ -52,80 +42,76 @@ define([
 		});	
 	});
 
-
-    // defaults
-	W.DEF = defaults;
-
-	// env 
-	W.ENV = env;
+	var blocks = utils.blocks,
+		cache = utils.cache,
+		cookies = utils.cookies,
+		domx = utils.domx;
+		env = utils.env,
+		http = utils.http,
+		localStorage = utils.localStorage,
+		logs = utils.logs;
 
 	// langx
 	langx.mixin(W,{
-		clearTimeout2: langx.clearTimeout2,
-		setTimeout2 : langx.setTimeout2,
-		WAIT : langx.wait,
+		AJAXCONFIG: http.configure,
+		AJAX: http.ajax,
+		AJAXCACHE: http.ajaxCache,
+		AJAXCACHEREVIEW: http.ajaxCacheReview,
 
-		COPY : langx.copy,
+		clearTimeout2: langx.clearTimeout2,
+		CACHE : cache.put,
+		CLEARCACHE : cache.clear,
+		CLEARSCHEDULE : schedulers.clear,
 		CLONE: langx.clone,
+		COOKIES : cookies,
+		COPY : langx.copy,
+		CSS : domx.style,
+
+		DEF : {},
+
 		EMPTYARRAY : langx.empties.array,
 		EMPTYOBJECT : langx.empties.object,
+
+		GUID: langx.guid,
+		HASH: langx.hashCode,
+
+		IMPORTCACHE: http.importCache,
+		IMPORT: http.import,
+
+		MAKEPARAMS: http.makeParams,
+		MEDIAQUERY : domx.watchMedia,
+
 		NOOP : langx.empties.fn,
 
-		STRINGIFY: langx.stringify,
+		PING: http.ping,
+
+		READPARAMS: http.parseQuery,
+		REMOVECACHE : cache.remove,
+
 		PARSE: langx.parse,
-		HASH: langx.hashCode,
-		GUID: langx.guid,
+
+		setTimeout2 : langx.setTimeout2,
+		SCHEDULE : schedulers.schedule,	
+		SCROLLBARWIDTH : domx.scrollbarWidth,
 		SINGLETON: langx.singleton,
+		STRINGIFY: langx.stringify,
+		STYLE: domx.style,
 
-		WARN : longs.warn,
+		UPLOAD: http.upload,
+		UPTODATE: http.uptodate,
 
-		ADD : components.add,
+		WAIT : langx.wait,
+
+		ERRORS : paths.errors,
+
+		WARN : logs.warn,
+
+		WIDTH : domx.mediaWidth,
 		
 
 		FN : langx.arrowFn
 	});
 
-	//domx
-	langx.mixin(W,{
-		MEDIAQUERY : domx.watchMedia,
-		SCROLLBARWIDTH : domx.scrollbarWidth,
-		WIDTH : domx.mediaWidth,
-		CSS : domx.style,
-		STYLE: domx.style
-	});
-
-
-	// http
-	langx.mixin(W,{
-		MAKEPARAMS: http.makeParams,
-		UPLOAD: http.upload,
-		IMPORTCACHE: http.importCache,
-		IMPORT: http.import,
-		UPTODATE: http.uptodate,
-		PING: http.ping,
-		READPARAMS: http.parseQuery,
-		AJAXCONFIG: http.configure,
-		AJAX: http.ajax,
-		AJAXCACHE: http.ajaxCache,
-		AJAXCACHEREVIEW: http.ajaxCacheReview
-	});
-
-	// schedulers
-	langx.mixin(W,{
-		CLEARSCHEDULE : schedulers.clear,
-		SCHEDULE : schedulers.schedule		
-
-	});
-
-	// cookies
-	W.COOKIES = cookies;
-
-	// storages
-	langx.mixin(W,{
-		CACHE : storages.put,
-		CLEARCACHE : storages.clearCache,
-		REMOVECACHE : storages.remove
-	});
 
 
 	//W.SCHEMA = function(name, declaration) {
@@ -138,84 +124,20 @@ define([
 		PLUGINS : plugins.registry
 	});
 
-	// Component
-	langx.mixin(W,{
-		COMPONENT: Component.register,
-		COMPONENT_EXTEND : Component.extend,
-		COMPONENT_CONFIG : Component.configure,
-		SKIP : Component.skip
-	});
-
-	// views
-	langx.mixin(W,{
-		FIND: views.find,
-		RESET: views.reset,
-		LASTMODIFICATION: views.usage,
-		USAGE : views.usage,
-		VERSION: Component.version,
-	});
-
-	//paths
-	langx.mixin(W,{
-		UNWATCH : paths.unwatch,
-		WATCH : paths.watch,
-
-
-		MODIFY: paths.modify,
-		MODIFIED : paths.modified,
-
-		CACHEPATH : paths.cache,
-		ERRORS : paths.errors,
-		EVALUATE : parsers.evaluate,
-		MAKE: paths.make,
-		REWRITE : paths.rewrite,
-		VALIDATE : paths.validate
-	});
-
-
-
-	// views
-	langx.mixin(W,{
-		FIND: views.find,
-		RESET: views.reset,
-		LASTMODIFICATION: views.usage,
-		USAGE : views.usage,
-	});
-
-	// compiler
-	langx.mixin(W,{
-		BLOCKED : compiler.block
-	});
-
-
-//-----------------
-	//plugins
-
-	langx.mixin(W,{
-		PLUGINS : plugins.registry
-	});
-
-	W.VBIND = binders.vbind,
+	W.ADD = components.add;
 
 	W.BLOCKED  = blocking.blocked;
 	
-	W.CLEARCACHE = function clearCache() { // 
-		if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
-			var rem = localStorage.removeItem;
-			var k = $localstorage; //M.$localstorage;
-			rem(k); 
-			rem(k + '.cache');
-			rem(k + '.blocked');
-		}
-		return this;
+	W.CACHEPATH = function (path, expire, rebind) { 
+		return gs.cache(path, expire, rebind) ;
 	};
 
 	W.CHANGE = function (path, value) {
-		return gv.change(path.value);
+		return gs.change(path.value);
 	};
 
 	W.CHANGED = function(path) {
-		return gv.change(path);
+		return gs.change(path);
 	};
 
 	W.COMPILE = function(container) {
@@ -230,7 +152,7 @@ define([
 	W.COMPONENT_EXTEND = components.extend;
 
 	W.CREATE = function(path) {
-		return gv.create(path);
+		return gs.create(path);
 	}
 
 
@@ -252,11 +174,11 @@ define([
 			}
 			SET(path, new Function('return ' + def)(), timeout > 10 ? timeout : 3, timeout > 10 ? 3 : null);
 		}
-		return gv.default(arr[0], timeout, null, reset);
+		return gs.default(arr[0], timeout, null, reset);
 	}
 
 	W.EMIT = function(name) {
-		return gv.pathing.emit.apply(gv.pathing,arguments);
+		return gs.emit.apply(gs,arguments);
 	};
 
    /**
@@ -269,13 +191,13 @@ define([
 	W.EXTEND = function extend(path, value, timeout, reset) {
 		var t = typeof(timeout);
 		if (t === 'boolean') {
-			return gv.extend(path, value, timeout);
+			return gs.extend(path, value, timeout);
 		}
 		if (!timeout || timeout < 10 || t !== 'number') {
-			return gv.extend(path, value, timeout);
+			return gs.extend(path, value, timeout);
 		}
 		setTimeout(function() {
-			gv.extend(path, value, reset);
+			gs.extend(path, value, reset);
 		}, timeout);
 		return W; 
 	}
@@ -292,6 +214,13 @@ define([
 		return W;
 	}
 
+	W.EVALUATE = function (path, expression, nopath) { 
+		return gs.evaluate(path, expression, nopath);
+	};
+
+	W.FIND = function (value, many, noCache, callback) {  
+		return gs.find(value, many, noCache, callback);
+	};
 
 	W.FREE = function(timeout) {
 		langx.setTimeout2('$clean', cleaner, timeout || 10);
@@ -308,7 +237,7 @@ define([
 			scope = null;
 			RESET(path, true);
 		}
-		return gv.get(path, scope); 
+		return gs.get(path, scope); 
 	}
 
    /**
@@ -334,13 +263,13 @@ define([
 
 		var t = typeof(timeout);
 		if (t === 'boolean') {
-			return gv.inc(path, value, timeout);
+			return gs.inc(path, value, timeout);
 		}
 		if (!timeout || timeout < 10 || t !== 'number') {
-			return gv.inc(path, value, timeout);
+			return gs.inc(path, value, timeout);
 		}
 		setTimeout(function() {
-			gv.inc(path, value, reset);
+			gs.inc(path, value, reset);
 		}, timeout);
 		return W;
 	}
@@ -355,10 +284,18 @@ define([
 		INC(path, value, type);
 		CHANGE(path);
 		return W;
-	}	
+	};	
+
+	W.LASTMODIFICATION = W.USAGE = function (name, expire, path, callback) {
+		return gs.usage(name,expire,path,callback);
+	};
+
+	W.MAKE = function (obj, fn, update) {
+		return gs.make(obj,fn,update);
+	};
 
 	W.MODIFIED = function(path) {
-		return gv.modified(path);
+		return gs.modified(path);
 	};
 
 	W.NOTMODIFIED = function(path, value, fields) {
@@ -373,16 +310,16 @@ define([
    * @param {Boolean} reset Optional
    */
 	W.MODIFY =function (path, value, timeout) {
-		gv.modify(path,value,timeout);
+		gs.modify(path,value,timeout);
 		return W;
 	};
 
 	W.OFF = function(name, path, fn) {
-		return gv.pathing.off(name,path,fn);
+		return gs.off(name,path,fn);
 	};	
 
 	W.ON = function(name, path, fn, init, context) {
-		return gv.pathing.on(name,path,fn,init,context);
+		return gs.on(name,path,fn,init,context);
 	};
    /**
     * creates an object with more readable properties.
@@ -395,7 +332,7 @@ define([
 			obj = {};
 		}
 		fn.call(obj, function(path, value) {
-			return gv.set2(obj, path, value);
+			return gs.set2(obj, path, value);
 		});
 		return obj;
 	};
@@ -411,13 +348,13 @@ define([
 	W.PUSH =  function (path, value, timeout, reset) {
 		var t = typeof(timeout);
 		if (t === 'boolean') {
-			return gv.push(path, value, timeout);
+			return gs.push(path, value, timeout);
 		}
 		if (!timeout || timeout < 10 || t !== 'number') {
-			return gv.push(path, value, timeout);
+			return gs.push(path, value, timeout);
 		}
 		setTimeout(function() {
-			gv.push(path, value, reset);
+			gs.push(path, value, reset);
 		}, timeout);
 		return W;
 	};
@@ -447,6 +384,14 @@ define([
 
 	W.REMOVECACHE = cache.remove;
 
+	W.RESET = function(path, timeout, onlyComponent) {
+		return gs.reset(path,timeout,onlyComponent);
+	};
+
+	W.REWRITE =	function (path, value, type) {
+		return gs.rewrite(path,value,type);
+	};
+
    /**
    * Sets a new value according to the path..
    * @param  {String} path 
@@ -457,13 +402,13 @@ define([
 	W.SET = function (path, value, timeout, reset) { 
 		var t = typeof(timeout);
 		if (t === 'boolean') {
-			return gv.setx(path, value, timeout);
+			return gs.setx(path, value, timeout);
 		}
 		if (!timeout || timeout < 10 || t !== 'number') {
-			return gv.setx(path, value, timeout);
+			return gs.setx(path, value, timeout);
 		}
 		setTimeout(function() {
-			gv.setx(path, value, reset);
+			gs.setx(path, value, reset);
 		}, timeout);
 		return W;
 	};
@@ -488,9 +433,13 @@ define([
    * @param  {String/Number} type  Optional, value > 10 will be used as delay
    */
 	W.SETR = function (path, value, type) {
-		gv.setx(path, value, type);
+		gs.setx(path, value, type);
 		RESET(path); 
 		return W;
+	};
+
+	W.SKIP = function skip() { 
+		return gs.skip.apply(gv,arguments);
 	};
 
    /**
@@ -517,16 +466,20 @@ define([
 		return W;
 	};
 
+	W.UNWATCH  = function (path, fn) { 
+		return gs.unwatch(path, fn) ;
+	};
+
 	W.UPDATE = function (path, timeout, reset) {
 		var t = typeof(timeout); 
 		if (t === 'boolean') {
-			return gv.update(path, timeout);
+			return gs.update(path, timeout);
 		}
 		if (!timeout || timeout < 10 || t !== 'number') {
-			return gv.update(path, reset, timeout);
+			return gs.update(path, reset, timeout);
 		}
 		setTimeout(function() {
-			gv.update(path, reset);
+			gs.update(path, reset);
 		}, timeout);
 	};
 
@@ -536,7 +489,19 @@ define([
 		return W; 
 	};	
 
+	W.VBIND = binding.vbind,
+
 	W.VBINDARRAY = binding.vbindArray;
+
+	W.VALIDATE = function(path, except) {
+		return gs.validate(path,except);
+	};
+
+	W.VERSION = components.version;
+
+	W.WATCH	= function (path, fn, init) { // 
+		return gs.watch(path, fn, init);
+	};
 
 	return W;
 })

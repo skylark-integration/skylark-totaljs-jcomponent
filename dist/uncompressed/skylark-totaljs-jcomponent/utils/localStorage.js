@@ -18,8 +18,26 @@ define([
 		return this;
 	}
 
+	function remove(key) {
+		localStorage.removeItem($localstorage + key);
+	}
+
+	function clear() {
+		var keys = [];
+	  	for (var i = 0; i < localStorage.length; i++) {
+    		var key = localStorage.key(i);
+    		if (key.indexOf($localstorage) == 0)  {
+    			keys.push(key);
+    		}
+  		}
+  		for (var i=0;i<keys.length;i++) {
+  			localStorage.removeItem(keys[i]);
+  		}
+	}
 	return  {
+		"clear" : clear,
 		"get" : get,
+		"remove": remove,
 		"set" : set
 	};
 });

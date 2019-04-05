@@ -2,16 +2,16 @@ define([
 	"./localStorage"
 ],function(localStorage){
 	var blocked = {},
-		blocking = {};
+		blocks = {};
 
    /**
    * Lock some code for a specific time. 
-   * This method will paths info about blocking in localStorage if the expiration is longer than 10 seconds.
+   * This method will paths info about blocks in localStorage if the expiration is longer than 10 seconds.
    * @param  {String} name   
    * @param  {Number} timeout 
    * @param  {Function} callback  
    */
-	blocking.blocked = function (name, timeout, callback) { //W.BLOCKED = 
+	blocks.blocked = function (name, timeout, callback) { //W.BLOCKED = 
 		var key = name;
 		var item = blocked[key];
 		var now = Date.now();
@@ -26,29 +26,22 @@ define([
 
 		var local = MD.localstorage && timeout > 10000;
 		blocked[key] = now + timeout;
-		if (!M.isPRIVATEMODE && local) { // W.isPRIVATEMODE
+		//if (!M.isPRIVATEMODE && local) { // W.isPRIVATEMODE
 		  //localStorage.setItem(M.$localstorage + '.blocked', JSON.stringify(blocked));
-		  localStorage.set('blocked', blocked);
-		}
+		localStorage.set('blocked', blocked);
+		//}
 		callback && callback();
 		return false;
 	};
 
-	block.load = function() {
+	blocks.load = function() {
 		//clearTimeout($ready);
 		//if (MD.localstorage) {
-		var cache;
-		try {
-			cache = localStorage.getItem(M.$localstorage + '.blocked');
-			if (cache && langx.isString(cache)) {
-				blocked = langx.parse(cache);  // PARSE
-			}
-		} catch (e) {}
-		//}
+		blocked = localStorage.get('blocked');
 
 		//M.loaded = true;  //TODO
 	}
 
-	return blocking;
+	return blocks;
 
 });

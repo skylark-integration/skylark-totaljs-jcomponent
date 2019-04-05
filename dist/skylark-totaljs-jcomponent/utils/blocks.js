@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["./localStorage"],function(e){var r={},a={blocked:function(a,n,t){var o=a,l=r[o],c=Date.now();if(l>c)return!0;langx.isString(n)&&(n=n.env().parseExpire());var i=MD.localstorage&&n>1e4;return r[o]=c+n,!M.isPRIVATEMODE&&i&&e.set("blocked",r),t&&t(),!1}};return block.load=function(){var a;try{(a=e.getItem(M.$localstorage+".blocked"))&&langx.isString(a)&&(r=langx.parse(a))}catch(e){}},a});
+define(["./localStorage"],function(e){var n={},r={blocked:function(r,o,t){var a=r,l=n[a],c=Date.now();if(l>c)return!0;langx.isString(o)&&(o=o.env().parseExpire());MD.localstorage;return n[a]=c+o,e.set("blocked",n),t&&t(),!1},load:function(){n=e.get("blocked")}};return r});
 //# sourceMappingURL=../sourcemaps/utils/blocks.js.map

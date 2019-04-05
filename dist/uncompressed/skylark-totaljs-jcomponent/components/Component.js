@@ -60,6 +60,8 @@ define([
 			var version = name.lastIndexOf('@');
 
 			self.view = view;
+			self.storing = view.storing;
+			
 			self.name = name;
 			self.$name = version === -1 ? name : name.substring(0, version);
 			self.version = version === -1 ? '' : name.substring(version + 1);
@@ -1286,7 +1288,7 @@ define([
 	 * Sets the state of this component to invalid and it contacts all components listen on the path.
 	 */
 	PPC.invalid = function() {
-		return this.view.invalid(this.path, this);
+		return this.storing.invalid(this.path, this);
 	};
 
 	PPC.valid = function(value, noEmit) {
@@ -1305,7 +1307,7 @@ define([
 		self.$validate = false;
 		self.$interaction(102);
 		
-		self.view.clear('valid');
+		self.storing.clear('valid');
 		
 		if (!noEmit && self.state) {
 			self.stateX(1, 1);
@@ -1326,7 +1328,7 @@ define([
 		var self = this;
 		self.$dirty_disabled = false;
 		self.$dirty = true;
-		self.view.change(self.path, value === undefined ? true : value, self);
+		self.storing.change(self.path, value === undefined ? true : value, self);
 		return self;
 	};
 
@@ -1354,7 +1356,7 @@ define([
 
 		self.$dirty = value;
 		self.$interaction(101);
-		self.view.clear('dirty');
+		self.storing.clear('dirty');
 		if (!noEmit && self.state) {
 			self.stateX(2, 2);
 		}
@@ -1367,7 +1369,7 @@ define([
 	 */
 	PPC.reset = function() {
 		var self = this;
-		self.view.reset(self.path, 0, self);
+		self.storing.reset(self.path, 0, self);
 		return self;
 	};
 
@@ -1383,7 +1385,7 @@ define([
 	 */
 	PPC.default = function(reset) {
 		var self = this;
-		self.view.default(self.path, 0, self, reset);
+		self.storing.default(self.path, 0, self, reset);
 		return self;
 	};
 
@@ -1461,7 +1463,7 @@ define([
 			}
 		}*/
 
-		value = self.view.format(self.path,value,self.type); // TODO
+		value = self.storing.format(self.path,value,self.type); // TODO
 
 		return value;
 	};
@@ -1501,7 +1503,7 @@ define([
 		//		value = a[i].call(self, self.path, value, self.type);
 		//	}
 		//}
-		value = self.view.parser(self.path,value,self.type);
+		value = self.storing.parser(self.path,value,self.type);
 
 		return value;
 	};
@@ -1519,7 +1521,7 @@ define([
 			expression = path;
 			path = this.path;
 		}
-		return self.view.evaluate(path, expression, nopath);
+		return self.storing.evaluate(path, expression, nopath);
 	};
 
 	/*
@@ -1536,13 +1538,13 @@ define([
 		}
 
 		if (path) {
-			return self.view.get(path);
+			return self.storing.get(path);
 		}
 	};
 
 	PPC.skip = function(path) {
 		var self = this;
-		self.view.skip(path || self.path); // SKIP
+		self.storing.skip(path || self.path); // SKIP
 		return self;
 	};
 
@@ -1561,9 +1563,9 @@ define([
 
 		// Backwards compatibility
 		if (arg.length === 3) {
-			self.view.setx(arg[0], arg[1], arg[2]);
+			self.storing.setx(arg[0], arg[1], arg[2]);
 		} else {
-			self.view.setx(self.path, value, type);
+			self.storing.setx(self.path, value, type);
 		}
 
 		return self;
@@ -1574,7 +1576,7 @@ define([
 	 */
 	PPC.inc = function(value, type) {
 		var self = this;
-		self.view.inc(self.path, value, type);
+		self.storing.inc(self.path, value, type);
 		return self;
 	};
 
@@ -1583,7 +1585,7 @@ define([
 	 */
 	PPC.extend = function(value, type) {
 		var self = this;
-		self.view.extend(self.path, value, type); // M.extend
+		self.storing.extend(self.path, value, type); // M.extend
 		return self;
 	};
 
@@ -1592,7 +1594,7 @@ define([
 	 */
 	PPC.rewrite = function(value) {
 		var self = this;
-		self.view.rewrite(self.path, value);
+		self.storing.rewrite(self.path, value);
 		return self;
 	};
 
@@ -1601,7 +1603,7 @@ define([
 	 */
 	PPC.push = function(value, type) {
 		var self = this;
-		self.view.push(self.path, value, type);
+		self.storing.push(self.path, value, type);
 		return self;
 	};
 

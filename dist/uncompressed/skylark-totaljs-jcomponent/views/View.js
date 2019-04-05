@@ -57,7 +57,7 @@ define([
 			this.imports = {};
 			this.ready = [];
 
-			this.storer = storing(this);
+			this.storing = storing(this);
 		},
 
 		attrcom : function(el) {
@@ -272,44 +272,6 @@ define([
 		}
 
 	});
-
-	[
-		"cache",
-		"can",
-		"change",
-		"changed",
-		"create",
-		"default",
-		"disabled",
-		"errors",
-		"evaluate",
-		"exec",
-		"exec2",
-		"extend",
-		"format",
-		"get",
-		"inc",
-		"invalid",
-		"make",
-		"modify",
-		"modified",
-		"parser",
-		"push",
-		"reset",
-		"rewrite",
-		"set",
-		"set2",
- 		"setx",
- 		"skip",
- 		"update",
- 		"used",
- 		"validate"
- 	].forEach(function(name){
- 		View.prototype[name] = function(){
- 			return this.storer[name].apply(this,arguments);
- 		}
- 	});
-
 
 	return View;
 });

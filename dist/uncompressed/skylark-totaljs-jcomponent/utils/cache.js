@@ -9,62 +9,9 @@ define([
 		session = {} ,
 		storage = {};
 
-	function cachestorage(key, value, expire) {
-
-		var now = Date.now();
-
-		if (value !== undefined) {
-
-			if (expire === 'session') {
-				caches.set('$session' + key, value);
-				return value;
-			}
-
-			if (langx.isString(expire)) {
-				expire = expire.parseExpire();
-			}
-
-			storage[key] = { expire: now + expire, value: value };
-			save();
-			return value;
-		}
-
-		var item = caches.get('$session' + key);
-		if (item) {
-			return item;
-		}
-
-		item = storage[key];
-		if (item && item.expire > now) {
-			return item.value;
-		}
-	}
-
-	function get(key) {
-		return cachestorage(key);
-	}	
-
-	function put(key, value, expire) { //W.CACHE = 
-		return cachestorage(key, value, expire);
-	}
-
-
-	function remove(key, isSearching) { // W.REMOVECACHE = 
-		if (isSearching) {
-			for (var m in storage) {
-				if (m.indexOf(key) !== -1)
-					delete storage[key];
-			}
-		} else {
-			delete storage[key];
-		}
-		save();
-		return this;
-	};
-
 	function save() {
 		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
-		localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
+		localStorage.setItem('cache', storage); // M.$localstorage
 		//}
 	}
 
@@ -85,7 +32,6 @@ define([
 		//}
 		localStorage.set('cache', storage);
 	}
-
 
 	cache.get = function (key,expire) {
 		var checkSession = !expire || expire == "session",

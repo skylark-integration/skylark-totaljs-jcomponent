@@ -15,14 +15,5 @@ define([
 
 	};
 
-	try {
-		var pmk = 'jc.test';
-		Window.localStorage.setItem(pmk, '1');
-		defaults.isPRIVATEMODE = Window.localStorage.getItem(pmk) !== '1'; //W.isPRIVATEMODE
-		Window.localStorage.removeItem(pmk);
-	} catch (e) {
-		defaults.isPRIVATEMODE = true; //W.isPRIVATEMODE
-	}
-	
 	return jc.defaults = defaults;
 });
