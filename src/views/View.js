@@ -1,10 +1,14 @@
 define([
 	"../langx",
-	"./compose",
-	"./crawler",
-	"./download",
-	"./pend"
-],function(langx, compose, crawler, download, pend){
+	"../utils/domx",
+	"./binding",
+	"./componenter",
+	"./eventer",
+	"./compiler",
+	"./helper",
+	"./scoper",
+	"./storing",
+],function(langx, domx, binding, componenter, eventer,compiler, helper,scoper,storing){
 
 	var $rebinder;
 
@@ -36,101 +40,65 @@ define([
 	}
 
 
-	var View = langx.Evented.inherit({
+	// data-scope    
+	// data-compile 
+	// data-released 
+	// data-vendor
+	// data-store
+	// data-com
+	// data-bind
+	var View = domx.Plugin.inherit({
 	    options : {
-	      elmComAttrNames: {
-	        base : "data-jc",
-	        url : "data-jc-url",
-	        removed : "data-jc-removed",
-	        released : "data-jc-released",
-	        scope : "data-jc-scope"
+	      elmAttrNames: {
+	        scope   : "data-scope",             // data-jc-scope
+	        bind    : "data-bind",              // data-bind
+	        store   : "data-store",
+	      	com  : {
+		        base     : "data-com",          // data-jc
+		        url      : "data-comp-url",     // data-jc-url
+		        removed  : "data-com-removed",  //data-jc-removed
+		        released : "data-com-released", //data-jc-released
+	      	},
+	        compile : "data-compile"            // data-jc-comile
 	      }
 	    },
 
 		_construct : function(elm,options) {
 
-			this.is = false;
-			this.recompile = false;
-			this.importing = 0;
-			this.pending = [];
-			this.init = [];
-			this.imports = {};
-			this.ready = [];
-
+			this.eventer = eventer(this);
+			this.scoper = scoper(this);
 			this.storing = storing(this);
+			this.helper = helper(this);
+			this.componenter = componenter(this);
+			this.binding = binding(this);
+			this.compiler = compiler(this);
 		},
 
-		attrcom : function(el) {
-			return attrcom(el);
+	   /**
+	   * Create new components dynamically.
+	   * @param  {String|Array<String>} declaration 
+	   * @param  {jQuery Element/Component/Scope/Plugin} element optional,a parent element (default: "document.body")
+	   */
+		add : function (value, element) { // W.ADD =
+			if (element instanceof COM || element instanceof Scope || element instanceof Plugin) {
+				element = element.element;
+			}
+			if (value instanceof Array) {
+				for (var i = 0; i < value.length; i++)
+					ADD(value[i], element);
+			} else {
+				$(element || document.body).append('<div data-jc="{0}"></div>'.format(value));
+				setTimeout2('ADD', COMPILE, 10);
+			}
 		},
 
 		compile : function (container,immediate) {
-			var self = this;
 
-			if (self.is) {
-				self.recompile = true;
-				return;
-			}
-
-			var arr = [];
-
-			if (W.READY instanceof Array)  {
-				arr.push.apply(arr, W.READY);
-			}
-			if (W.jComponent instanceof Array) {
-				arr.push.apply(arr, W.jComponent);
-			}
-			if (W.components instanceof Array) {
-				arr.push.apply(arr, W.components);
-			}
-
-			if (arr.length) {
-				while (true) {
-					var fn = arr.shift();
-					if (!fn){
-						break;
-					}
-					fn();
-				}
-			}
-
-			self.is = true;
-			download(self);
-
-			if (self.pending.length) {
-				(function(container) {
-					self.pending.push(function() {
-						compile(self,container);
-					});
-				})(container);
-				return;
-			}
-
-			var has = false;
-
-			crawler(self,container, compose);
-
-			// perform binder
-			rebindbinder();
-
-			if (!has || !self.pending.length) {
-				self.is = false;
-			}
-
-			if (container !== undefined || !toggles.length) {
-				return pend();
-			}
-
-			langx.async(toggles, function(item, next) {
-				for (var i = 0, length = item.toggle.length; i < length; i++)
-					item.element.tclass(item.toggle[i]);
-				next();
-			}, pend);
 		},
 
 		refresh : function () {
 			setTimeout2('$refresh', function() {
-				all.sort(function(a, b) {  // M.components.sort
+				componenter.components.sort(function(a, b) {  // M.components.sort
 					if (a.$removed || !a.path)
 						return 1;
 					if (b.$removed || !b.path)

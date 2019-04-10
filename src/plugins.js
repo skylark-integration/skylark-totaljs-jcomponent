@@ -13,6 +13,18 @@ define([
 		return registry[name];
 	}
 
+	function clean() {
+			// Checks PLUGINS
+			var R = plugins.registry; //W.PLUGINS;
+			Object.keys(R).forEach(function(key) {
+				var a = R[key];
+				if (!inDOM(a.element[0]) || !a.element[0].innerHTML) {
+					a.$remove();
+					delete R[key];
+				}
+			});
+		
+	}
 	
 	return jc.plugins = {
 		"Plugin" : Plugin,

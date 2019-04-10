@@ -1,0 +1,1 @@
+{"version":3,"sources":["langx/statics.js"],"names":["define"],"mappings":";;;;;;;AAAAA,UAAU,WAET","file":"../../langx/statics.js","sourcesContent":["define([],function(){\r\n\tvar statics = {};\r\n\treturn statics;\r\n})"]}

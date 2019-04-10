@@ -1,8 +1,10 @@
 define([
 	"../langx",
 	"skylark-utils-dom/query",
-	"../jc",
-],function(langx, $, jc){
+	"skylark-utils-dom/plugins"
+],function(langx, $, plugins){
+	var statics = langx.statics;
+	
 	var $devices = { 
 		xs: { max: 768 }, 
 		sm: { min: 768, max: 992 }, 
@@ -526,7 +528,7 @@ define([
 		$(window).on('orientationchange', mediaquery);
 	//}, 100);
 
-	return jc.domx = {
+	return {
 		"devices" : $devices,
 		"findInstance" : findInstance,
 		"inDOM" : inDOM,
@@ -536,6 +538,7 @@ define([
 		"keyPress" : keyPress,
 		"mediaquery" : mediaquery,
 		"mediaWidth" : mediaWidth,
+		"Plugin" : plugins.Plugin,
 		"removescripts" : removescripts,
 		"scrollbarWidth" : scrollbarWidth,
 		"style" : style,

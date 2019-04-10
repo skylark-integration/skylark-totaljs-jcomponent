@@ -7,636 +7,10 @@ define([
 	
 	var MULTIPLE = ' + ';
 
-	var knockknockcounter = 0;
-		$.components = M;
-
-		setInterval(function() {
-			//W.DATETIME = W.NOW = new Date();
-			langx.now(true);
-			var c = M.components;
-			for (var i = 0, length = c.length; i < length; i++)
-				c[i].knockknock && c[i].knockknock(knockknockcounter);
-			EMIT('knockknock', knockknockcounter++);
-		}, 60000);
-
-	setInterval(function() {
-		temp = {};
-		paths = {};
-//		cleaner();
-	}, (1000 * 60) * 5);	
-
-    /*
-    for (var i = 0, length = all.length; i < length; i++) { // M.components.length
-        var m = all[i]; // M.components[i];
-        if (!m.$removed || name === m.name){
-            config && m.reconfigure(config, undefined, true);
-            declaration.call(m, m, m.config);
-        }
-    }
-
-    RECOMPILE();
-    */
-
-   /**
-   * Reconfigures all components according to the selector.
-   * @param  {String} selector 
-   * @param  {String/Object} config A default configuration
-   */
-	function reconfigure(selector, value) { // W.RECONFIGURE = 
-		setter(true, selector, 'reconfigure', value);
-		return RECONFIGURE;
-	};
-
-   /**
-   * Set a new value to the specific method in components.
-   * @param  {Boolean} wait Optional, can it wait for non-exist components? 
-   * @param  {String} selector  
-   * @param  {String} name Property or Method name (can't be nested) 
-   * @param  {Object} argA Optional, additional argument
-   * @param  {Object} argB Optional, additional argument
-   * @param  {Object} argN Optional, additional argument
-   */
-	function setter(selector, name) { // W.SETTER
-
-		var arg = [];
-		var beg = selector === true ? 3 : 2;
-
-		for (var i = beg; i < arguments.length; i++) {
-			arg.push(arguments[i]);
-		}
-
-		if (beg === 3) {
-
-			selector = name;
-
-			if (lazycom[selector] && lazycom[selector].state !== 3) {
-
-				if (lazycom[selector].state === 1) {
-					lazycom[selector].state = 2;
-					EMIT('lazy', selector, true);
-					warn('Lazy load: ' + selector);
-					compile();
-				}
-
-				setTimeout(function(arg) {
-					arg[0] = true;
-					W.SETTER.apply(W, arg);
-				}, 555, arguments);
-
-				return SETTER;
-			}
-
-			name = arguments[2];
-
-			find(selector, true, function(arr) {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					var o = arr[i];
-					if (typeof(o[name]) === TYPE_FN)
-						o[name].apply(o, arg);
-					else
-						o[name] = arg[0];
-				}
-			});
-		} else {
-
-			if (lazycom[selector] && lazycom[selector].state !== 3) {
-
-				if (lazycom[selector].state === 1) {
-					lazycom[selector].state = 2;
-					EMIT('lazy', selector, true);
-					warn('Lazy load: ' + selector);
-					compile();
-				}
-
-				setTimeout(function(arg) {
-					W.SETTER.apply(W, arg);
-				}, 555, arguments);
-
-				return SETTER;
-			}
-
-			var arr = find(selector, true);
-			for (var i = 0, length = arr.length; i < length; i++) {
-				var o = arr[i];
-				if (typeof(o[name]) === TYPE_FN)
-					o[name].apply(o, arg);
-				else
-					o[name] = arg[0];
-			}
-		}
-
-		return SETTER;
-	};
-
-	function prepare(obj) {
-
-		if (!obj) {
-			return;
-		}
-
-		var el = obj.element;
-
-		extensions[obj.name] && extensions[obj.name].forEach(function(item) {
-			item.config && obj.reconfigure(item.config, NOOP);
-			item.fn.call(obj, obj, obj.config);
-		});
-
-		var value = obj.get();
-		var tmp;
-
-		obj.configure && obj.reconfigure(obj.config, undefined, true);
-		obj.$loaded = true;
-
-		if (obj.setter) {
-			if (!obj.$prepared) {
-
-				obj.$prepared = true;
-				obj.$ready = true;
-
-				tmp = attrcom(obj, 'value');
-
-				if (tmp) {
-					if (!defaults[tmp])
-						defaults[tmp] = new Function('return ' + tmp);
-					obj.$default = defaults[tmp];
-					if (value === undefined) {
-						value = obj.$default();
-						set(obj.path, value);
-						emitwatch(obj.path, value, 0);
-					}
-				}
-
-				if (obj.$binded)
-					obj.$interaction(0);
-				else {
-					obj.$binded = true;
-					obj.setterX(value, obj.path, 0);
-					obj.$interaction(0);
-				}
-			}
-		} else {
-			obj.$binded = true;
-		}
-
-		if (obj.validate && !obj.$valid_disabled) {
-			obj.$valid = obj.validate(obj.get(), true);
-		}
-
-		obj.done && setTimeout(obj.done, 20);
-		obj.state && obj.stateX(0, 3);
-
-		obj.$init && setTimeout(function() {
-			var fn = get(obj.$init);
-			if (langx.isFunction(fn)) {
-				fn.call(obj, obj);	
-			} 
-			obj.$init = undefined;
-		}, 5);
-
-		var n = 'component';
-		el.trigger(n);
-		el.off(n);
-
-		var cls = attrcom(el, 'class');
-		cls && (function(cls) {
-			setTimeout(function() {
-				cls = cls.split(' ');
-				var tmp = el[0].$jclass || {};
-				for (var i = 0, length = cls.length; i < length; i++) {
-					if (!tmp[cls[i]]) {
-						el.tclass(cls[i]);
-						tmp[cls[i]] = true;
-					}
-				}
-				el[0].$jclass = tmp;
-			}, 5);
-		})(cls);
-
-		obj.id && EMIT('#' + obj.id, obj);
-		EMIT('@' + obj.name, obj);
-		EMIT(n, obj);
-		clear('find.');
-		if (obj.$lazy) {
-			obj.$lazy.state = 3;
-			delete obj.$lazy;
-			EMIT('lazy', obj.$name, false);
-		}
-	}
-
-	function usage(name, expire, path, callback) { //W.LASTMODIFICATION = W.USAGE = M.usage = 
-
-		var type = typeof(expire);
-		if (type === TYPE_S) {
-			//var dt = W.NOW = W.DATETIME = new Date();
-			var dt = langx.now(true);
-			expire = dt.add('-' + expire.env()).getTime();
-		} else if (type === TYPE_N)
-			expire = Date.now() - expire;
-
-		if (typeof(path) === TYPE_FN) {
-			callback = path;
-			path = undefined;
-		}
-
-		var arr = [];
-		var a = null;
-
-		if (path) {
-			a = find('.' + path, true);
-		} else {
-			a = components;//M.components;
-		}
-
-		for (var i = 0; i < a.length; i++) {
-			var c = a[i];
-			if (c.usage[name] >= expire) {
-				if (callback)
-					callback(c);
-				else
-					arr.push(c);
-			}
-		}
-
-		return callback ? M : arr;
-	}
-		
-	var cache = {}; // lwf
-
-	/*
-	 * Finds all component according to the selector.
-	 */
-	function find(value, many, noCache, callback) { //W.FIND = 
-
-		var isWaiting = false;
-
-		if (langx.isFunction(many)) {
-			isWaiting = true;
-			callback = many;
-			many = undefined;
-			// noCache = undefined;
-			// noCache can be timeout
-		} else if (langx.isFunction(noCache)) {
-			var tmp = callback;
-			isWaiting = true;
-			callback = noCache;
-			noCache = tmp;
-			// noCache can be timeout
-		}
-
-		if (isWaiting) {
-			langx.isWaiting(function() {  // WAIT
-				var val = find(value, many, noCache);
-				if (lazycom[value] && lazycom[value].state === 1) {
-					lazycom[value].state = 2;
-					topic.emit('lazy', value, true); // EMIT
-					warn('Lazy load: ' + value);
-					compile();
-				}
-				return val instanceof Array ? val.length > 0 : !!val;
-			}, function(err) {
-				// timeout
-				if (!err) {
-					var val = find(value, many);
-					callback.call(val ? val : W, val);
-				}
-			}, 500, noCache);
-			return;
-		}
-
-		// Element
-		if (typeof(value) === 'object') {
-			if (!(value instanceof jQuery)) {
-				value = $(value);
-			}
-			var output = findcomponent(value, '');
-			return many ? output : output[0];
-		}
-
-		var key, output;
-
-		if (!noCache) {
-			key = 'find.' + value + '.' + (many ? 0 : 1);
-			output = cache[key];
-			if (output) {
-				return output;
-			}
-		}
-
-		var r = findcomponent(null, value);
-		if (!many) {
-			r = r[0];
-		}
-		output = r;
-		if (!noCache) {
-			cache[key] = output;
-		}
-		return output;
-	};
 		
 	function storing (store,view) {
+		var cache = {}; // lwf
 
-		var events = {};
-
-		function emitwatch(path, value, type) {
-			for (var i = 0, length = watches.length; i < length; i++) {
-				var self = watches[i];
-				if (self.path === '*') {
-					self.fn.call(self.context, path, self.format ? self.format(value, path, type) : value, type);
-				} else if (path.length > self.path.length) {
-					var index = path.lastIndexOf('.', self.path.length);
-					if (index === -1 ? false : self.path === path.substring(0, index)) {
-						var val = view.get(self.path); // GET
-						self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
-					}
-				} else {
-					for (var j = 0, jl = self.$path.length; j < jl; j++) {
-						if (self.$path[j] === path) {
-							var val = view.get(self.path); // get2
-							self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
-							break;
-						}
-					}
-				}
-			}
-		}
-
-		// ===============================================================
-		// Eventer
-		// ===============================================================
-
-
-		function on(name, path, fn, init, context) {
-
-			if (name.indexOf(MULTIPLE) !== -1) {
-				//ex: ON('name1 + name2 + name3', function() {});
-				var arr = name.split(MULTIPLE).trim();
-				for (var i = 0; i < arr.length; i++) {
-					on(arr[i], path, fn, init, context);
-				}
-				return this; //W;
-			}
-
-			var push = true;
-
-			if (name.substring(0, 1) === '^') {
-				push = false;
-				name = name.substring(1);
-			}
-
-			var owner = null;
-			var index = name.indexOf('#');
-
-			if (index) {
-				owner = name.substring(0, index).trim();
-				name = name.substring(index + 1).trim();
-			}
-
-			if (langx.isFunction(path)) {
-				fn = path;
-				path = name === 'watch' ? '*' : '';
-			} else {
-				path = path.replace('.*', '');
-			}
-
-			var obj = { name: name, fn: fn, owner: owner || current_owner, context: context || (current_com == null ? undefined : current_com) };
-
-			if (name === 'watch') {
-				var arr = [];
-
-				var tmp = findFormat(path);
-				if (tmp) {
-					path = tmp.path;
-					obj.format = tmp.fn;
-				}
-
-				if (path.substring(path.length - 1) === '.') {
-					path = path.substring(0, path.length - 1);
-				}
-
-				// Temporary
-				if (path.charCodeAt(0) === 37) { // %
-					path = 'jctmp.' + path.substring(1);
-				}
-
-				path = path.env();
-
-				// !path = fixed path
-				if (path.charCodeAt(0) === 33) { // !
-					path = path.substring(1);
-					arr.push(path);
-				} else {
-					var p = path.split('.');
-					var s = [];
-					for (var j = 0; j < p.length; j++) {
-						var b = p[j].lastIndexOf('[');
-						if (b !== -1) {
-							var c = s.join('.');
-							arr.push(c + (c ? '.' : '') + p[j].substring(0, b));
-						}
-						s.push(p[j]);
-						arr.push(s.join('.'));
-					}
-				}
-
-				obj.path = path;
-				obj.$path = arr;
-
-				if (push) {
-					watches.push(obj);
-				} else {
-					watches.unshift(obj);
-				}
-
-				init && fn.call(context || M, path, obj.format ? obj.format(get(path), path, 0) : get(path), 0);
-			} else {
-				if (events[name]) {
-					if (push) {
-						events[name].push(obj);
-					} else {
-						events[name].unshift(obj);
-					}
-				} else {
-					events[name] = [obj];
-				}
-				(!C.ready && (name === 'ready' || name === 'init')) && fn();
-			}
-			return this; //W;
-		}
-
-		function off(name, path, fn) {
-
-			if (name.indexOf('+') !== -1) {
-				var arr = name.split('+').trim();
-				for (var i = 0; i < arr.length; i++) {
-					off(arr[i], path, fn); //W.OFF
-				}
-				return this; //W;
-			}
-
-			if (lang.isFunction(path)) {
-				fn = path;
-				path = '';
-			}
-
-			if (path === undefined) {
-				path = '';
-			}
-
-			var owner = null;
-			var index = name.indexOf('#');
-			if (index) {
-				owner = name.substring(0, index).trim();
-				name = name.substring(index + 1).trim();
-			}
-
-			if (path) {
-				path = path.replace('.*', '').trim();
-				var tmp = findFormat(path);
-				if (tmp) {
-					path = tmp.path;
-				}
-				if (path.substring(path.length - 1) === '.') {
-					path = path.substring(0, path.length - 1);
-				}
-			}
-
-			var type = 0;
-
-			if (owner && !path && !fn && !name)
-				type = 1;
-			else if (owner && name && !fn && !path)
-				type = 2;
-			else if (owner && name && path)
-				type = 3;
-			else if (owner && name && path && fn)
-				type = 4;
-			else if (name && path && fn)
-				type = 5;
-			else if (name && path)
-				type = 7;
-			else if (fn)
-				type = 6;
-
-			var cleararr = function(arr, key) {
-				return arr.remove(function(item) {
-					if (type > 2 && type < 5) {
-						if (item.path !== path)
-							return false;
-					}
-					var v = false;
-					if (type === 1)
-						v = item.owner === owner;
-					else if (type === 2)
-						v = key === name && item.owner === owner;
-					else if (type === 3)
-						v = key === name && item.owner === owner;
-					else if (type === 4)
-						v = key === name && item.owner === owner && item.fn === fn;
-					else if (type === 5 || type === 6)
-						v = key === name && item.fn === fn;
-					else if (type === 6)
-						v = item.fn === fn;
-					else if (type === 7)
-						v = key === name && item.path === path;
-					else
-						v = key === name;
-					return v;
-				});
-			};
-
-			Object.keys(events).forEach(function(p) {
-				events[p] = cleararr(events[p], p);
-				if (!events[p].length) {
-					delete events[p];
-				}
-			});
-
-			watches = cleararr(watches, 'watch');
-			return this; //W;
-		}
-
-		function emit(name) {
-
-			var e = events[name];
-			if (!e) {
-				return false;
-			}
-
-			var args = [];
-
-			for (var i = 1, length = arguments.length; i < length; i++) {
-				args.push(arguments[i]);
-			}
-
-			for (var i = 0, length = e.length; i < length; i++) {
-				var context = e[i].context;
-				if (context !== undefined && (context === null || context.$removed)) {
-					continue;
-				}
-				e[i].fn.apply(context || window, args);
-			}
-
-			return true;
-		}
-
-		function each(fn) {
-
-			var keys = Object.keys(events);
-			var length = keys.length;
-
-			for (var i = 0; i < length; i++) {
-				var key = keys[i];
-				arr = events[key];
-				fn(key,arr);
-
-				if (!arr.length) {
-					delete events[key];
-				}
-
-			}
-
-		}
-
-		var watches = [];
-
-		function unwatch(path, fn) { //W.UNWATCH 
-
-			if (path.indexOf(MULTIPLE) !== -1) {
-				var arr = path.split(MULTIPLE).trim();
-				for (var i = 0; i < arr.length; i++)
-					unwatch(arr[i], fn);
-				return this; //W;
-			}
-
-			return topic.off('watch', path, fn); //OFF
-		};
-
-		function watch(path, fn, init) { // W.WATCH
-
-			if (path.indexOf(MULTIPLE) !== -1) {
-				var arr = path.split(MULTIPLE).trim();
-				for (var i = 0; i < arr.length; i++)
-					watch(arr[i], fn, init);
-				return this; //W;
-			}
-
-			if (langx.isFunction(path)) { //if (typeof(path) === TYPE_FN) {
-				init = fn;
-				fn = path;
-				path = '*';
-			}
-
-			var push = '';
-
-			if (path.substring(0, 1) === '^') {
-				path = path.substring(1);
-				push = '^';
-			}
-
-			path = pathmaker(path, true);
-			topic.on(push + 'watch', path, fn, init);  // ON
-			return this; //W;
-		}
 
 		var data = store.data;
 
@@ -697,192 +71,6 @@ define([
 			}
 		}
 
-
-		function each(fn, path) {   // M.each
-			var wildcard = path ? path.lastIndexOf('*') !== -1 : false;
-			if (wildcard)
-				path = path.replace('.*', '');
-			var all = components;//M.components;
-			var index = 0;
-			for (var i = 0, length = all.length; i < length; i++) {
-				var com = all[i];
-				if (!com || !com.$loaded || com.$removed || (path && (!com.path || !com.$compare(path))))
-					continue;
-				var stop = fn(com, index++, wildcard);
-				if (stop === true)
-					return this;
-			}
-			return this;
-		}
-
-
-		function com_dirty(path, value, onlyComponent, skipEmitState) {
-
-			var isExcept = value instanceof Array;
-			var key = 'dirty' + path + (isExcept ? '>' + value.join('|') : '');
-			var except = null;
-
-			if (isExcept) {
-				except = value;
-				value = undefined;
-			}
-
-			if (typeof(value) !== 'boolean' && cache[key] !== undefined)
-				return cache[key];
-
-			var dirty = true;
-			var arr = value !== undefined ? [] : null;
-			var flags = null;
-
-			if (isExcept) {
-				var is = false;
-				flags = {};
-				except = except.remove(function(item) {
-					if (item.substring(0, 1) === '@') {
-						flags[item.substring(1)] = true;
-						is = true;
-						return true;
-					}
-					return false;
-				});
-				!is && (flags = null);
-				isExcept = except.length > 0;
-			}
-
-			var index = path.lastIndexOf('.*');
-			var wildcard = index !== -1;
-			if (index !== -1)
-				path = path.substring(0, index);
-
-			path = pathmaker(path);
-
-			var all = view.components;//M.components;
-			for (var i = 0, length = all.length; i < length; i++) {
-				var com = all[i];
-
-				if (!com || com.$removed || !com.$loaded || !com.path || !com.$compare(path) || (isExcept && com.$except(except)))
-					continue;
-
-				if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
-					continue;
-
-				if (com.disabled || com.$dirty_disabled) {
-					arr && com.state && arr.push(com);
-					continue;
-				}
-
-				if (value === undefined) {
-					if (com.$dirty === false)
-						dirty = false;
-					continue;
-				}
-
-				com.state && arr.push(com);
-
-				if (!onlyComponent) {
-					if (wildcard || com.path === path) {
-						com.$dirty = value;
-						com.$interaction(101);
-					}
-				} else if (onlyComponent._id === com._id) {
-					com.$dirty = value;
-					com.$interaction(101);
-				}
-				if (com.$dirty === false)
-					dirty = false;
-			}
-
-			cache.clearPageData('dirty');
-			cache.setPageData(key,dirty);
-
-			// For double hitting component.state() --> look into COM.invalid()
-			!skipEmitState && state(arr, 1, 2);
-			return dirty;
-		}
-
-		function com_valid(path, value, onlyComponent) {
-
-			var isExcept = value instanceof Array;
-			var key = 'valid' + path + (isExcept ? '>' + value.join('|') : '');
-			var except = null;
-
-			if (isExcept) {
-				except = value;
-				value = undefined;
-			}
-
-			if (typeof(value) !== 'boolean' && cache[key] !== undefined)
-				return cache[key];
-
-			var flags = null;
-
-			if (isExcept) {
-				var is = false;
-				flags = {};
-				except = except.remove(function(item) {
-					if (item.substring(0, 1) === '@') {
-						flags[item.substring(1)] = true;
-						is = true;
-						return true;
-					}
-					return false;
-				});
-				!is && (flags = null);
-				isExcept = except.length > 0;
-			}
-
-			var valid = true;
-			var arr = value !== undefined ? [] : null;
-
-			var index = path.lastIndexOf('.*');
-			var wildcard = index !== -1;
-			if (index !== -1) {
-				path = path.substring(0, index);
-			}
-
-			path = pathmaker(path);
-
-			var all = view.components;//M.components;
-			for (var i = 0, length = all.length; i < length; i++) {
-				var com = all[i];
-
-				if (!com || com.$removed || !com.$loaded || !com.path || !com.$compare(path) || (isExcept && com.$except(except)))
-					continue;
-
-				if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
-					continue;
-
-				if (com.disabled || com.$valid_disabled) {
-					arr && com.state && arr.push(com);
-					continue;
-				}
-
-				if (value === undefined) {
-					if (com.$valid === false)
-						valid = false;
-					continue;
-				}
-
-				com.state && arr.push(com);
-
-				if (!onlyComponent) {
-					if (wildcard || com.path === path) {
-						com.$valid = value;
-						com.$interaction(102);
-					}
-				} else if (onlyComponent._id === com._id) {
-					com.$valid = value;
-					com.$interaction(102);
-				}
-				if (com.$valid === false)
-					valid = false;
-			}
-
-			cache.clearPageData('valid');
-			cache.setPageData(key, valid);  // cache[key] = valid
-			langx.state(arr, 1, 1);
-			return valid;
-		}
 
 	   /**
 	   * Creates a watcher for all changes.
@@ -959,49 +147,6 @@ define([
 				return o;
 		}
 
-	  /**
-	   * Notifies a setter in all components on the path.
-	   * @param  {String} path 
-	   */
-		function notify() { // W.NOTIFY
-
-			var arg = arguments;
-			var all = view.components;//M.components;
-
-			var $ticks = Math.random().toString().substring(2, 8);
-			for (var j = 0; j < arg.length; j++) {
-				var p = arg[j];
-				binders[p] && binderbind(p, p, $ticks);
-			}
-
-			for (var i = 0, length = all.length; i < length; i++) {
-				var com = all[i];
-				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path)
-					continue;
-
-				var is = 0;
-				for (var j = 0; j < arg.length; j++) {
-					if (com.path === arg[j]) {
-						is = 1;
-						break;
-					}
-				}
-
-				if (is) {
-					var val = com.get();
-					com.setter && com.setterX(val, com.path, 1);
-					com.state && com.stateX(1, 6);
-					com.$interaction(1);
-				}
-			}
-
-			for (var j = 0; j < arg.length; j++) {
-				emitwatch(arg[j], getx(arg[j]), 1);  // GET
-			}
-
-			return this;  // W
-		}
-
 
 	 	//cache
 		function cache(path, expire, rebind) { // W.CACHEPATH = 
@@ -1026,56 +171,6 @@ define([
 			return this; //W 
 		};
 
-		function validate(path, except) { //W.VALIDATE =
-
-			var arr = [];
-			var valid = true;
-
-			path = pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
-
-			var flags = null;
-			if (except) {
-				var is = false;
-				flags = {};
-				except = except.remove(function(item) {
-					if (item.substring(0, 1) === '@') {
-						flags[item.substring(1)] = true;
-						is = true;
-						return true;
-					}
-					return false;
-				});
-				!is && (flags = null);
-				!except.length && (except = null);
-			}
-
-			var all = M.components.all;//M.components;
-			for (var i = 0, length = all.length; i < length; i++) {
-				var com = all[i];
-				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path))
-					continue;
-
-				if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
-					continue;
-
-				com.state && arr.push(com);
-
-				if (com.$valid_disabled)
-					continue;
-
-				com.$validate = true;
-				if (com.validate) {
-					com.$valid = com.validate(get(com.path));
-					com.$interaction(102);
-					if (!com.$valid)
-						valid = false;
-				}
-			}
-
-			clear('valid');
-			state(arr, 1, 1);
-			return valid;
-		}
 
 	   /**
 	   * Evaluates a global formatter.
@@ -1331,7 +426,7 @@ define([
 						}
 					}
 
-					findcontrol2(com);
+					findControl2(com);
 
 				} else if (com.validate && !com.$valid_disabled) {
 					com.valid(com.validate(result), true);
@@ -1372,7 +467,7 @@ define([
 
 			// Reset scope
 			var key = path.replace(/\.\*$/, '');
-			var fn = defaults['#' + HASH(key)];
+			var fn = defaults['#' + langx.hashCode(key)]; // HASH
 			var tmp;
 
 			if (fn) {
@@ -1406,7 +501,7 @@ define([
 					return;
 				}
 
-				findcontrol2(com);
+				findControl2(com);
 
 				if (!com.$dirty_disabled) {
 					com.$dirty = true;
@@ -1501,7 +596,7 @@ define([
 						}
 					}
 
-					findcontrol2(com);
+					findControl2(com);
 
 				} else if (com.validate && !com.$valid_disabled) {
 					com.valid(com.validate(result), true);
@@ -1885,7 +980,7 @@ define([
 					continue;
 				}
 
-				findcontrol2(com);
+				findControl2(com);
 
 				if (!com.$dirty_disabled) {
 					com.$dirty = true;
@@ -2061,6 +1156,33 @@ define([
 			return value;
 		}
 
+		parser(function(path, value, type) {
+
+			switch (type) {
+				case 'number':
+				case 'currency':
+				case 'float':
+					var v = +(langx.isString(value) ? value.trimAll().replace(REGCOMMA, '.') : value);
+					return isNaN(v) ? null : v;
+
+				case 'date':
+				case 'datetime':
+
+					if (!value) {
+						return null;
+					}
+
+					if (value instanceof Date) {
+						return value;
+					}
+
+					value = value.parseDate();
+					return value && value.getTime() ? value : null;
+			}
+
+			return value;
+		});
+
 	   /**
 	   * skips component.setter for future update. It's incremental.
 	   * @param  {String} pathA Absolute path according to the component "data-jc-path"  
@@ -2083,12 +1205,7 @@ define([
 
 
 		return {
-			"on" : on,
-			"off" : off,
-			"emit" : emit,
-			"watch" : watch,
-			"unwatch" : unwatch,
-			"emitwatch" : emitwatch,			
+		
 			"cache" : cache,
 			"can" : can,
 			"change" : change,

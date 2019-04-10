@@ -134,7 +134,7 @@ define([
 					if (self.$bindreleased) {
 
 						if (self.$bindchanges) {
-							var hash = HASH(value);
+							var hash = langx.hashCode(value); // HASH
 							if (hash === self.$valuehash)
 								return;
 							self.$valuehash = hash;
@@ -170,7 +170,7 @@ define([
 						cache.bt = 0; // reset timer id
 
 						if (self.$bindchanges) {
-							var hash = HASH(value);
+							var hash = langx.hashCode(value); // HASH
 							if (hash === self.$valuehash)
 								return;
 							self.$valuehash = hash;
@@ -198,7 +198,7 @@ define([
 				var a = 'select-one';
 				value = self.formatter(value);
 
-				findcontrol(self.element[0], function(t) {
+				findControl(self.element[0], function(t) {
 
 					if (t.$com !== self)
 						t.$com = self;
@@ -492,7 +492,7 @@ define([
 		self.attrd('jc-released', value);
 
 		//(container || self.element).find(consts.ATTRCOM).each(function() {
-		helper.nested(container || self.element).forEach(function(){ 
+		self.view.helper.nested(container || self.element).forEach(function(){ 
 			var el = $(this);
 			el.attrd('jc-released', value ? 'true' : 'false');
 			var com = el[0].$com;
@@ -592,7 +592,7 @@ define([
 	 * Returns all nested components.
 	 */
 	PPC.nested = function() {
-		return helper.nested(this.element);
+		return self.view.helper.nested(this.element);
 
 		/*
 		var arr = [];
@@ -1400,7 +1400,7 @@ define([
 		
 		//el.removeData(ATTRDATA);
 		//el.attr(ATTRDEL, 'true').find(ATTRCOM).attr(ATTRDEL, 'true');
-		helper.kill(el);
+		self.view.helper.kill(el);
 
 		self.$removed = 1;
 		self.removed = true;
@@ -1604,6 +1604,14 @@ define([
 	PPC.push = function(value, type) {
 		var self = this;
 		self.storing.push(self.path, value, type);
+		return self;
+	};
+
+	// Component
+	PPC.compile = function(container) {
+		var self = this;
+		!container && self.attrd('jc-compile') && self.attrd('jc-compile', '1');
+		this.view.compile(container || self.element);
 		return self;
 	};
 

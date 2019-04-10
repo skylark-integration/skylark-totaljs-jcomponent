@@ -31,35 +31,6 @@ define([
 
 
 //	jc.$parser.push(function(path, value, type) {
-	paths.parser(function(path, value, type) {
-
-		switch (type) {
-			case 'number':
-			case 'currency':
-			case 'float':
-				var v = +(langx.isString(value) ? value.trimAll().replace(REGCOMMA, '.') : value);
-				return isNaN(v) ? null : v;
-
-			case 'date':
-			case 'datetime':
-
-				if (!value) {
-					return null;
-				}
-
-				if (value instanceof Date) {
-					return value;
-				}
-
-				value = value.parseDate();
-				return value && value.getTime() ? value : null;
-		}
-
-		return value;
-	});
-
-
-
 
 	return jc.binding = {
 		parser,

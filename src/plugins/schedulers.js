@@ -49,7 +49,7 @@ define([
 			expire = '-' + expire;
 		var arr = expire.split(' ');
 		var type = arr[1].toLowerCase().substring(0, 1);
-		var id = GUID(10);
+		var id = langx.guid(10); //GUID
 		schedulers.push({ 
 			id: id, 
 			name: name, 

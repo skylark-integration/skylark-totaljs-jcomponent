@@ -1,14 +1,15 @@
 define([
+	"../langx",
 	"../utils/domx",
 	"../utils/query",
-	"../components/Component",
 	"./vbind"
-],function(domx,$,Component,vbind){
+],function(langx,domx,$,vbind){
 	function vbindArray(html, el) { //W.VBINDARRAY = 
 		var obj = {};
 		obj.html = html;
 		obj.items = [];
-		obj.element = el instanceof Component ? el.element : $(el);
+		//obj.element = el instanceof Component ? el.element : $(el);
+		obj.element = el.element ? el.element : $(el);
 		obj.element[0].$vbindarray = obj;
 		obj.remove = function() {
 			for (var i = 0; i < obj.items.length; i++) {
@@ -47,7 +48,7 @@ define([
 						sum += serialize(p ? $get(p, item) : item);
 				}
 			}
-			return HASH(sum);
+			return langx.hashCode(sum); // HASH
 		};
 
 		obj.set = function(index, value) {

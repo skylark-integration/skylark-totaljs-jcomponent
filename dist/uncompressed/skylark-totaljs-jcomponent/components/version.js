@@ -1,4 +1,6 @@
 define([],function(){
+	var versions = {};
+	
    /**
    * sets a version for specific components.
    * ex : version('textbox@1', 'dropdown@1');
@@ -19,6 +21,8 @@ define([],function(){
 				}
 			}
 		}
-	};
+	}
+
+	return version;
 	
-	});
+});

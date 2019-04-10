@@ -3,12 +3,12 @@ define([
 	"./jc",
 	"./langx/regexp",
 	"./langx/now",
+	"./langx/statics",
 	"./langx/ArrayEx",
 	"./langx/DateEx",
 	"./langx/NumberEx",
 	"./langx/StringEx"
-],function(slangx,jc,regexp,now){
-	var statics = {};
+],function(slangx,jc,regexp,now,statics){
 	var waits = {};
 
 	function async(arr, fn, done) {
@@ -346,6 +346,7 @@ define([
 		singleton:singleton,
 		state:state,
 		stringify:stringify,
+		statics : statics,
 		wait:wait
 	};
 

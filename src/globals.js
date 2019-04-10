@@ -10,14 +10,41 @@ define([
 	"./views"
 ],function(jc, defaults, langx,utils,plugins,Components,binding,stores,views){
 
+	$.fn.scope = function() {
+
+		if (!this.length) {
+			return null; 
+		}
+
+		var data = this[0].$scopedata;
+		if (data) {
+			return data;
+		}
+		var el = this.closest('[' + ATTRSCOPE + ']');
+		if (el.length) {
+			data = el[0].$scopedata;
+			if (data) {
+				return data;
+			}
+		}
+		return null;
+	};	
+
+
 	var W = Window;
 
 	var gv = new views.View(document.body,{
-		store : new stores.Store({
-					data : W
-				})
+			store : new stores.Store({
+							data : W
+						})
 		}),
-		gs = gv.storing;
+		gs = gv.storing,
+		gh = gv.helper,
+		gm = gv.composer,
+		gl = gv.compiler,
+		ge = gv.eventer;
+
+	$.components = gv.components;
 
 	langx.mixin(W, {
 		isPRIVATEMODE : false,
@@ -124,7 +151,7 @@ define([
 		PLUGINS : plugins.registry
 	});
 
-	W.ADD = components.add;
+	W.ADD = gv.add;
 
 	W.BLOCKED  = blocking.blocked;
 	
@@ -164,7 +191,7 @@ define([
    * @param  {Boolean} reset Optional, default: true
    */
 	W.DEFAULT = function (path, timeout, reset) { //
-		var arr = path.split(REGMETA);
+		var arr = path.split(/_{2,}/);
 		if (arr.length > 1) {
 			var def = arr[1];
 			path = arr[0];
@@ -178,7 +205,7 @@ define([
 	}
 
 	W.EMIT = function(name) {
-		return gs.emit.apply(gs,arguments);
+		return ge.emit.apply(gs,arguments);
 	};
 
    /**
@@ -218,8 +245,9 @@ define([
 		return gs.evaluate(path, expression, nopath);
 	};
 
+
 	W.FIND = function (value, many, noCache, callback) {  
-		return gs.find(value, many, noCache, callback);
+		return gm.find(value, many, noCache, callback);
 	};
 
 	W.FREE = function(timeout) {
@@ -287,7 +315,7 @@ define([
 	};	
 
 	W.LASTMODIFICATION = W.USAGE = function (name, expire, path, callback) {
-		return gs.usage(name,expire,path,callback);
+		return gm.usage(name,expire,path,callback);
 	};
 
 	W.MAKE = function (obj, fn, update) {
@@ -314,12 +342,17 @@ define([
 		return W;
 	};
 
+	W.NOTIFY = function() {
+		gm.notify.apply(gm,arguments);
+		return W;
+	};
+
 	W.OFF = function(name, path, fn) {
-		return gs.off(name,path,fn);
+		return ge.off(name,path,fn);
 	};	
 
 	W.ON = function(name, path, fn, init, context) {
-		return gs.on(name,path,fn,init,context);
+		return ge.on(name,path,fn,init,context);
 	};
    /**
     * creates an object with more readable properties.
@@ -494,13 +527,13 @@ define([
 	W.VBINDARRAY = binding.vbindArray;
 
 	W.VALIDATE = function(path, except) {
-		return gs.validate(path,except);
+		return gm.validate(path,except);
 	};
 
 	W.VERSION = components.version;
 
 	W.WATCH	= function (path, fn, init) { // 
-		return gs.watch(path, fn, init);
+		return ge.watch(path, fn, init);
 	};
 
 	return W;

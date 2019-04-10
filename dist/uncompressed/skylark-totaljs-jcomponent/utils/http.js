@@ -3,6 +3,8 @@ define([
 	"../langx",
 	"./cache"
 ],function(jc,langx,topic,cache){
+	var statics = langx.statics;
+	
 	/* TODo
 	function remap(path, value) {
 
@@ -58,30 +60,7 @@ define([
 		return cache.set(key, value, expire);
 	}
 	
-	function makeurl(url, make) {
 
-		defaults.makeurl && (url = defaults.makeurl(url));
-
-		if (make)
-			return url;
-
-		var builder = [];
-		var en = encodeURIComponent;
-
-		M.$version && builder.push('version=' + en(M.$version));
-		M.$language && builder.push('language=' + en(M.$language));
-
-		if (!builder.length)
-			return url;
-
-		var index = url.indexOf('?');
-		if (index == -1)
-			url += '?';
-		else
-			url += '&';
-
-		return url + builder.join('&');
-	}
 
 	function makeParams(url, values, type) { //W.MAKEPARAMS = 
 
@@ -397,7 +376,7 @@ define([
 		}, function() {
 
 			statics[url] = 2;
-			var id = 'import' + HASH(url);
+			var id = 'import' + langx.hashCode(url); // HASH
 
 			var cb = function(response, code, output) {
 

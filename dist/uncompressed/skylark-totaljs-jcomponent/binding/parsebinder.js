@@ -7,8 +7,7 @@ define([
 	"./Binder"
 ],function(langx, $,func,pathmaker,findFormat,jBinder){
 	
-	var REGMETA = /_{2,}/;
-	
+
 	var bindersnew = [];
 	
 	function parsebinderskip(str) {
@@ -25,8 +24,10 @@ define([
 	 * A binder declaration:
 	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
 	 */
-	function parsebinder(el, b, scopes, r) {
-		var meta = b.split(REGMETA);
+	function parsebinder(el, b, scopes, options,r) {
+		var binders = options.binders;
+		
+		var meta = b.split(/_{2,}/);
 		if (meta.indexOf('|') !== -1) {
 			//Multiple watchers (__|__)
 			if (!r) {
@@ -36,7 +37,7 @@ define([
 					var m = meta[i];
 					if (m === '|') {
 						if (tmp.length) {
-							output.push(parsebinder(el, tmp.join('__'), scopes));
+							output.push(parsebinder(el, tmp.join('__'), scopes,options));
 						} 
 						tmp = [];
 						continue;
@@ -46,7 +47,7 @@ define([
 					}
 				}
 				if (tmp.length) {
-					output.push(parsebinder(el, tmp.join('__'), scopes, true));
+					output.push(parsebinder(el, tmp.join('__'), scopes, options,true));
 				} 
 			}
 			return output;
@@ -222,9 +223,9 @@ define([
 									} else {
 										fn = v;
 									}
-								}
-								else
+								} else {
 									fn = func(func.rebinddecode(v));
+								}
 								break;
 							case 'tclass':
 								fn = v;

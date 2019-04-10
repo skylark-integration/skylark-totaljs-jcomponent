@@ -1,6 +1,6 @@
 define([
 	"../stores",
-	"./pathmaker",
+	"./pathmaker"
 ],function(stores,pathmaker){
 
 	function bind(path) { // W.BIND = 

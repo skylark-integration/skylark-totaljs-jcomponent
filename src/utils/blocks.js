@@ -42,6 +42,19 @@ define([
 		//M.loaded = true;  //TODO
 	}
 
+	blocks.clean = function() {
+		for (var key in blocked) {
+			if (blocked[key] <= now) {
+				delete blocked[key];
+				is2 = true;
+			}
+		}
+
+		if (MD.localstorage && is2 && !M.isPRIVATEMODE)  // W.isPRIVATEMODE
+			localStorage.setItem(M.$localstorage + '.blocked', JSON.stringify(blocked));
+		
+	}
+
 	return blocks;
 
 });

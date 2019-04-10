@@ -13,10 +13,7 @@ define([
 	"./components/register",
 	"./components/Usage"
 ],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage){
-	var M = jc;
 
-	var components = Component.components = [];
-	var versions = {};
 
 //	var components = {};
 
@@ -77,25 +74,6 @@ define([
 	};
 
 
-   /**
-   * Create new components dynamically.
-   * @param  {String|Array<String>} declaration 
-   * @param  {jQuery Element/Component/Scope/Plugin} element optional,a parent element (default: "document.body")
-   */
-	function add(value, element) { // W.ADD =
-		if (element instanceof COM || element instanceof Scope || element instanceof Plugin) {
-			element = element.element;
-		}
-		if (value instanceof Array) {
-			for (var i = 0; i < value.length; i++)
-				ADD(value[i], element);
-		} else {
-			$(element || document.body).append('<div data-jc="{0}"></div>'.format(value));
-			setTimeout2('ADD', COMPILE, 10);
-		}
-	};
-
-
     function get(name) {
         return types[name];
     }
@@ -115,15 +93,15 @@ define([
 
 
 	return jc.components = {
-		cleaner,
-		cleaner2,
-		each,
-		find,
-		refresh,
-		reset,
-		setter,
-		usage,
-		version
+		"Component" : Component,
+		"configs" : configs,
+		"configure" : configure,
+		"extensions" : extensions,
+		"extend" : extend,
+		"registry" : registry,
+		"register" : register,
+		"Usage" : Usage,
+		"version" : version
 
 	};
 

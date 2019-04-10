@@ -9479,6 +9479,10 @@ define('skylark-totaljs-jcomponent/langx/now',[],function(){
 	}
 
 });
+define('skylark-totaljs-jcomponent/langx/statics',[],function(){
+	var statics = {};
+	return statics;
+});
 define('skylark-totaljs-jcomponent/langx/ArrayEx',[
 	"skylark-langx/langx",
 	"./regexp"
@@ -9948,8 +9952,9 @@ define('skylark-totaljs-jcomponent/langx/ArrayEx',[
 	
 });
 define('skylark-totaljs-jcomponent/langx/DateEx',[
-	"./regexp"
-],function(regexp){
+	"./regexp",
+	"./statics"
+],function(regexp,statics){
 
 	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
 	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
@@ -10704,12 +10709,12 @@ define('skylark-totaljs-jcomponent/langx',[
 	"./jc",
 	"./langx/regexp",
 	"./langx/now",
+	"./langx/statics",
 	"./langx/ArrayEx",
 	"./langx/DateEx",
 	"./langx/NumberEx",
 	"./langx/StringEx"
-],function(slangx,jc,regexp,now){
-	var statics = {};
+],function(slangx,jc,regexp,now,statics){
 	var waits = {};
 
 	function async(arr, fn, done) {
@@ -11047,6 +11052,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		singleton:singleton,
 		state:state,
 		stringify:stringify,
+		statics : statics,
 		wait:wait
 	};
 
@@ -11186,6 +11192,20 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 			delete storage[key];
 		}
 		save();
+		return this;
+	};
+
+
+	cache.clean = function () { 
+		for (var key in storage) {
+			var item = storage[key];
+			if (!item.expire || item.expire <= now) {
+				delete storage[key];
+			}
+		}
+
+		save();		
+
 		return this;
 	};
 
@@ -11337,6 +11357,11 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 		M.loaded = true;
 	}
 
+
+	function clean() {
+
+	}
+
 	return cache;
 });
 define('skylark-totaljs-jcomponent/plugins/schedulers',[
@@ -11390,7 +11415,7 @@ define('skylark-totaljs-jcomponent/plugins/schedulers',[
 			expire = '-' + expire;
 		var arr = expire.split(' ');
 		var type = arr[1].toLowerCase().substring(0, 1);
-		var id = GUID(10);
+		var id = langx.guid(10); //GUID
 		schedulers.push({ 
 			id: id, 
 			name: name, 
@@ -11495,6 +11520,18 @@ define('skylark-totaljs-jcomponent/plugins',[
 		return registry[name];
 	}
 
+	function clean() {
+			// Checks PLUGINS
+			var R = plugins.registry; //W.PLUGINS;
+			Object.keys(R).forEach(function(key) {
+				var a = R[key];
+				if (!inDOM(a.element[0]) || !a.element[0].innerHTML) {
+					a.$remove();
+					delete R[key];
+				}
+			});
+		
+	}
 	
 	return jc.plugins = {
 		"Plugin" : Plugin,
@@ -11894,7 +11931,7 @@ define('skylark-totaljs-jcomponent/binding/pathmaker',[
 });
 define('skylark-totaljs-jcomponent/binding/bind',[
 	"../stores",
-	"./pathmaker",
+	"./pathmaker"
 ],function(stores,pathmaker){
 
 	function bind(path) { // W.BIND = 
@@ -12054,8 +12091,7 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 	"./Binder"
 ],function(langx, $,func,pathmaker,findFormat,jBinder){
 	
-	var REGMETA = /_{2,}/;
-	
+
 	var bindersnew = [];
 	
 	function parsebinderskip(str) {
@@ -12072,8 +12108,10 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 	 * A binder declaration:
 	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
 	 */
-	function parsebinder(el, b, scopes, r) {
-		var meta = b.split(REGMETA);
+	function parsebinder(el, b, scopes, options,r) {
+		var binders = options.binders;
+		
+		var meta = b.split(/_{2,}/);
 		if (meta.indexOf('|') !== -1) {
 			//Multiple watchers (__|__)
 			if (!r) {
@@ -12083,7 +12121,7 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 					var m = meta[i];
 					if (m === '|') {
 						if (tmp.length) {
-							output.push(parsebinder(el, tmp.join('__'), scopes));
+							output.push(parsebinder(el, tmp.join('__'), scopes,options));
 						} 
 						tmp = [];
 						continue;
@@ -12093,7 +12131,7 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 					}
 				}
 				if (tmp.length) {
-					output.push(parsebinder(el, tmp.join('__'), scopes, true));
+					output.push(parsebinder(el, tmp.join('__'), scopes, options,true));
 				} 
 			}
 			return output;
@@ -12269,9 +12307,9 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 									} else {
 										fn = v;
 									}
-								}
-								else
+								} else {
 									fn = func(func.rebinddecode(v));
+								}
 								break;
 							case 'tclass':
 								fn = v;
@@ -12538,11 +12576,606 @@ define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
 });
 
 
+define('skylark-utils-dom/elmx',[
+    "./dom",
+    "./langx",
+    "./datax",
+    "./eventer",
+    "./finder",
+    "./fx",
+    "./geom",
+    "./noder",
+    "./styler",
+    "./query"
+], function(dom, langx, datax, eventer, finder, fx, geom, noder, styler,$) {
+    var map = Array.prototype.map,
+        slice = Array.prototype.slice;
+    /*
+     * VisualElement is a skylark class type wrapping a visule dom node,
+     * provides a number of prototype methods and supports chain calls.
+     */
+    var VisualElement = langx.klass({
+        klassName: "VisualElement",
+
+        "_construct": function(node) {
+            if (langx.isString(node)) {
+                if (node.charAt(0) === "<") {
+                    //html
+                    node = noder.createFragment(node)[0];
+                } else {
+                    // id
+                    node = document.getElementById(node);
+                }
+            }
+            this._elm = node;
+        }
+    });
+
+    VisualElement.prototype.$ = VisualElement.prototype.query = function(selector) {
+        return $(selector,this._elm);
+    };
+
+    VisualElement.prototype.elm = function() {
+        return this._elm;
+    };
+
+    /*
+     * the VisualElement object wrapping document.body
+     */
+    var root = new VisualElement(document.body),
+        elmx = function(node) {
+            if (node) {
+                return new VisualElement(node);
+            } else {
+                return root;
+            }
+        };
+    /*
+     * Extend VisualElement prototype with wrapping the specified methods.
+     * @param {ArrayLike} fn
+     * @param {Object} context
+     */
+    function _delegator(fn, context) {
+        return function() {
+            var self = this,
+                elem = self._elm,
+                ret = fn.apply(context, [elem].concat(slice.call(arguments)));
+
+            if (ret) {
+                if (ret === context) {
+                    return self;
+                } else {
+                    if (ret instanceof HTMLElement) {
+                        ret = new VisualElement(ret);
+                    } else if (langx.isArrayLike(ret)) {
+                        ret = map.call(ret, function(el) {
+                            if (el instanceof HTMLElement) {
+                                return new VisualElement(el);
+                            } else {
+                                return el;
+                            }
+                        })
+                    }
+                }
+            }
+            return ret;
+        };
+    }
+
+    langx.mixin(elmx, {
+        batch: function(nodes, action, args) {
+            nodes.forEach(function(node) {
+                var elm = (node instanceof VisualElement) ? node : elmx(node);
+                elm[action].apply(elm, args);
+            });
+
+            return this;
+        },
+
+        root: new VisualElement(document.body),
+
+        VisualElement: VisualElement,
+
+        partial: function(name, fn) {
+            var props = {};
+
+            props[name] = fn;
+
+            VisualElement.partial(props);
+        },
+
+        delegate: function(names, context) {
+            var props = {};
+
+            names.forEach(function(name) {
+                props[name] = _delegator(context[name], context);
+            });
+
+            VisualElement.partial(props);
+        }
+    });
+
+    // from ./datax
+    elmx.delegate([
+        "attr",
+        "data",
+        "prop",
+        "removeAttr",
+        "removeData",
+        "text",
+        "val"
+    ], datax);
+
+    // from ./eventer
+    elmx.delegate([
+        "off",
+        "on",
+        "one",
+        "shortcuts",
+        "trigger"
+    ], eventer);
+
+    // from ./finder
+    elmx.delegate([
+        "ancestor",
+        "ancestors",
+        "children",
+        "descendant",
+        "find",
+        "findAll",
+        "firstChild",
+        "lastChild",
+        "matches",
+        "nextSibling",
+        "nextSiblings",
+        "parent",
+        "previousSibling",
+        "previousSiblings",
+        "siblings"
+    ], finder);
+
+    /*
+     * find a dom element matched by the specified selector.
+     * @param {String} selector
+     */
+    elmx.find = function(selector) {
+        if (selector === "body") {
+            return this.root;
+        } else {
+            return this.root.descendant(selector);
+        }
+    };
+
+    // from ./fx
+    elmx.delegate([
+        "animate",
+        "fadeIn",
+        "fadeOut",
+        "fadeTo",
+        "fadeToggle",
+        "hide",
+        "scrollToTop",
+        "show",
+        "toggle"
+    ], fx);
+
+
+    // from ./geom
+    elmx.delegate([
+        "borderExtents",
+        "boundingPosition",
+        "boundingRect",
+        "clientHeight",
+        "clientSize",
+        "clientWidth",
+        "contentRect",
+        "height",
+        "marginExtents",
+        "offsetParent",
+        "paddingExtents",
+        "pagePosition",
+        "pageRect",
+        "relativePosition",
+        "relativeRect",
+        "scrollIntoView",
+        "scrollLeft",
+        "scrollTop",
+        "size",
+        "width"
+    ], geom);
+
+    // from ./noder
+    elmx.delegate([
+        "after",
+        "append",
+        "before",
+        "clone",
+        "contains",
+        "contents",
+        "empty",
+        "html",
+        "isChildOf",
+        "isDocument",
+        "isInDocument",
+        "isWindow",
+        "ownerDoc",
+        "prepend",
+        "remove",
+        "removeChild",
+        "replace",
+        "reverse",
+        "throb",
+        "traverse",
+        "wrapper",
+        "wrapperInner",
+        "unwrap"
+    ], noder);
+
+    // from ./styler
+    elmx.delegate([
+        "addClass",
+        "className",
+        "css",
+        "hasClass",
+        "hide",
+        "isInvisible",
+        "removeClass",
+        "show",
+        "toggleClass"
+    ], styler);
+
+    // properties
+
+    var properties = [ 'position', 'left', 'top', 'right', 'bottom', 'width', 'height', 'border', 'borderLeft',
+    'borderTop', 'borderRight', 'borderBottom', 'borderColor', 'display', 'overflow', 'margin', 'marginLeft', 'marginTop', 'marginRight', 'marginBottom', 'padding', 'paddingLeft', 'paddingTop', 'paddingRight', 'paddingBottom', 'color',
+    'background', 'backgroundColor', 'opacity', 'fontSize', 'fontWeight', 'textAlign', 'textDecoration', 'textTransform', 'cursor', 'zIndex' ];
+
+    properties.forEach( function ( property ) {
+
+        var method = property;
+
+        VisualElement.prototype[method ] = function (value) {
+
+            this.css( property, value );
+
+            return this;
+
+        };
+
+    });
+
+    // events
+    var events = [ 'keyUp', 'keyDown', 'mouseOver', 'mouseOut', 'click', 'dblClick', 'change' ];
+
+    events.forEach( function ( event ) {
+
+        var method = event;
+
+        VisualElement.prototype[method ] = function ( callback ) {
+
+            this.on( event.toLowerCase(), callback);
+
+            return this;
+        };
+
+    });
+
+
+    return dom.elmx = elmx;
+});
+define('skylark-utils-dom/plugins',[
+    "./dom",
+    "./langx",
+    "./noder",
+    "./datax",
+    "./eventer",
+    "./finder",
+    "./geom",
+    "./styler",
+    "./fx",
+    "./query",
+    "./elmx"
+], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx, $, elmx) {
+    "use strict";
+
+    var slice = Array.prototype.slice,
+        concat = Array.prototype.concat,
+        pluginKlasses = {},
+        shortcuts = {};
+
+    /*
+     * Create or get or destory a plugin instance assocated with the element.
+     */
+    function instantiate(elm,pluginName,options) {
+        var pair = pluginName.split(":"),
+            instanceDataName = pair[1];
+        pluginName = pair[0];
+
+        if (!instanceDataName) {
+            instanceDataName = pluginName;
+        }
+
+        var pluginInstance = datax.data( elm, instanceDataName );
+
+        if (options === "instance") {
+            return pluginInstance;
+        } else if (options === "destroy") {
+            if (!pluginInstance) {
+                throw new Error ("The plugin instance is not existed");
+            }
+            pluginInstance.destroy();
+            datax.removeData( elm, pluginName);
+            pluginInstance = undefined;
+        } else {
+            if (!pluginInstance) {
+                if (options !== undefined && typeof options !== "object") {
+                    throw new Error ("The options must be a plain object");
+                }
+                var pluginKlass = pluginKlasses[pluginName]; 
+                pluginInstance = new pluginKlass(elm,options);
+                datax.data( elm, instanceDataName,pluginInstance );
+            } else if (options) {
+                pluginInstance.reset(options);
+            }
+        }
+
+        return pluginInstance;
+    }
+
+    function shortcutter(pluginName,extfn) {
+       /*
+        * Create or get or destory a plugin instance assocated with the element,
+        * and also you can execute the plugin method directory;
+        */
+        return function (elm,options) {
+            var  plugin = instantiate(elm, pluginName,"instance");
+            if ( options === "instance" ) {
+              return plugin || null;
+            }
+            if (!plugin) {
+                plugin = instantiate(elm, pluginName,typeof options == 'object' && options || {});
+            }
+
+            if (options) {
+                var args = slice.call(arguments,2);
+                if (extfn) {
+                    return extfn.apply(plugin,args);
+                } else {
+                    if (typeof options == 'string') {
+                        var methodName = options;
+
+                        if ( !plugin ) {
+                            throw new Error( "cannot call methods on " + pluginName +
+                                " prior to initialization; " +
+                                "attempted to call method '" + methodName + "'" );
+                        }
+
+                        if ( !langx.isFunction( plugin[ methodName ] ) || methodName.charAt( 0 ) === "_" ) {
+                            throw new Error( "no such method '" + methodName + "' for " + pluginName +
+                                " plugin instance" );
+                        }
+
+                        return plugin[methodName].apply(plugin,args);
+                    }                
+                }                
+            }
+
+        }
+
+    }
+
+    /*
+     * Register a plugin type
+     */
+    function register( pluginKlass,shortcutName,instanceDataName,extfn) {
+        var pluginName = pluginKlass.prototype.pluginName;
+        
+        pluginKlasses[pluginName] = pluginKlass;
+
+        if (shortcutName) {
+            if (instanceDataName && langx.isFunction(instanceDataName)) {
+                extfn = instanceDataName;
+                instanceDataName = null;
+            } 
+            if (instanceDataName) {
+                pluginName = pluginName + ":" + instanceDataName;
+            }
+
+            var shortcut = shortcuts[shortcutName] = shortcutter(pluginName,extfn);
+                
+            $.fn[shortcutName] = function(options) {
+                var returnValue = this;
+
+                if ( !this.length && options === "instance" ) {
+                  returnValue = undefined;
+                } else {
+                  var args = slice.call(arguments);
+                  this.each(function () {
+                    var args2 = slice.call(args);
+                    args2.unshift(this);
+                    var  ret  = shortcut.apply(null,args2);
+                    if (ret !== undefined) {
+                        returnValue = ret;
+                        return false;
+                    }
+                  });
+                }
+
+                return returnValue;
+            };
+
+            elmx.partial(shortcutName,function(options) {
+                var  ret  = shortcut(this._elm,options);
+                if (ret === undefined) {
+                    ret = this;
+                }
+                return ret;
+            });
+
+        }
+    }
+
+ 
+    var Plugin =   langx.Evented.inherit({
+        klassName: "Plugin",
+
+        _construct : function(elm,options) {
+           this._elm = elm;
+           this._initOptions(options);
+        },
+
+        _initOptions : function(options) {
+          var ctor = this.constructor,
+              cache = ctor.cache = ctor.cache || {},
+              defaults = cache.defaults;
+          if (!defaults) {
+            var  ctors = [];
+            do {
+              ctors.unshift(ctor);
+              if (ctor === Plugin) {
+                break;
+              }
+              ctor = ctor.superclass;
+            } while (ctor);
+
+            defaults = cache.defaults = {};
+            for (var i=0;i<ctors.length;i++) {
+              ctor = ctors[i];
+              if (ctor.prototype.hasOwnProperty("options")) {
+                langx.mixin(defaults,ctor.prototype.options);
+              }
+              if (ctor.hasOwnProperty("options")) {
+                langx.mixin(defaults,ctor.options);
+              }
+            }
+          }
+          Object.defineProperty(this,"options",{
+            value :langx.mixin({},defaults,options)
+          });
+
+          //return this.options = langx.mixin({},defaults,options);
+          return this.options;
+        },
+
+
+        destroy: function() {
+            var that = this;
+
+            this._destroy();
+            // We can probably remove the unbind calls in 2.0
+            // all event bindings should go through this._on()
+            datax.removeData(this._elm,this.pluginName );
+        },
+
+        _destroy: langx.noop,
+
+        _delay: function( handler, delay ) {
+            function handlerProxy() {
+                return ( typeof handler === "string" ? instance[ handler ] : handler )
+                    .apply( instance, arguments );
+            }
+            var instance = this;
+            return setTimeout( handlerProxy, delay || 0 );
+        },
+
+        option: function( key, value ) {
+            var options = key;
+            var parts;
+            var curOption;
+            var i;
+
+            if ( arguments.length === 0 ) {
+
+                // Don't return a reference to the internal hash
+                return langx.mixin( {}, this.options );
+            }
+
+            if ( typeof key === "string" ) {
+
+                // Handle nested keys, e.g., "foo.bar" => { foo: { bar: ___ } }
+                options = {};
+                parts = key.split( "." );
+                key = parts.shift();
+                if ( parts.length ) {
+                    curOption = options[ key ] = langx.mixin( {}, this.options[ key ] );
+                    for ( i = 0; i < parts.length - 1; i++ ) {
+                        curOption[ parts[ i ] ] = curOption[ parts[ i ] ] || {};
+                        curOption = curOption[ parts[ i ] ];
+                    }
+                    key = parts.pop();
+                    if ( arguments.length === 1 ) {
+                        return curOption[ key ] === undefined ? null : curOption[ key ];
+                    }
+                    curOption[ key ] = value;
+                } else {
+                    if ( arguments.length === 1 ) {
+                        return this.options[ key ] === undefined ? null : this.options[ key ];
+                    }
+                    options[ key ] = value;
+                }
+            }
+
+            this._setOptions( options );
+
+            return this;
+        },
+
+        _setOptions: function( options ) {
+            var key;
+
+            for ( key in options ) {
+                this._setOption( key, options[ key ] );
+            }
+
+            return this;
+        },
+
+        _setOption: function( key, value ) {
+
+            this.options[ key ] = value;
+
+            return this;
+        }
+
+    });
+
+    $.fn.plugin = function(name,options) {
+        var args = slice.call( arguments, 1 ),
+            self = this,
+            returnValue = this;
+
+        this.each(function(){
+            returnValue = instantiate.apply(self,[this,name].concat(args));
+        });
+        return returnValue;
+    };
+
+    elmx.partial("plugin",function(name,options) {
+        var args = slice.call( arguments, 1 );
+        return instantiate.apply(this,[this.domNode,name].concat(args));
+    }); 
+
+
+    function plugins() {
+        return plugins;
+    }
+     
+    langx.mixin(plugins, {
+        instantiate,
+        Plugin,
+        register,
+        shortcuts
+    });
+
+    return plugins;
+});
 define('skylark-totaljs-jcomponent/utils/domx',[
 	"../langx",
 	"skylark-utils-dom/query",
-	"../jc",
-],function(langx, $, jc){
+	"skylark-utils-dom/plugins"
+],function(langx, $, plugins){
+	var statics = langx.statics;
+	
 	var $devices = { 
 		xs: { max: 768 }, 
 		sm: { min: 768, max: 992 }, 
@@ -13066,7 +13699,7 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 		$(window).on('orientationchange', mediaquery);
 	//}, 100);
 
-	return jc.domx = {
+	return {
 		"devices" : $devices,
 		"findInstance" : findInstance,
 		"inDOM" : inDOM,
@@ -13076,6 +13709,7 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 		"keyPress" : keyPress,
 		"mediaquery" : mediaquery,
 		"mediaWidth" : mediaWidth,
+		"Plugin" : plugins.Plugin,
 		"removescripts" : removescripts,
 		"scrollbarWidth" : scrollbarWidth,
 		"style" : style,
@@ -13099,6 +13733,163 @@ define('skylark-totaljs-jcomponent/binding/vbind',[
 	return vbind;
 });
 
+define('skylark-totaljs-jcomponent/binding/vbindArray',[
+	"../langx",
+	"../utils/domx",
+	"../utils/query",
+	"./vbind"
+],function(langx,domx,$,vbind){
+	function vbindArray(html, el) { //W.VBINDARRAY = 
+		var obj = {};
+		obj.html = html;
+		obj.items = [];
+		//obj.element = el instanceof Component ? el.element : $(el);
+		obj.element = el.element ? el.element : $(el);
+		obj.element[0].$vbindarray = obj;
+		obj.remove = function() {
+			for (var i = 0; i < obj.items.length; i++) {
+				obj.items[i].remove();
+			}
+			obj.checksum = null;
+			obj.items = null;
+			obj.html = null;
+			obj.element = null;
+		};
+
+		var serialize = function(val) {
+			switch (typeof(val)) {
+				case 'number':
+					return val + '';
+				case 'boolean':
+					return val ? '1' : '0';
+				case 'string':
+					return val;
+				default:
+					return val == null ? '' : val instanceof Date ? val.getTime() : JSON.stringify(val);
+			}
+		};
+
+		var checksum = function(item) {
+			var sum = 0;
+			var binder = obj.items[0];
+			if (binder) {
+				for (var j = 0; j < binder.binders.length; j++) {
+					var b = binder.binders[j];
+					var p = b.path;
+					if (b.track) {
+						for (var i = 0; i < b.track.length; i++)
+							sum += serialize($get((p ? (p + '.') : '') + b.track[i].substring(1), item));
+					} else
+						sum += serialize(p ? $get(p, item) : item);
+				}
+			}
+			return langx.hashCode(sum); // HASH
+		};
+
+		obj.set = function(index, value) {
+
+			var sum = null;
+
+			if (!(index instanceof Array)) {
+				var item = obj.items[index];
+				if (item) {
+					sum = checksum(value);
+					var el = item.element[0];
+					if (el.$bchecksum !== sum) {
+						el.$bchecksum = sum;
+						item.set(value);
+					}
+				}
+				return obj;
+			}
+
+			value = index;
+
+			if (obj.items.length > value.length) {
+				var rem = obj.items.splice(value.length);
+				for (var i = 0; i < rem.length; i++)
+					rem[i].remove();
+			}
+
+			for (var i = 0; i < value.length; i++) {
+				var val = value[i];
+				var item = obj.items[i];
+
+				if (!item) {
+					item = vbind(obj.html); //VBIND
+					obj.items.push(item);
+					item.element.attrd('index', i);
+					item.element[0].$vbind = item;
+					item.index = i;
+					obj.element.append(item.element);
+				}
+
+				var el = item.element[0];
+				sum = checksum(val);
+
+				if (el.$bchecksum !== sum) {
+					el.$bchecksum = sum;
+					item.set(val);
+				}
+			}
+		};
+
+		return obj;
+	};
+
+	$.fn.vbindarray = function() {
+		return domx.findinstance(this, '$vbindarray');
+	};
+
+
+	return vbindArray;
+});
+
+define('skylark-totaljs-jcomponent/binding',[
+	"skylark-utils-dom/query",
+	"./jc",
+	"./langx",
+	"./plugins",
+	"./binding/Binder",
+	"./binding/bind",
+	"./binding/VirtualBinder",
+	"./binding/vbind",
+	"./binding/vbindArray"
+],function($, jc,langx,plugins,Binder,bind,VirtualBinder,vbind,vbindArray){
+
+	var REGCOMMA = /,/g;
+
+
+	//var W = jc.W = {};
+
+
+	// temporary
+	//W.jctmp = {}; // not used
+	//W.W = window; 
+	//W.FUNC = {};
+
+
+
+	
+	// ===============================================================
+	// MAIN FUNCTIONS
+	// ===============================================================
+
+
+
+//	jc.$parser.push(function(path, value, type) {
+
+	return jc.binding = {
+		parser,
+
+		"Binder" : Binder,
+		"bind" : bind,
+		"VirtualBinder" : VirtualBinder,
+		"vbind" : vbind,
+		"vbindArray" : vbindArray
+	};
+
+});
 define('skylark-totaljs-jcomponent/components/Usage',[
 	"../langx"
 ],function(langx){
@@ -13300,7 +14091,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 					if (self.$bindreleased) {
 
 						if (self.$bindchanges) {
-							var hash = HASH(value);
+							var hash = langx.hashCode(value); // HASH
 							if (hash === self.$valuehash)
 								return;
 							self.$valuehash = hash;
@@ -13336,7 +14127,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 						cache.bt = 0; // reset timer id
 
 						if (self.$bindchanges) {
-							var hash = HASH(value);
+							var hash = langx.hashCode(value); // HASH
 							if (hash === self.$valuehash)
 								return;
 							self.$valuehash = hash;
@@ -13364,7 +14155,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 				var a = 'select-one';
 				value = self.formatter(value);
 
-				findcontrol(self.element[0], function(t) {
+				findControl(self.element[0], function(t) {
 
 					if (t.$com !== self)
 						t.$com = self;
@@ -13658,7 +14449,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		self.attrd('jc-released', value);
 
 		//(container || self.element).find(consts.ATTRCOM).each(function() {
-		helper.nested(container || self.element).forEach(function(){ 
+		self.view.helper.nested(container || self.element).forEach(function(){ 
 			var el = $(this);
 			el.attrd('jc-released', value ? 'true' : 'false');
 			var com = el[0].$com;
@@ -13758,7 +14549,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 * Returns all nested components.
 	 */
 	PPC.nested = function() {
-		return helper.nested(this.element);
+		return self.view.helper.nested(this.element);
 
 		/*
 		var arr = [];
@@ -14566,7 +15357,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		
 		//el.removeData(ATTRDATA);
 		//el.attr(ATTRDEL, 'true').find(ATTRCOM).attr(ATTRDEL, 'true');
-		helper.kill(el);
+		self.view.helper.kill(el);
 
 		self.$removed = 1;
 		self.removed = true;
@@ -14773,192 +15564,15 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		return self;
 	};
 
+	// Component
+	PPC.compile = function(container) {
+		var self = this;
+		!container && self.attrd('jc-compile') && self.attrd('jc-compile', '1');
+		this.view.compile(container || self.element);
+		return self;
+	};
+
 	return Component;
-});
-define('skylark-totaljs-jcomponent/binding/vbindArray',[
-	"../utils/domx",
-	"../utils/query",
-	"../components/Component",
-	"./vbind"
-],function(domx,$,Component,vbind){
-	function vbindArray(html, el) { //W.VBINDARRAY = 
-		var obj = {};
-		obj.html = html;
-		obj.items = [];
-		obj.element = el instanceof Component ? el.element : $(el);
-		obj.element[0].$vbindarray = obj;
-		obj.remove = function() {
-			for (var i = 0; i < obj.items.length; i++) {
-				obj.items[i].remove();
-			}
-			obj.checksum = null;
-			obj.items = null;
-			obj.html = null;
-			obj.element = null;
-		};
-
-		var serialize = function(val) {
-			switch (typeof(val)) {
-				case 'number':
-					return val + '';
-				case 'boolean':
-					return val ? '1' : '0';
-				case 'string':
-					return val;
-				default:
-					return val == null ? '' : val instanceof Date ? val.getTime() : JSON.stringify(val);
-			}
-		};
-
-		var checksum = function(item) {
-			var sum = 0;
-			var binder = obj.items[0];
-			if (binder) {
-				for (var j = 0; j < binder.binders.length; j++) {
-					var b = binder.binders[j];
-					var p = b.path;
-					if (b.track) {
-						for (var i = 0; i < b.track.length; i++)
-							sum += serialize($get((p ? (p + '.') : '') + b.track[i].substring(1), item));
-					} else
-						sum += serialize(p ? $get(p, item) : item);
-				}
-			}
-			return HASH(sum);
-		};
-
-		obj.set = function(index, value) {
-
-			var sum = null;
-
-			if (!(index instanceof Array)) {
-				var item = obj.items[index];
-				if (item) {
-					sum = checksum(value);
-					var el = item.element[0];
-					if (el.$bchecksum !== sum) {
-						el.$bchecksum = sum;
-						item.set(value);
-					}
-				}
-				return obj;
-			}
-
-			value = index;
-
-			if (obj.items.length > value.length) {
-				var rem = obj.items.splice(value.length);
-				for (var i = 0; i < rem.length; i++)
-					rem[i].remove();
-			}
-
-			for (var i = 0; i < value.length; i++) {
-				var val = value[i];
-				var item = obj.items[i];
-
-				if (!item) {
-					item = vbind(obj.html); //VBIND
-					obj.items.push(item);
-					item.element.attrd('index', i);
-					item.element[0].$vbind = item;
-					item.index = i;
-					obj.element.append(item.element);
-				}
-
-				var el = item.element[0];
-				sum = checksum(val);
-
-				if (el.$bchecksum !== sum) {
-					el.$bchecksum = sum;
-					item.set(val);
-				}
-			}
-		};
-
-		return obj;
-	};
-
-	$.fn.vbindarray = function() {
-		return domx.findinstance(this, '$vbindarray');
-	};
-
-
-	return vbindArray;
-});
-
-define('skylark-totaljs-jcomponent/binding',[
-	"skylark-utils-dom/query",
-	"./jc",
-	"./langx",
-	"./plugins",
-	"./binding/Binder",
-	"./binding/bind",
-	"./binding/VirtualBinder",
-	"./binding/vbind",
-	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,bind,VirtualBinder,vbind,vbindArray){
-
-	var REGCOMMA = /,/g;
-
-
-	//var W = jc.W = {};
-
-
-	// temporary
-	//W.jctmp = {}; // not used
-	//W.W = window; 
-	//W.FUNC = {};
-
-
-
-	
-	// ===============================================================
-	// MAIN FUNCTIONS
-	// ===============================================================
-
-
-
-//	jc.$parser.push(function(path, value, type) {
-	paths.parser(function(path, value, type) {
-
-		switch (type) {
-			case 'number':
-			case 'currency':
-			case 'float':
-				var v = +(langx.isString(value) ? value.trimAll().replace(REGCOMMA, '.') : value);
-				return isNaN(v) ? null : v;
-
-			case 'date':
-			case 'datetime':
-
-				if (!value) {
-					return null;
-				}
-
-				if (value instanceof Date) {
-					return value;
-				}
-
-				value = value.parseDate();
-				return value && value.getTime() ? value : null;
-		}
-
-		return value;
-	});
-
-
-
-
-	return jc.binding = {
-		parser,
-
-		"Binder" : Binder,
-		"bind" : bind,
-		"VirtualBinder" : VirtualBinder,
-		"vbind" : vbind,
-		"vbindArray" : vbindArray
-	};
-
 });
 define('skylark-totaljs-jcomponent/components/configs',[],function(){
 	var configs = {};
@@ -15105,10 +15719,7 @@ define('skylark-totaljs-jcomponent/components',[
 	"./components/register",
 	"./components/Usage"
 ],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage){
-	var M = jc;
 
-	var components = Component.components = [];
-	var versions = {};
 
 //	var components = {};
 
@@ -15169,25 +15780,6 @@ define('skylark-totaljs-jcomponent/components',[
 	};
 
 
-   /**
-   * Create new components dynamically.
-   * @param  {String|Array<String>} declaration 
-   * @param  {jQuery Element/Component/Scope/Plugin} element optional,a parent element (default: "document.body")
-   */
-	function add(value, element) { // W.ADD =
-		if (element instanceof COM || element instanceof Scope || element instanceof Plugin) {
-			element = element.element;
-		}
-		if (value instanceof Array) {
-			for (var i = 0; i < value.length; i++)
-				ADD(value[i], element);
-		} else {
-			$(element || document.body).append('<div data-jc="{0}"></div>'.format(value));
-			setTimeout2('ADD', COMPILE, 10);
-		}
-	};
-
-
     function get(name) {
         return types[name];
     }
@@ -15207,15 +15799,15 @@ define('skylark-totaljs-jcomponent/components',[
 
 
 	return jc.components = {
-		cleaner,
-		cleaner2,
-		each,
-		find,
-		refresh,
-		reset,
-		setter,
-		usage,
-		version
+		"Component" : Component,
+		"configs" : configs,
+		"configure" : configure,
+		"extensions" : extensions,
+		"extend" : extend,
+		"registry" : registry,
+		"register" : register,
+		"Usage" : Usage,
+		"version" : version
 
 	};
 
@@ -15262,6 +15854,19 @@ define('skylark-totaljs-jcomponent/utils/blocks',[
 		blocked = localStorage.get('blocked');
 
 		//M.loaded = true;  //TODO
+	}
+
+	blocks.clean = function() {
+		for (var key in blocked) {
+			if (blocked[key] <= now) {
+				delete blocked[key];
+				is2 = true;
+			}
+		}
+
+		if (MD.localstorage && is2 && !M.isPRIVATEMODE)  // W.isPRIVATEMODE
+			localStorage.setItem(M.$localstorage + '.blocked', JSON.stringify(blocked));
+		
 	}
 
 	return blocks;
@@ -15375,6 +15980,8 @@ define('skylark-totaljs-jcomponent/utils/http',[
 	"../langx",
 	"./cache"
 ],function(jc,langx,topic,cache){
+	var statics = langx.statics;
+	
 	/* TODo
 	function remap(path, value) {
 
@@ -15430,30 +16037,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		return cache.set(key, value, expire);
 	}
 	
-	function makeurl(url, make) {
 
-		defaults.makeurl && (url = defaults.makeurl(url));
-
-		if (make)
-			return url;
-
-		var builder = [];
-		var en = encodeURIComponent;
-
-		M.$version && builder.push('version=' + en(M.$version));
-		M.$language && builder.push('language=' + en(M.$language));
-
-		if (!builder.length)
-			return url;
-
-		var index = url.indexOf('?');
-		if (index == -1)
-			url += '?';
-		else
-			url += '&';
-
-		return url + builder.join('&');
-	}
 
 	function makeParams(url, values, type) { //W.MAKEPARAMS = 
 
@@ -15769,7 +16353,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		}, function() {
 
 			statics[url] = 2;
-			var id = 'import' + HASH(url);
+			var id = 'import' + langx.hashCode(url); // HASH
 
 			var cb = function(response, code, output) {
 
@@ -16274,967 +16858,3763 @@ define('skylark-totaljs-jcomponent/utils',[
 		query : query
 	};
 });
-define('skylark-totaljs-jcomponent/views/compose',[
-	"../langx"
-],function(langx){
-	var	fallback = 'https://cdn.componentator.com/j-{0}.html';
-	var	fallbackcache = '';
+define('skylark-totaljs-jcomponent/views/binding',[
+	"../utils/domx",
+	"../binding/parsebinder"
+],function(domx, parsebinder){
+	function binding(view) {
+		var binders = [];
+ 		//function parsebinder(el, b, scopes,
 
-	var lazycom = {};
-
-	var fallback = { $: 0 }; // $ === count of new items in fallback
-	
-	function dependencies(declaration, callback, obj, el) {
-
-		if (declaration.importing) {
-			langx.wait(function() {
-				return declaration.importing !== true;
-			}, function() {
-				callback(obj, el);
+		function parse(el,b,scopes) {
+			return parsebinder(el,b,scopes,{
+				"binders" : binders
 			});
-			return;
 		}
 
-		if (!declaration.dependencies || !declaration.dependencies.length) {
-			setTimeout(function(callback, obj, el) {
-				callback(obj, el);
-			}, 5, callback, obj, el);
-			return;
+		function binder(el) {
+			return el.$jcbind; 
 		}
 
-		declaration.importing = true;
-		declaration.dependencies.wait(function(item, next) {
-			if (langx.isFunction(item)) {
-				item(next);
-			} else {
-				IMPORT((item.indexOf('<') === -1 ? 'once ' : '') + item, next);
+		function clean() {
+			keys = Object.keys(binders);
+			for (var i = 0; i < keys.length; i++) {
+				arr = binders[keys[i]];
+				var j = 0;
+				while (true) {
+					var o = arr[j++];
+					if (!o)
+						break;
+					if (domx.inDOM(o.el[0])) {
+						continue;
+					}
+					var e = o.el;
+					if (!e[0].$br) {
+						e.off();
+						e.find('*').off();
+						e[0].$br = 1;
+					}
+					j--;
+					arr.splice(j, 1);
+				}
+				if (!arr.length) {
+					delete binders[keys[i]];
+				}
 			}
-		}, function() {
-			declaration.importing = false;
-			callback(obj, el);
-		}, 3);
-	}
-	
 
-	function onComponent(view, name, dom, level, scope) {
-
-		var el = $(dom);
-		var meta = name.split(REGMETA);
-		if (meta.length) {
-			meta = meta.trim(true);
-			name = meta[0];
-		} else
-			meta = null;
-
-		has = true;
-
-		// Check singleton instance
-		if (statics['$ST_' + name]) {
-			remove(el);
-			return;
 		}
 
-		var instances = [];
-		var all = name.split(',');
+		return {
+			"parse" : parse,
+			"binder" : binder,
+			"clean" : clean
+		}
 
-		for (var y = 0; y < all.length; y++) {
+	}
 
-			var name = all[y].trim();
-			var is = false;
+	return binding;
+});
+define('skylark-totaljs-jcomponent/views/componenter',[
+	"../langx",
+	"../components/extensions",
+	"../components/registry"
+],function(langx, extensions, registry){
+	
+	function componentor(view) {
+		var helper = view.helper,
+			storing = view.storing,
+			components = [],
+			caches = {
+				dirty : {},
+				valid : {},
+				find : {}
+			},
 
-			if (name.indexOf('|') !== -1) {
+			defaults = {};
 
-				// Multiple versions
-				var keys = name.split('|');
-				for (var i = 0; i < keys.length; i++) {
-					var key = keys[i].trim();
-					if (key && M.$components[key]) {
-						name = key;
+		var knockknockcounter = 0;
+
+		setInterval(function() {
+			//W.DATETIME = W.NOW = new Date();
+			langx.now(true);
+			var c = components;
+			for (var i = 0, length = c.length; i < length; i++)
+				c[i].knockknock && c[i].knockknock(knockknockcounter);
+			eventer.emit('knockknock', knockknockcounter++);  // EMIT
+		}, 60000);
+
+
+		function each(fn, path) {   // M.each
+			var wildcard = path ? path.lastIndexOf('*') !== -1 : false;
+			if (wildcard) {
+				path = path.replace('.*', '');
+			}
+			var all = components;//M.components;
+			var index = 0;
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+				if (!com || !com.$loaded || com.$removed || (path && (!com.path || !com.$compare(path)))) {
+					continue;
+				}
+				var stop = fn(com, index++, wildcard);
+				if (stop === true) {
+					return this;
+				}
+			}
+			return this;
+		}
+
+
+		function com_dirty(path, value, onlyComponent, skipEmitState) {
+			var cache = caches.dirty;
+			var isExcept = value instanceof Array;
+			var key = path + (isExcept ? '>' + value.join('|') : '');  // 'dirty' + 
+			var except = null;
+
+			if (isExcept) {
+				except = value;
+				value = undefined;
+			}
+
+			if (typeof(value) !== 'boolean' && cache[key] !== undefined) {
+				return cache[key];
+			}
+
+			var dirty = true;
+			var arr = value !== undefined ? [] : null;
+			var flags = null;
+
+			if (isExcept) {
+				var is = false;
+				flags = {};
+				except = except.remove(function(item) {
+					if (item.substring(0, 1) === '@') {
+						flags[item.substring(1)] = true;
 						is = true;
+						return true;
+					}
+					return false;
+				});
+				!is && (flags = null);
+				isExcept = except.length > 0;
+			}
+
+			var index = path.lastIndexOf('.*');
+			var wildcard = index !== -1;
+			if (index !== -1) {
+				path = path.substring(0, index);
+			}
+
+			path = pathmaker(path);
+
+			var all = components;//M.components;
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+
+				if (!com || com.$removed || !com.$loaded || !com.path || !com.$compare(path) || (isExcept && com.$except(except)))
+					continue;
+
+				if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
+					continue;
+
+				if (com.disabled || com.$dirty_disabled) {
+					arr && com.state && arr.push(com);
+					continue;
+				}
+
+				if (value === undefined) {
+					if (com.$dirty === false)
+						dirty = false;
+					continue;
+				}
+
+				com.state && arr.push(com);
+
+				if (!onlyComponent) {
+					if (wildcard || com.path === path) {
+						com.$dirty = value;
+						com.$interaction(101);
+					}
+				} else if (onlyComponent._id === com._id) {
+					com.$dirty = value;
+					com.$interaction(101);
+				}
+				if (com.$dirty === false)
+					dirty = false;
+			}
+
+			cache = caches.dirty = {};  //clear('dirty');
+			cache[key] = dirty;
+
+			// For double hitting component.state() --> look into COM.invalid()
+			!skipEmitState && state(arr, 1, 2);
+			return dirty;
+		}
+
+		function com_valid(path, value, onlyComponent) {
+			var cache = caches.valid;
+
+			var isExcept = value instanceof Array;
+			var key =  path + (isExcept ? '>' + value.join('|') : ''); // 'valid' +
+			var except = null;
+
+			if (isExcept) {
+				except = value;
+				value = undefined;
+			}
+
+			if (typeof(value) !== 'boolean' && cache[key] !== undefined) {
+				return cache[key];
+			}
+
+			var flags = null;
+
+			if (isExcept) {
+				var is = false;
+				flags = {};
+				except = except.remove(function(item) {
+					if (item.substring(0, 1) === '@') {
+						flags[item.substring(1)] = true;
+						is = true;
+						return true;
+					}
+					return false;
+				});
+				!is && (flags = null);
+				isExcept = except.length > 0;
+			}
+
+			var valid = true;
+			var arr = value !== undefined ? [] : null;
+
+			var index = path.lastIndexOf('.*');
+			var wildcard = index !== -1;
+			if (index !== -1) {
+				path = path.substring(0, index);
+			}
+
+			path = pathmaker(path);
+
+			var all = components;//M.components;
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+
+				if (!com || com.$removed || !com.$loaded || !com.path || !com.$compare(path) || (isExcept && com.$except(except)))
+					continue;
+
+				if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
+					continue;
+
+				if (com.disabled || com.$valid_disabled) {
+					arr && com.state && arr.push(com);
+					continue;
+				}
+
+				if (value === undefined) {
+					if (com.$valid === false)
+						valid = false;
+					continue;
+				}
+
+				com.state && arr.push(com);
+
+				if (!onlyComponent) {
+					if (wildcard || com.path === path) {
+						com.$valid = value;
+						com.$interaction(102);
+					}
+				} else if (onlyComponent._id === com._id) {
+					com.$valid = value;
+					com.$interaction(102);
+				}
+				if (com.$valid === false) {
+					valid = false;
+				}
+			}
+
+			cache = caches.valid = {};  //clear('valid');
+			cache[key] = valid ;
+			langx.state(arr, 1, 1);
+			return valid;
+		}
+
+		function clean() {
+			caches = {
+				dirty : {},
+				valid : {},
+				find : {}
+			};
+		}
+
+	  /**
+	   * Notifies a setter in all components on the path.
+	   * @param  {String} path 
+	   */
+		function notify() { // W.NOTIFY
+
+			var arg = arguments;
+			var all = view.components;//M.components;
+
+			var $ticks = Math.random().toString().substring(2, 8);
+			for (var j = 0; j < arg.length; j++) {
+				var p = arg[j];
+				binders[p] && binderbind(p, p, $ticks);
+			}
+
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path)
+					continue;
+
+				var is = 0;
+				for (var j = 0; j < arg.length; j++) {
+					if (com.path === arg[j]) {
+						is = 1;
 						break;
 					}
 				}
 
-				if (!is) {
-					name = keys[0].trim();
+				if (is) {
+					var val = com.get();
+					com.setter && com.setterX(val, com.path, 1);
+					com.state && com.stateX(1, 6);
+					com.$interaction(1);
 				}
 			}
 
-			var lazy = false;
-
-			if (name.substring(0, 5).toLowerCase() === 'lazy ') {
-				name = name.substring(5);
-				lazy = true;
+			for (var j = 0; j < arg.length; j++) {
+				emitwatch(arg[j], getx(arg[j]), 1);  // GET
 			}
 
-			if (!is && name.lastIndexOf('@') === -1) {
-				if (versions[name]) {
-					name += '@' + versions[name];
-				} else if (MD.version) {
-					name += '@' + MD.version;
-				}
-			}
+			return this;  // W
+		}
 
-			var com = M.$components[name];
-			var lo = null;
+		function validate(path, except) { //W.VALIDATE =
 
-			if (lazy && name) {
-				var namea = name.substring(0, name.indexOf('@'));
-				lo = lazycom[name];
-				if (!lo) {
-					if (namea && name !== namea) {
-						lazycom[name] = lazycom[namea] = { state: 1 };
-					} else {
-						lazycom[name] = { state: 1 };
+			var arr = [];
+			var valid = true;
+
+			path = pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
+
+			var flags = null;
+			if (except) {
+				var is = false;
+				flags = {};
+				except = except.remove(function(item) {
+					if (item.substring(0, 1) === '@') {
+						flags[item.substring(1)] = true;
+						is = true;
+						return true;
 					}
-					continue;
-				}
-				if (lo.state === 1) {
-					continue;
-				}
-			}
-
-			if (!com) {
-
-				if (!fallback[name]) {
-					fallback[name] = 1;
-					fallback.$++;
-				}
-
-				var x = view.attrcom(el, 'import');
-				if (!x) {
-					!statics['$NE_' + name] && (statics['$NE_' + name] = true);
-					continue;
-				}
-
-				if (view.imports[x] === 1) {
-					continue;
-				}
-
-				if (view.imports[x] === 2) {
-					!statics['$NE_' + name] && (statics['$NE_' + name] = true);
-					continue;
-				}
-
-				view.imports[x] = 1;
-				view.importing++;
-
-				view.import(x, function() {
-					view.importing--;
-					view.imports[x] = 2;
+					return false;
 				});
-
-				continue;
+				!is && (flags = null);
+				!except.length && (except = null);
 			}
 
-			if (fallback[name] === 1) {
-				fallback.$--;
-				delete fallback[name];
+			var all = M.components.all;//M.components;
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path))
+					continue;
+
+				if (flags && ((flags.visible && !com.visible()) || (flags.hidden && !com.hidden()) || (flags.enabled && com.find(SELINPUT).is(':disabled')) || (flags.disabled && com.find(SELINPUT).is(':enabled'))))
+					continue;
+
+				com.state && arr.push(com);
+
+				if (com.$valid_disabled)
+					continue;
+
+				com.$validate = true;
+				if (com.validate) {
+					com.$valid = com.validate(get(com.path));
+					com.$interaction(102);
+					if (!com.$valid)
+						valid = false;
+				}
 			}
 
-			var obj = new Component(com.name,view);
-			var parent = dom.parentNode;
+			clear('valid');
+			state(arr, 1, 1);
+			return valid;
+		}
 
-			while (true) {
-				if (parent.$com) {
-					var pc = parent.$com;
-					obj.owner = pc;
-					if (pc.$children) {
-						pc.$children++;
-					} else {
-						pc.$children = 1;
+		function prepare(obj) {
+
+			if (!obj) {
+				return;
+			}
+
+			var el = obj.element;
+
+			if(extensions[obj.name]) {
+				extensions[obj.name].forEach(function(item) {
+					if (item.config) {
+						obj.reconfigure(item.config, langx.empties.fn);
 					}
-					break;
-				} else if (parent.nodeName === 'BODY') {
-					break;
-				}
-				parent = parent.parentNode;
-				if (parent == null) {
-					break;
-				}
+					item.fn.call(obj, obj, obj.config);
+				});
 			}
 
-			obj.global = com.shared;
-			obj.element = el;
-			obj.dom = dom;
+			var value = obj.get();
+			var tmp;
 
-			var p = view.attrcom(el, 'path') || (meta ? meta[1] === 'null' ? '' : meta[1] : '') || obj._id;
-
-			if (p.substring(0, 1) === '%') {
-				obj.$noscope = true;
+			if (obj.configure) {
+				obj.reconfigure(obj.config, undefined, true);
 			}
 
-			obj.setPath(pathmaker(p, true), 1);
-			obj.config = {};
+			obj.$loaded = true;
 
-			// Default config
-			if (com.config) {
-				obj.reconfigure(com.config, NOOP);
-			}
+			if (obj.setter) {
+				if (!obj.$prepared) {
 
-			var tmp = attrcom(el, 'config') || (meta ? meta[2] === 'null' ? '' : meta[2] : '');
-			if (tmp) {
-				obj.reconfigure(tmp, NOOP);
-			}
+					obj.$prepared = true;
+					obj.$ready = true;
 
-			if (!obj.$init) {
-				obj.$init = attrcom(el, 'init') || null;
-			}
+					tmp = helper.attrcom(obj, 'value');
 
-			if (!obj.type) {
-				obj.type = attrcom(el, 'type') || '';
-			}
-
-			if (!obj.id) {
-				obj.id = attrcom(el, 'id') || obj._id;
-			}
-
-			obj.siblings = all.length > 1;
-			obj.$lazy = lo;
-
-			for (var i = 0; i < configs.length; i++) {
-				var con = configs[i];
-				con.fn(obj) && obj.reconfigure(con.config, NOOP);
-			}
-
-			caches.current.com = obj;
-			com.declaration.call(obj, obj, obj.config);
-			caches.current.com = null;
-
-			meta[3] && el.attrd('jc-value', meta[3]);
-
-			if (obj.init && !statics[name]) {
-				statics[name] = true;
-				obj.init();
-			}
-
-			dom.$com = obj;
-
-			if (!obj.$noscope) {
-				obj.$noscope = view.attrcom(el, 'noscope') === 'true';
-			}
-
-			var code = obj.path ? obj.path.charCodeAt(0) : 0;
-			if (!obj.$noscope && scope.length && !obj.$pp) {
-
-				var output = initscopes(scope);
-
-				if (obj.path && code !== 33 && code !== 35) {
-					obj.setPath(obj.path === '?' ? output.path : (obj.path.indexOf('?') === -1 ? output.path + '.' + obj.path : obj.path.replace(/\?/g, output.path)), 2);
-				} else {
-					obj.$$path = EMPTYARRAY;
-					obj.path = '';
-				}
-
-				obj.scope = output;
-				obj.pathscope = output.path;
-			}
-
-			instances.push(obj);
-
-			var template = view.attrcom(el, 'template') || obj.template;
-			if (template) {
-				obj.template = template;
-			}
-
-			if (view.attrcom(el, 'released') === 'true') {
-				obj.$released = true;
-			}
-
-			if (view.attrcom(el, 'url')) {
-				warn('Components: You have to use "data-jc-template" attribute instead of "data-jc-url" for the component: {0}[{1}].'.format(obj.name, obj.path));
-				continue;
-			}
-
-			if (langx.isString(template)) {
-				var fn = function(data) {
-					if (obj.prerender) {
-						data = obj.prerender(data);
-					}
-					dependencies(com, function(obj, el) {
-						if (langx.isFunction(obj.make)) {
-							var parent = caches.current.com;
-							caches.current.com = obj;
-							obj.make(data);
-							caches.current.com = parent;
+					if (tmp) {
+						if (!defaults[tmp]) {
+							defaults[tmp] = new Function('return ' + tmp);
 						}
-						init(el, obj);
-					}, obj, el);
-				};
 
-				var c = template.substring(0, 1);
-				if (c === '.' || c === '#' || c === '[') {
-					fn($(template).html());
-					continue;
+						obj.$default = defaults[tmp];
+						if (value === undefined) {
+							value = obj.$default();
+							storing.set(obj.path, value);
+							storing.emitwatch(obj.path, value, 0);
+						}
+					}
+
+					if (obj.$binded)
+						obj.$interaction(0);
+					else {
+						obj.$binded = true;
+						obj.setterX(value, obj.path, 0);
+						obj.$interaction(0);
+					}
 				}
-
-				var k = 'TE' + HASH(template);
-				var a = statics[k];
-				if (a) {
-					fn(a);
-					continue;
-				}
-
-				$.get(makeurl(template), function(response) {
-					statics[k] = response;
-					fn(response);
-				});
-
-				continue;
+			} else {
+				obj.$binded = true;
 			}
 
-			if (langx.isString(obj.make)) {
+			if (obj.validate && !obj.$valid_disabled) {
+				obj.$valid = obj.validate(obj.get(), true);
+			}
 
-				if (obj.make.indexOf('<') !== -1) {
-					dependencies(com, function(obj, el) {
-						if (obj.prerender)
-							obj.make = obj.prerender(obj.make);
-						el.html(obj.make);
-						init(el, obj);
-					}, obj, el);
+			if (obj.done) {
+				setTimeout(obj.done, 20);
+			}
+			
+			if (obj.state) {
+				obj.stateX(0, 3);
+			}
+
+			if (obj.$init) {
+				setTimeout(function() {
+					var fn = get(obj.$init);
+					if (langx.isFunction(fn)) {
+						fn.call(obj, obj);	
+					} 
+					obj.$init = undefined;
+				}, 5);
+			}
+
+			var n = 'component';
+			el.trigger(n);
+			el.off(n);
+
+			var cls = helper.attrcom(el, 'class');
+			cls && (function(cls) {
+				setTimeout(function() {
+					cls = cls.split(' ');
+					var tmp = el[0].$jclass || {};
+					for (var i = 0, length = cls.length; i < length; i++) {
+						if (!tmp[cls[i]]) {
+							el.tclass(cls[i]);
+							tmp[cls[i]] = true;
+						}
+					}
+					el[0].$jclass = tmp;
+				}, 5);
+			})(cls);
+
+			if (obj.id) {
+				storing.emit('#' + obj.id, obj);  // EMIT
+			}
+			storing.emit('@' + obj.name, obj); // EMIT
+			storing.emit(n, obj);  // EMIT
+			clear('find.');
+			if (obj.$lazy) {
+				obj.$lazy.state = 3;
+				delete obj.$lazy;
+				storing.emit('lazy', obj.$name, false); // EMIT
+			}
+		}
+
+
+		/*
+		 * Finds all component according to the selector.
+		 *   find(selector,callback) -> wait
+		 *   find(selector,many,callback,timeout) -> wait
+		 *   find(selector,manay,nocache,callback) -> no wait
+		 *   find(selector,manay,timeout) --> no wait
+		 * @value {String} selector
+         * @many {Boolean} Optional, output will be Array
+         * @nocache {Boolean} Optional
+         * @callback {Function(response)} Optional and the method will be wait for non-exist components
+         * @timeout {Number} Optional, in milliseconds (default: 0)
+         * returns {Component} or {Array Component}
+		 */
+		function find(value, many, noCache, callback) { //W.FIND
+			var cache = caches.find;
+
+			var isWaiting = false;
+
+			if (langx.isFunction(many)) {
+				isWaiting = true;
+				callback = many;
+				many = undefined;
+				// noCache = undefined;
+				// noCache can be timeout
+			} else if (langx.isFunction(noCache)) {
+				var tmp = callback;
+				isWaiting = true;
+				callback = noCache;
+				noCache = tmp;
+				// noCache can be timeout
+			}
+
+			if (isWaiting) {
+				langx.wait(function() {  // WAIT
+					var val = find(value, many, noCache);
+					if (lazycom[value] && lazycom[value].state === 1) {
+						lazycom[value].state = 2;
+						topic.emit('lazy', value, true); // EMIT
+						warn('Lazy load: ' + value);
+						view.compile();
+					}
+					return val instanceof Array ? val.length > 0 : !!val;
+				}, function(err) {
+					// timeout
+					if (!err) {
+						var val = find(value, many);
+						callback.call(val ? val : window, val);
+					}
+				}, 500, noCache);
+				return;
+			}
+
+			// Element
+			if (typeof(value) === 'object') {
+				if (!(value instanceof jQuery)) {
+					value = $(value);
+				}
+				var output = findComponent(value, '');
+				return many ? output : output[0];
+			}
+
+			var key, output;
+
+			if (!noCache) {
+				key = value + '.' + (many ? 0 : 1);  // 'find.' + 
+				output = cache[key];
+				if (output) {
+					return output;
+				}
+			}
+
+			var r = findComponent(null, value);
+			if (!many) {
+				r = r[0];
+			}
+			output = r;
+			if (!noCache) {
+				cache[key] = output;
+			}
+			return output;
+		}
+
+	   /**
+	   * Reconfigures all components according to the selector.
+	   * @param  {String} selector 
+	   * @param  {String/Object} config A default configuration
+	   */
+		function reconfigure(selector, value) { // W.RECONFIGURE = 
+			setter(true, selector, 'reconfigure', value);
+			return this; // RECONFIGURE
+		};
+
+	   /**
+	   * Set a new value to the specific method in components.
+	   * @param  {Boolean} wait Optional, can it wait for non-exist components? 
+	   * @param  {String} selector  
+	   * @param  {String} name Property or Method name (can't be nested) 
+	   * @param  {Object} argA Optional, additional argument
+	   * @param  {Object} argB Optional, additional argument
+	   * @param  {Object} argN Optional, additional argument
+	   */
+		function setter(selector, name) { // W.SETTER
+
+			var arg = [];
+			var beg = selector === true ? 3 : 2;
+
+			for (var i = beg; i < arguments.length; i++) {
+				arg.push(arguments[i]);
+			}
+
+			if (beg === 3) {
+
+				selector = name;
+
+				if (lazycom[selector] && lazycom[selector].state !== 3) {
+
+					if (lazycom[selector].state === 1) {
+						lazycom[selector].state = 2;
+						storing.emit('lazy', selector, true); // EMIT
+						warn('Lazy load: ' + selector);
+						compile();
+					}
+
+					setTimeout(function(arg) {
+						arg[0] = true;
+						setter.apply(window, arg);
+					}, 555, arguments);
+
+					return SETTER;
+				}
+
+				name = arguments[2];
+
+				find(selector, true, function(arr) {
+					for (var i = 0, length = arr.length; i < length; i++) {
+						var o = arr[i];
+						if (typeof(o[name]) === TYPE_FN)
+							o[name].apply(o, arg);
+						else
+							o[name] = arg[0];
+					}
+				});
+			} else {
+
+				if (lazycom[selector] && lazycom[selector].state !== 3) {
+
+					if (lazycom[selector].state === 1) {
+						lazycom[selector].state = 2;
+						storing.emit('lazy', selector, true);  // EMIT
+						warn('Lazy load: ' + selector);
+						compile();
+					}
+
+					setTimeout(function(arg) {
+						setter.apply(window, arg);
+					}, 555, arguments);
+
+					return SETTER;
+				}
+
+				var arr = helper.find(selector, true);
+				for (var i = 0, length = arr.length; i < length; i++) {
+					var o = arr[i];
+					if (typeof(o[name]) === TYPE_FN)
+						o[name].apply(o, arg);
+					else
+						o[name] = arg[0];
+				}
+			}
+
+			return this; // SETTER
+		};
+
+
+		// @type {String} Can be "init", "manually", "input" or "custom"
+		// @expire {String/Number}, for example "5 minutes"
+		// @path {String} Optional, for example "users.form.name"
+		// returns {Array Component} or {jComponent}
+		function usage(name, expire, path, callback) { //W.LASTMODIFICATION = W.USAGE = M.usage = 
+
+			var type = typeof(expire);
+			if (langx.isString(expire)) {
+				//var dt = W.NOW = W.DATETIME = new Date();
+				var dt = langx.now(true);
+				expire = dt.add('-' + expire.env()).getTime();
+			} else if (langx.isNumber(expire))
+				expire = Date.now() - expire;
+
+			if (langx.isFunction(path)) {
+				callback = path;
+				path = undefined;
+			}
+
+			var arr = [];
+			var a = null;
+
+			if (path) {
+				a = find('.' + path, true);
+			} else {
+				a = components;//M.components;
+			}
+
+			for (var i = 0; i < a.length; i++) {
+				var c = a[i];
+				if (c.usage[name] >= expire) {
+					if (callback) {
+						callback(c);
+					} else {
+						arr.push(c);
+					}
+				}
+			}
+
+			return callback ? M : arr;
+		}
+
+
+		function clean() {
+			var all =  components,
+	 			index = 0;
+				length = all.length;
+
+			while (index < length) {
+
+				var component = all[index++];
+
+				if (!component) {
+					index--;
+					all.splice(index, 1);
+					length = all.length;
 					continue;
 				}
 
-				$.get(makeurl(obj.make), function(data) {
-					dependencies(com, function(obj, el) {
+				var c = component.element;
+				if (!component.$removed && c && inDOM(c[0])) {
+					if (!component.attr(ATTRDEL)) {
+						if (component.$parser && !component.$parser.length)
+							component.$parser = undefined;
+						if (component.$formatter && !component.$formatter.length)
+							component.$formatter = undefined;
+						continue;
+					}
+				}
+
+				topic.emit('destroy', component.name, component);
+				topic.emit('component.destroy', component.name, component);
+
+				delete statics['$ST_' + component.name];
+				component.destroy && component.destroy();
+				$('#css' + component.ID).remove();
+
+				if (c[0].nodeName !== 'BODY') {
+					c.off();
+					c.find('*').off();
+					c.remove();
+				}
+
+				component.$main = undefined;
+				component.$data = null;
+				component.dom = null;
+				component.$removed = 2;
+				component.path = null;
+				component.setter = null;
+				component.setter2 = null;
+				component.getter = null;
+				component.getter2 = null;
+				component.make = null;
+
+				index--;
+				all.splice(index, 1);
+				length = all.length; // M.components.length
+				is = true;
+			}
+		}
+
+
+		return {
+
+		}
+	}
+	
+
+	return componentor;
+});
+define('skylark-totaljs-jcomponent/views/eventer',[],function(){
+	function eventer(view) {
+		var events = {};
+
+		function emitwatch(path, value, type) {
+			for (var i = 0, length = watches.length; i < length; i++) {
+				var self = watches[i];
+				if (self.path === '*') {
+					self.fn.call(self.context, path, self.format ? self.format(value, path, type) : value, type);
+				} else if (path.length > self.path.length) {
+					var index = path.lastIndexOf('.', self.path.length);
+					if (index === -1 ? false : self.path === path.substring(0, index)) {
+						var val = get(self.path); // GET
+						self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
+					}
+				} else {
+					for (var j = 0, jl = self.$path.length; j < jl; j++) {
+						if (self.$path[j] === path) {
+							var val = get(self.path); // get2
+							self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
+							break;
+						}
+					}
+				}
+			}
+		}
+
+		// ===============================================================
+		// Eventer
+		// ===============================================================
+
+
+		function on(name, path, fn, init, context) {
+
+			if (name.indexOf(MULTIPLE) !== -1) {
+				//ex: ON('name1 + name2 + name3', function() {});
+				var arr = name.split(MULTIPLE).trim();
+				for (var i = 0; i < arr.length; i++) {
+					on(arr[i], path, fn, init, context);
+				}
+				return this; //W;
+			}
+
+			var push = true;
+
+			if (name.substring(0, 1) === '^') {
+				push = false;
+				name = name.substring(1);
+			}
+
+			var owner = null;
+			var index = name.indexOf('#');
+
+			if (index) {
+				owner = name.substring(0, index).trim();
+				name = name.substring(index + 1).trim();
+			}
+
+			if (langx.isFunction(path)) {
+				fn = path;
+				path = name === 'watch' ? '*' : '';
+			} else {
+				path = path.replace('.*', '');
+			}
+
+			var obj = { name: name, fn: fn, owner: owner || current_owner, context: context || (current_com == null ? undefined : current_com) };
+
+			if (name === 'watch') {
+				var arr = [];
+
+				var tmp = findFormat(path);
+				if (tmp) {
+					path = tmp.path;
+					obj.format = tmp.fn;
+				}
+
+				if (path.substring(path.length - 1) === '.') {
+					path = path.substring(0, path.length - 1);
+				}
+
+				// Temporary
+				if (path.charCodeAt(0) === 37) { // %
+					path = 'jctmp.' + path.substring(1);
+				}
+
+				path = path.env();
+
+				// !path = fixed path
+				if (path.charCodeAt(0) === 33) { // !
+					path = path.substring(1);
+					arr.push(path);
+				} else {
+					var p = path.split('.');
+					var s = [];
+					for (var j = 0; j < p.length; j++) {
+						var b = p[j].lastIndexOf('[');
+						if (b !== -1) {
+							var c = s.join('.');
+							arr.push(c + (c ? '.' : '') + p[j].substring(0, b));
+						}
+						s.push(p[j]);
+						arr.push(s.join('.'));
+					}
+				}
+
+				obj.path = path;
+				obj.$path = arr;
+
+				if (push) {
+					watches.push(obj);
+				} else {
+					watches.unshift(obj);
+				}
+
+				init && fn.call(context || M, path, obj.format ? obj.format(get(path), path, 0) : get(path), 0);
+			} else {
+				if (events[name]) {
+					if (push) {
+						events[name].push(obj);
+					} else {
+						events[name].unshift(obj);
+					}
+				} else {
+					events[name] = [obj];
+				}
+				(!C.ready && (name === 'ready' || name === 'init')) && fn();
+			}
+			return this; //W;
+		}
+
+		function off(name, path, fn) {
+
+			if (name.indexOf('+') !== -1) {
+				var arr = name.split('+').trim();
+				for (var i = 0; i < arr.length; i++) {
+					off(arr[i], path, fn); //W.OFF
+				}
+				return this; //W;
+			}
+
+			if (lang.isFunction(path)) {
+				fn = path;
+				path = '';
+			}
+
+			if (path === undefined) {
+				path = '';
+			}
+
+			var owner = null;
+			var index = name.indexOf('#');
+			if (index) {
+				owner = name.substring(0, index).trim();
+				name = name.substring(index + 1).trim();
+			}
+
+			if (path) {
+				path = path.replace('.*', '').trim();
+				var tmp = findFormat(path);
+				if (tmp) {
+					path = tmp.path;
+				}
+				if (path.substring(path.length - 1) === '.') {
+					path = path.substring(0, path.length - 1);
+				}
+			}
+
+			var type = 0;
+
+			if (owner && !path && !fn && !name)
+				type = 1;
+			else if (owner && name && !fn && !path)
+				type = 2;
+			else if (owner && name && path)
+				type = 3;
+			else if (owner && name && path && fn)
+				type = 4;
+			else if (name && path && fn)
+				type = 5;
+			else if (name && path)
+				type = 7;
+			else if (fn)
+				type = 6;
+
+			var cleararr = function(arr, key) {
+				return arr.remove(function(item) {
+					if (type > 2 && type < 5) {
+						if (item.path !== path)
+							return false;
+					}
+					var v = false;
+					if (type === 1)
+						v = item.owner === owner;
+					else if (type === 2)
+						v = key === name && item.owner === owner;
+					else if (type === 3)
+						v = key === name && item.owner === owner;
+					else if (type === 4)
+						v = key === name && item.owner === owner && item.fn === fn;
+					else if (type === 5 || type === 6)
+						v = key === name && item.fn === fn;
+					else if (type === 6)
+						v = item.fn === fn;
+					else if (type === 7)
+						v = key === name && item.path === path;
+					else
+						v = key === name;
+					return v;
+				});
+			};
+
+			Object.keys(events).forEach(function(p) {
+				events[p] = cleararr(events[p], p);
+				if (!events[p].length) {
+					delete events[p];
+				}
+			});
+
+			watches = cleararr(watches, 'watch');
+			return this; //W;
+		}
+
+		function emit(name) {
+
+			var e = events[name];
+			if (!e) {
+				return false;
+			}
+
+			var args = [];
+
+			for (var i = 1, length = arguments.length; i < length; i++) {
+				args.push(arguments[i]);
+			}
+
+			for (var i = 0, length = e.length; i < length; i++) {
+				var context = e[i].context;
+				if (context !== undefined && (context === null || context.$removed)) {
+					continue;
+				}
+				e[i].fn.apply(context || window, args);
+			}
+
+			return true;
+		}
+
+		function each(fn) {
+
+			var keys = Object.keys(events);
+			var length = keys.length;
+
+			for (var i = 0; i < length; i++) {
+				var key = keys[i];
+				arr = events[key];
+				fn(key,arr);
+
+				if (!arr.length) {
+					delete events[key];
+				}
+
+			}
+
+		}
+
+		var watches = [];
+
+		function unwatch(path, fn) { //W.UNWATCH 
+
+			if (path.indexOf(MULTIPLE) !== -1) {
+				var arr = path.split(MULTIPLE).trim();
+				for (var i = 0; i < arr.length; i++)
+					unwatch(arr[i], fn);
+				return this; //W;
+			}
+
+			return off('watch', path, fn); //OFF
+		};
+
+		function watch(path, fn, init) { // W.WATCH
+
+			if (path.indexOf(MULTIPLE) !== -1) {
+				var arr = path.split(MULTIPLE).trim();
+				for (var i = 0; i < arr.length; i++)
+					watch(arr[i], fn, init);
+				return this; //W;
+			}
+
+			if (langx.isFunction(path)) { //if (typeof(path) === TYPE_FN) {
+				init = fn;
+				fn = path;
+				path = '*';
+			}
+
+			var push = '';
+
+			if (path.substring(0, 1) === '^') {
+				path = path.substring(1);
+				push = '^';
+			}
+
+			path = pathmaker(path, true);
+			on(push + 'watch', path, fn, init);  // ON
+			return this; //W;
+		}
+
+		function clean() {
+			topic.each(function(key,arr){
+				index = 0;
+				while (true) {
+
+					var item = arr[index++];
+					if (item === undefined) {
+						break;
+					}
+
+					if (item.context == null || (item.context.element && inDOM(item.context.element[0]))) {
+						continue;
+					}
+
+					if (item.context && item.context.element) {
+						item.context.element.remove();
+					}
+
+					item.context.$removed = true;
+					item.context = null;
+					arr.splice(index - 1, 1);
+
+					if (!arr.length) {
+						delete events[key];
+					}
+
+					index -= 2;
+					is = true;
+				}
+
+			});
+
+			index = 0;
+			while (true) {
+				var item = watches[index++];
+				if (item === undefined)
+					break;
+				if (item.context == null || (item.context.element && inDOM(item.context.element[0])))
+					continue;
+				item.context && item.context.element && item.context.element.remove();
+				item.context.$removed = true;
+				item.context = null;
+				watches.splice(index - 1, 1);
+				index -= 2;
+				is = true;
+			}			
+		}
+
+		return {
+			"clean" : clean,
+			"on" : on,
+			"off" : off,
+			"emit" : emit,
+			"watch" : watch,
+			"unwatch" : unwatch,
+			"emitwatch" : emitwatch
+		};
+
+	}
+
+	return eventer;
+});
+define('skylark-totaljs-jcomponent/views/compiler',[
+	"../langx",
+	"../utils/query",
+	"../utils/domx",
+	"../utils/http",
+	"../components/registry",
+	"../plugins"
+],function(langx, $, domx, http, registry,plugins){
+	var statics = langx.statics;
+
+	var MD = {
+		fallback : 'https://cdn.componentator.com/j-{0}.html',
+		fallbackcache : '',
+		version : 'v16'
+	};
+
+	var fallback = { $: 0 }; // $ === count of new items in fallback
+
+	setInterval(function() {
+		temp = {};
+		paths = {};
+//		cleaner();
+	}, (1000 * 60) * 5);	
+
+	function clean2() {
+		clear();
+		clean();
+	}
+
+	function clean() {
+		var is = false;
+		var index;
+
+
+
+		clear('find');
+
+
+		//W.DATETIME = W.NOW = new Date();
+		//var now = W.NOW.getTime();
+		var is2 = false;
+		var is3 = false;
+
+
+
+
+		if (is) {
+			refresh();
+			setTimeout(compile, 2000);
+		}
+	}
+
+
+	setInterval(function() {
+//		temp = {};
+//		paths = {};
+		clean();
+	}, (1000 * 60) * 5);
+
+
+    /*
+    for (var i = 0, length = all.length; i < length; i++) { // M.components.length
+        var m = all[i]; // M.components[i];
+        if (!m.$removed || name === m.name){
+            config && m.reconfigure(config, undefined, true);
+            declaration.call(m, m, m.config);
+        }
+    }
+
+    RECOMPILE();
+    */
+
+
+
+	function compiler(view) {
+		var helper = view.helper,
+			eventer = view.eventer,
+			storing = view.storing,
+			scoper = view.scoper,
+			componentater = view.componentater;
+    
+		var is = false;
+			recompile = false,
+			importing = 0,
+			pending = [],
+			initing = [],
+			imports = {},
+			toggles = [],
+			ready = [],
+			lazycom = {},
+			caches = {
+				current : {}
+			};
+
+		//C.get = get; // paths
+
+		// ===============================================================
+		// PRIVATE FUNCTIONS
+		// ===============================================================
+		//var $ready = setTimeout(load, 2);
+		var $loaded = false;
+
+		var fallbackPending = [];
+
+		function download(view) {
+
+			var arr = [];
+			var count = 0;
+
+			helper.findUrl(view._elm).each(function() {
+
+				var t = this;
+				var el = $(t);
+
+				if (t.$downloaded) {
+					return;
+				}
+
+				t.$downloaded = 1;
+				var url = helper.attrcom(el, 'url');
+
+				// Unique
+				var once = url.substring(0, 5).toLowerCase() === 'once ';
+				if (url.substring(0, 1) === '!' || once) {
+					if (once) {
+						url = url.substring(5);
+					} else {
+						url = url.substring(1);
+					}
+					if (statics[url]) {
+						return;
+					}
+					statics[url] = 2;
+				}
+
+				var item = {};
+				item.url = url;
+				item.element = el;
+				item.callback = helper.attrcom(el, 'init');
+				item.path = helper.attrcom(el, 'path');
+				item.toggle = (helper.attrcom(el, 'class') || '').split(' ');
+				item.expire = helper.attrcom(el, 'cache') || MD.importcache;
+				arr.push(item);
+			});
+
+			if (!arr.length) {
+				return;
+			}
+
+			var canCompile = false;
+			importing++;
+
+			langx.async(arr, function(item, next) {
+
+				var key = helper.makeurl(item.url);
+				var can = false;
+
+				http.ajaxCache('GET ' + item.url, null, function(response) {
+
+					key = '$import' + key;
+
+					caches.current.element = item.element[0];
+
+					if (statics[key]) {
+						response = domx.removescripts(response);
+					} else {
+						response = domx.importscripts(importstyles(response));
+					}
+
+					can = response && helper.canCompile(response);
+
+					if (can) {
+						canCompile = true;
+					}
+
+					item.element.html(response);
+					statics[key] = true;
+					item.toggle.length && item.toggle[0] && toggles.push(item);
+
+					if (item.callback && ! helper.attrcom(item.element)) {
+						var callback = storing.get(item.callback);
+						if (langx.isFunction(callback)) {
+							callback(item.element);
+						}
+					}
+
+					caches.current.element = null;
+					count++;
+					next();
+
+				}, item.expire);
+
+			}, function() {
+				importing--;
+				componenter.clean(); // clear('valid', 'dirty', 'find');
+				if (count && canCompile){
+					view.compile();
+				}
+			});
+		}
+
+		function downloadFallback() {
+			if (importing) {
+				setTimeout(downloadFallback, 1000);
+			} else {
+				langx.setTimeout2('$fallback', function() {
+					fallbackPending.splice(0).wait(function(item, next) {
+						if (registry[item]){ // M.$components
+							next();
+						}else {
+							warn('Downloading: ' + item);
+							http.importCache(MD.fallback.format(item), MD.fallbackcache, next);
+						}
+					}, 3);
+				}, 100);
+			}
+		}
+
+		function nextPending() {
+
+			var next = pending.shift();
+			if (next) {
+				next();
+			} else if ($domready) {
+				if (ready) {
+					is = false;
+				}
+
+				if (MD.fallback && fallback.$ && !importing) {
+					var arr = Object.keys(fallback);
+					for (var i = 0; i < arr.length; i++) {
+						if (arr[i] !== '$') {
+							var num = fallback[arr[i]];
+							if (num === 1) {
+								fallbackPending.push(arr[i].toLowerCase());
+								fallback[arr[i]] = 2;
+							}
+						}
+					}
+					fallback.$ = 0;
+					if (fallbackPending.length) {
+						downloadFallback();
+					}
+				}
+			}
+		}
+
+
+		function dependencies(declaration, callback, obj, el) {
+
+			if (declaration.importing) {
+				langx.wait(function() {
+					return declaration.importing !== true;
+				}, function() {
+					callback(obj, el);
+				});
+				return;
+			}
+
+			if (!declaration.dependencies || !declaration.dependencies.length) {
+				setTimeout(function(callback, obj, el) {
+					callback(obj, el);
+				}, 5, callback, obj, el);
+				return;
+			}
+
+			declaration.importing = true;
+			declaration.dependencies.wait(function(item, next) {
+				if (langx.isFunction(item)) {
+					item(next);
+				} else {
+					http.import2((item.indexOf('<') === -1 ? 'once ' : '') + item, next);  // IMPORT
+				}
+			}, function() {
+				declaration.importing = false;
+				callback(obj, el);
+			}, 3);
+		}
+
+		function init(el, obj) {
+
+			var dom = el[0];
+			var type = dom.tagName;
+			var collection;
+
+			// autobind
+			if (domx.inputable(type)) {
+				obj.$input = true;
+				collection = obj.element;
+			} else {
+				collection = el;
+			}
+
+			helper.findControl2(obj, collection);
+
+			obj.released && obj.released(obj.$released);
+			componenter.components.push(obj); // M.components.push(obj)
+			initing.push(obj);
+			if (type !== 'BODY' && helper.canCompile(el[0])) {//REGCOM.test(el[0].innerHTML)) {
+				compile(el);
+			}
+			request(); // ready
+		}		
+
+
+		// parse dom element and create a component instance
+		function onComponent(name, dom, level, scope) {
+
+			var el = $(dom);
+			var meta = name.split(/_{2,}/);
+			if (meta.length) {
+				meta = meta.trim(true);
+				name = meta[0];
+			} else
+				meta = null;
+
+			has = true;
+
+			// Check singleton instance
+			if (statics['$ST_' + name]) {
+				domx.remove(el);
+				return;
+			}
+
+			var instances = [];
+			var all = name.split(',');
+
+			for (var y = 0; y < all.length; y++) {
+
+				var name = all[y].trim();
+				var is = false;
+
+				if (name.indexOf('|') !== -1) {
+
+					// Multiple versions
+					var keys = name.split('|');
+					for (var i = 0; i < keys.length; i++) {
+						var key = keys[i].trim();
+						if (key &&  registry[key]) { // M.$components
+							name = key;
+							is = true;
+							break;
+						}
+					}
+
+					if (!is) {
+						name = keys[0].trim();
+					}
+				}
+
+				var lazy = false;
+
+				if (name.substring(0, 5).toLowerCase() === 'lazy ') {
+					name = name.substring(5);
+					lazy = true;
+				}
+
+				if (!is && name.lastIndexOf('@') === -1) {
+					if (versions[name]) {
+						name += '@' + versions[name];
+					} else if (MD.version) {
+						name += '@' + MD.version;
+					}
+				}
+
+				var com = registry[name]; // M.$components[name];
+				var lo = null;
+
+				if (lazy && name) {
+					var namea = name.substring(0, name.indexOf('@'));
+					lo = lazycom[name];
+					if (!lo) {
+						if (namea && name !== namea) {
+							lazycom[name] = lazycom[namea] = { state: 1 };
+						} else {
+							lazycom[name] = { state: 1 };
+						}
+						continue;
+					}
+					if (lo.state === 1) {
+						continue;
+					}
+				}
+
+				if (!com) {
+
+					if (!fallback[name]) {
+						fallback[name] = 1;
+						fallback.$++;
+					}
+
+					var x = helper.attrcom(el, 'import');
+					if (!x) {
+						!statics['$NE_' + name] && (statics['$NE_' + name] = true);
+						continue;
+					}
+
+					if (imports[x] === 1) {
+						continue;
+					}
+
+					if (imports[x] === 2) {
+						!statics['$NE_' + name] && (statics['$NE_' + name] = true);
+						continue;
+					}
+
+					imports[x] = 1;
+					importing++;
+
+					http.import2(x, function() {
+						importing--;
+						imports[x] = 2;
+					});
+
+					continue;
+				}
+
+				if (fallback[name] === 1) {
+					fallback.$--;
+					delete fallback[name];
+				}
+
+				var obj = new helper.Component(com.name,view);
+				var parent = dom.parentNode;
+
+				while (true) {
+					if (parent.$com) {
+						var pc = parent.$com;
+						obj.owner = pc;
+						if (pc.$children) {
+							pc.$children++;
+						} else {
+							pc.$children = 1;
+						}
+						break;
+					} else if (parent.nodeName === 'BODY') {
+						break;
+					}
+					parent = parent.parentNode;
+					if (parent == null) {
+						break;
+					}
+				}
+
+				obj.global = com.shared;
+				obj.element = el;
+				obj.dom = dom;
+
+				var p = helper.attrcom(el, 'path') || (meta ? meta[1] === 'null' ? '' : meta[1] : '') || obj._id;
+
+				if (p.substring(0, 1) === '%') {
+					obj.$noscope = true;
+				}
+
+				obj.setPath(pathmaker(p, true), 1);
+				obj.config = {};
+
+				// Default config
+				if (com.config) {
+					obj.reconfigure(com.config, NOOP);
+				}
+
+				var tmp = helper.attrcom(el, 'config') || (meta ? meta[2] === 'null' ? '' : meta[2] : ''); // // data-jc-config
+				if (tmp) {
+					obj.reconfigure(tmp, NOOP);
+				}
+
+				if (!obj.$init) {
+					obj.$init = helper.attrcom(el, 'init') || null; // data-jc-init
+				}
+
+				if (!obj.type) {
+					obj.type = helper.attrcom(el, 'type') || '';   // data-jc-type
+				}
+
+				if (!obj.id) {
+					obj.id = helper.attrcom(el, 'id') || obj._id;  // data-jc-id
+				}
+
+				obj.siblings = all.length > 1;
+				obj.$lazy = lo;
+
+				for (var i = 0; i < configs.length; i++) {
+					var con = configs[i];
+					con.fn(obj) && obj.reconfigure(con.config, NOOP);
+				}
+
+				caches.current.com = obj;
+				com.declaration.call(obj, obj, obj.config);
+				caches.current.com = null;
+
+				meta[3] && el.attrd('jc-value', meta[3]);
+
+				if (obj.init && !statics[name]) {
+					statics[name] = true;
+					obj.init();
+				}
+
+				dom.$com = obj;
+
+				if (!obj.$noscope) {
+					obj.$noscope = helper.attrcom(el, 'noscope') === 'true';   // data-jc-noscope
+				}
+
+				var code = obj.path ? obj.path.charCodeAt(0) : 0;
+				if (!obj.$noscope && scope.length && !obj.$pp) {
+
+					var output = scoper.initscopes(scope);
+
+					if (obj.path && code !== 33 && code !== 35) {
+						obj.setPath(obj.path === '?' ? output.path : (obj.path.indexOf('?') === -1 ? output.path + '.' + obj.path : obj.path.replace(/\?/g, output.path)), 2);
+					} else {
+						obj.$$path = [];//EMPTYARRAY;
+						obj.path = '';
+					}
+
+					obj.scope = output;
+					obj.pathscope = output.path;
+				}
+
+				instances.push(obj);
+
+				var template = helper.attrcom(el, 'template') || obj.template;  // data-jc-template
+				if (template) {
+					obj.template = template;
+				}
+
+				if (helper.attrcom(el, 'released') === 'true') { // data-jc-released
+					obj.$released = true;
+				}
+
+				if (helper.attrcom(el, 'url')) {
+					warn('Components: You have to use "data-jc-template" attribute instead of "data-jc-url" for the component: {0}[{1}].'.format(obj.name, obj.path));
+					continue;
+				}
+
+				if (langx.isString(template)) {
+					var fn = function(data) {
 						if (obj.prerender) {
 							data = obj.prerender(data);
 						}
-						el.html(data);
+						dependencies(com, function(obj, el) {
+							if (langx.isFunction(obj.make)) {
+								var parent = caches.current.com;
+								caches.current.com = obj;
+								obj.make(data);
+								caches.current.com = parent;
+							}
+							init(el, obj);
+						}, obj, el);
+					};
+
+					var c = template.substring(0, 1);
+					if (c === '.' || c === '#' || c === '[') {
+						fn($(template).html());
+						continue;
+					}
+
+					var k = 'TE' + HASH(template);
+					var a = statics[k];
+					if (a) {
+						fn(a);
+						continue;
+					}
+
+					$.get(helper.makeurl(template), function(response) {
+						statics[k] = response;
+						fn(response);
+					});
+
+					continue;
+				}
+
+				if (langx.isString(obj.make)) {
+
+					if (obj.make.indexOf('<') !== -1) {
+						dependencies(com, function(obj, el) {
+							if (obj.prerender)
+								obj.make = obj.prerender(obj.make);
+							el.html(obj.make);
+							init(el, obj);
+						}, obj, el);
+						continue;
+					}
+
+					$.get(makeurl(obj.make), function(data) {
+						dependencies(com, function(obj, el) {
+							if (obj.prerender) {
+								data = obj.prerender(data);
+							}
+							el.html(data);
+							init(el, obj);
+						}, obj, el);
+					});
+
+					continue;
+				}
+
+				if (com.dependencies) {
+					dependencies(com, function(obj, el) {
+
+						if (obj.make) {
+							var parent = caches.current.com;
+							caches.current.com = obj;
+							obj.make();
+							caches.current.com = parent;
+						}
+
 						init(el, obj);
 					}, obj, el);
-				});
+				} else {
 
-				continue;
+					// Because sometimes make doesn't contain the content of the element
+					setTimeout(function(init, el, obj) {
+
+						if (obj.make) {
+							var parent = caches.current.com;
+							caches.current.com = obj;
+							obj.make();
+							caches.current.com = parent;
+						}
+
+						init(el, obj);
+					}, 5, init, el, obj);
+				}
 			}
 
-			if (com.dependencies) {
-				dependencies(com, function(obj, el) {
+			// A reference to instances
+			if (instances.length > 0) {
+				el.$com = instances.length > 1 ? instances : instances[0];
+			}
 
-					if (obj.make) {
-						var parent = caches.current.com;
-						caches.current.com = obj;
-						obj.make();
-						caches.current.com = parent;
-					}
+		}
+		function crawler(container, onComponent, level, paths) {
+			var helper = view.helper,
+				binding = view.binding;
 
-					init(el, obj);
-				}, obj, el);
+			if (container) {
+				container = $(container)[0];
 			} else {
+				container = document.body;
+			}
 
-				// Because sometimes make doesn't contain the content of the element
-				setTimeout(function(init, el, obj) {
+			if (!container) {
+				return;
+			}
 
-					if (obj.make) {
-						var parent = caches.current.com;
-						caches.current.com = obj;
-						obj.make();
-						caches.current.com = parent;
+			/*
+			var comp = view.attrcom(container, 'compile') ;
+			if (comp === '0' || comp === 'false') {
+				// no compile
+				return;
+			}
+			*/
+			if (helper.nocompile(container)) {
+				return;
+			}
+
+			if (level == null || level === 0) {
+				paths = [];
+				if (container !== document.body) {
+					/*
+					var scope = $(container).closest('[' + ATTRSCOPE + ']'); //ATTRCOPE
+					if (scope && scope.length) {
+						paths.push(scope[0]);
+					}
+					*/
+					var scope = helper.scope(container);
+					if (scope) {
+						scopes.push(scope);
+					}
+				}
+			}
+
+			var b = null;
+			var released = container ? helper.released(container) : false; // sttrcom
+			var tmp = helper.scope(container); //attrcom
+			var binders = null;
+
+			if (tmp) {
+				paths.push(container);
+			}
+
+			if (!container.$jcbind) {
+				b = helper.attrbind(container); //container.getAttribute('data-bind') || container.getAttribute('bind');
+				if (b) {
+					if (!binders) {
+						binders = [];
+					}
+					binders.push({ 
+						el: container, 
+						b: b 
+					});
+				}
+			}
+
+			var name = helper.attrcom(container);
+			if (!container.$com && name != null) {
+				onComponent(name, container, 0, paths);
+			}
+
+			var arr = container.childNodes;
+			var sub = [];
+
+			if (level === undefined) {
+				level = 0;
+			} else {
+				level++;
+			}
+
+			for (var i = 0, length = arr.length; i < length; i++) {
+				var el = arr[i];
+				if (el) {
+
+					if (!el.tagName) {
+						continue;
 					}
 
-					init(el, obj);
-				}, 5, init, el, obj);
+					/*
+					comp = el.getAttribute('data-jc-compile');
+					if (comp === '0' || comp === 'false') {
+						continue;
+					}
+					*/
+					if (helper.nocompile(el)) {
+						continue;
+					}
+
+					if (el.$com === undefined) {
+						name = helper.attrcom(el);
+						if (name != null) {
+							if (released) {
+								helper.released(el,"true"); //el.setAttribute(ATTRREL, 'true');
+							}
+							onComponent(name || '', el, level, paths);
+						}
+					}
+
+					if (!el.$jcbind) {
+						b = helper.attrbind(el); //el.getAttribute('data-bind') || el.getAttribute('bind');
+						if (b) {
+							el.$jcbind = 1;
+							!binders && (binders = []);
+							binders.push({ el: el, b: b });
+						}
+					}
+
+					/*
+					comp = el.getAttribute('data-jc-compile');
+					if (comp !== '0' && comp !== 'false') {
+						if (el.childNodes.length && el.tagName !== 'SCRIPT' && REGCOM.test(el.innerHTML) && sub.indexOf(el) === -1)  {
+						  sub.push(el);
+						}
+					}
+					*/
+					if (!helper.nocompile(el)) {
+						if (el.childNodes.length && el.tagName !== 'SCRIPT' && helper.canCompile(el) && sub.indexOf(el) === -1)  { // REGCOM.test(el.innerHTML)
+						  sub.push(el);
+						}
+					}
+				}
+			}
+
+			for (var i = 0, length = sub.length; i < length; i++) {
+				el = sub[i];
+				if (el) {
+					crawler(el, onComponent, level, paths && paths.length ? paths : []);
+				}
+			}
+
+			if (binders) {
+				for (var i = 0; i < binders.length; i++) {
+					var a = binders[i];
+					a.el.$jcbind = parsebinder(a.el, a.b, paths);
+				}
 			}
 		}
 
-		// A reference to instances
-		if (instances.length > 0) {
-			el.$com = instances.length > 1 ? instances : instances[0];
+	
+		function compile(container,immediate) {
+			var self = this;
+
+			if (is) {
+				recompile = true;
+				return;
+			}
+
+			var arr = [];
+
+			//if (W.READY instanceof Array)  {
+			//	arr.push.apply(arr, W.READY);
+			//}
+			//if (W.jComponent instanceof Array) {
+			//	arr.push.apply(arr, W.jComponent);
+			//}
+			//if (W.components instanceof Array) {
+			//	arr.push.apply(arr, W.components);
+			//	}
+
+			if (arr.length) {
+				while (true) {
+					var fn = arr.shift();
+					if (!fn){
+						break;
+					}
+					fn();
+				}
+			}
+
+			is = true;
+			download(self);
+
+			if (pending.length) {
+				(function(container) {
+					pending.push(function() {
+						compile(self,container);
+					});
+				})(container);
+				return;
+			}
+
+			var has = false;
+
+			crawler(container, onComponent);
+
+			// perform binder
+			rebindbinder();
+
+			if (!has || !pending.length) {
+				is = false;
+			}
+
+			if (container !== undefined || !toggles.length) {
+				return nextpending();
+			}
+
+			langx.async(toggles, function(item, next) {
+				for (var i = 0, length = item.toggle.length; i < length; i++)
+					item.element.tclass(item.toggle[i]);
+				next();
+			}, nextpending);
+		}		
+
+
+		return {
+
+			"compile" : compile,
+			"request" : request
+
+		}
+	}
+
+	return compiler;
+
+});
+define('skylark-totaljs-jcomponent/views/helper',[
+	"../langx",	
+	"../components/Component"
+],function(langx, Component){
+
+
+	function helper(view) {
+		var ATTRCOM = '[data-jc]',
+			ATTRURL = '[data-jc-url]',
+			ATTRDATA = 'jc',
+			ATTRDEL = 'data-jc-removed',
+			ATTRREL = 'data-jc-released',
+			ATTRSCOPE = 'data-jc-scope';
+
+
+		var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind):|COMPONENT\(/;
+
+		function findControl2(com, input) {
+
+			if (com.$inputcontrol) {
+				if (com.$inputcontrol % 2 !== 0) {
+					com.$inputcontrol++;
+					return;
+				}
+			}
+
+			var target = input ? input : com.element;
+			findControl(target[0], function(el) {
+				if (!el.$com || el.$com !== com) {
+					el.$com = com;
+					com.$inputcontrol = 1;
+				}
+			});
 		}
 
+		function findControl(container, onElement, level) {
+
+			var arr = container.childNodes;
+			var sub = [];
+
+			domx.inputable(container) && onElement(container);
+
+			if (level == null) {
+				level = 0;
+			} else {
+				level++;
+			}
+
+			for (var i = 0, length = arr.length; i < length; i++) {
+				var el = arr[i];
+				if (el && el.tagName) {
+					el.childNodes.length && el.tagName !== 'SCRIPT' && el.getAttribute('data-jc') == null && sub.push(el);
+					if (domx.inputable(el) && el.getAttribute('data-jc-bind') != null && onElement(el) === false)
+						return;
+				}
+			}
+
+			for (var i = 0, length = sub.length; i < length; i++) {
+				el = sub[i];
+				if (el && findControl(el, onElement, level) === false) {
+					return;
+				}
+			}
+		}
+
+		// find all nested component
+		function nested(el) {
+			var $el = $(el),
+				arr = [];
+			$el.find(ATTRCOM).each(function() {
+				var el = $(this);
+				var com = el[0].$com;
+				if (com && !el.attr(ATTRDEL)) {
+					if (com instanceof Array) {
+						arr.push.apply(arr, com);
+					} else {
+						arr.push(com);
+					}
+				}
+			});
+			return arr;
+		}
+
+		// destory all nested component
+		function kill(el) {
+			var $el = $(el);
+			$el.removeData(ATTRDATA);
+			$el.attr(ATTRDEL, 'true').find(ATTRCOM).attr(ATTRDEL, 'true');
+		}
+
+		function findComponent(container, selector, callback) {
+			var components = view.components;
+
+			var s = (selector ? selector.split(' ') : []);
+			var path = '';
+			var name = '';
+			var id = '';
+			var version = '';
+			var index;
+
+			for (var i = 0, length = s.length; i < length; i++) {
+				switch (s[i].substring(0, 1)) {
+					case '*':
+						break;
+					case '.':
+						// path
+						path = s[i].substring(1);
+						break;
+					case '#':
+						// id;
+						id = s[i].substring(1);
+						index = id.indexOf('[');
+						if (index !== -1) {
+							path = id.substring(index + 1, id.length - 1).trim();
+							id = id.substring(0, index);
+						}
+						break;
+					default:
+						// name
+						name = s[i];
+						index = name.indexOf('[');
+
+						if (index !== -1) {
+							path = name.substring(index + 1, name.length - 1).trim();
+							name = name.substring(0, index);
+						}
+
+						index = name.lastIndexOf('@');
+
+						if (index !== -1) {
+							version = name.substring(index + 1);
+							name = name.substring(0, index);
+						}
+
+						break;
+				}
+			}
+
+			var arr = callback ? undefined : [];
+			if (container) {
+				var stop = false;
+				container.find('['+view.option("elmAttrNames.com.base")+']').each(function() { // [data-jc]
+					var com = this.$com;
+
+					if (stop || !com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || (path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path))))))
+						return;
+
+					if (callback) {
+						if (callback(com) === false) {
+							stop = true;
+						}
+					} else {
+						arr.push(com);
+					}
+				});
+			} else {
+				for (var i = 0, length = components.length; i < length; i++) { // M.components.length
+					var com = components[i]; // M.components[i]
+					if (!com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || ((path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path)))))))
+						continue;
+
+					if (callback) {
+						if (callback(com) === false) {
+							break;
+						}
+					} else {
+						arr.push(com);
+					}
+				}
+			}
+
+			return arr;
+		}
+
+		function attrcom(el, name) {
+			name = name ? '-' + name : '';
+			return el.getAttribute ? el.getAttribute('data-jc' + name) : el.attrd('jc' + name);
+		}
+
+		function attrbind(el) {
+			return el.getAttribute('data-bind') || el.getAttribute('bind');
+		}
+
+		function scope(el) {
+			var results = $(el).closest('[' + this.option("elmAttrNames.scope") + ']');
+			if (results && results.length) {
+				return reesults[0];
+			}
+		}
+
+		function nocompile(el,value) {
+			if (value === undefined) {
+				var value = $(el).attr(view.option("elmAttrNames.compile")) ;
+				if (value === '0' || comp === 'false') {
+					// no compile
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				$(el).attr(view.option("elmAttrNames.compile"),value);
+				return this; 
+			}
+		}
+
+		function released(el,value) {
+			if (value === undefined) {
+				var value = $(el).attr(view.option("elmAttrNames.released")) ;
+				if (value === '0' || comp === 'false') {
+					// no compile
+					return true;
+				} else {
+					return false;
+				}
+			} else {
+				$(el).attr(view.option("elmAttrNames.released"),value);
+				return this; 
+			}
+		}		
+
+		function canCompile(el) {
+			var html = el.innerHTML ? el.innerHTML : el;
+			return REGCOM.test(html);
+		}
+
+		function findUrl(container,callback) {
+			return $(ATTRURL);
+		}
+
+		function makeurl(url, make) {
+
+			// TODO
+			//defaults.makeurl && (url = defaults.makeurl(url));
+			//
+			//if (make)
+			//	return url;
+
+			var builder = [];
+			var en = encodeURIComponent;
+
+			//M.$version && builder.push('version=' + en(M.$version));
+			//M.$language && builder.push('language=' + en(M.$language));
+
+			if (!builder.length)
+				return url;
+
+			var index = url.indexOf('?');
+			if (index == -1)
+				url += '?';
+			else
+				url += '&';
+
+			return url + builder.join('&');
+		}
+
+		return {
+			"Component"     : Component,
+			"findComponent" : findComponent,
+			"findControl" 	: findControl,
+			"findControl2" 	: findControl2,
+			"attrcom" 		: attrcom,
+			"attrbind"      : attrbind,
+			"attrscope"     : attrscope,
+			"kill"          : kill,
+			"makeurl"		: makeurl,
+			"scope" 		: scope,
+			"nocompile" 	: nocompile,
+			"released" 		: released
+		};
+
 	}
-	
-	return onComponent;
+
+	return helper;
 });
-define('skylark-totaljs-jcomponent/components/helper',[
-	"skylark-utils-dom/query"
-],function($){
+define('skylark-totaljs-jcomponent/components/Scope',[
+	"../langx"
+],function(langx){
+	// ===============================================================
+	// SCOPE
+	// scopes can simplify paths in HTML declaration. In other words: 
+	// scopes can reduce paths in all nested components.
+	// ===============================================================
 
-	var ATTRCOM = '[data-jc]',
-		ATTRURL = '[data-jc-url]',
-		ATTRDATA = 'jc',
-		ATTRDEL = 'data-jc-removed',
-		ATTRREL = 'data-jc-released',
-		ATTRSCOPE = 'data-jc-scope';
+	var Scope = langx.klass({
+		_construct(elm,view) {
+			var self = this;
+			self.view = view;
+			self.storing = view.storing;
+			self.eventer = view.eventer;
+		}
+	});
 
+	var SCP = Scope.prototype;
 
-	var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind):|COMPONENT\(/;
+	SCP.unwatch = function(path, fn) {
+		var self = this;
+		self.eventer.off('scope' + self._id + '#watch', self.path + (path ? '.' + path : ''), fn); // OFF
+		return self;
+	};
 
+	SCP.watch = function(path, fn, init) {
+		var self = this;
+		self.eventer.on('scope' + self._id + '#watch', self.path + (path ? '.' + path : ''), fn, init, self); // ON 
+		return self;
+	};
 
-	function attrcom(el, name) {
-		name = name ? '-' + name : '';
-		return el.getAttribute ? el.getAttribute('data-jc' + name) : el.attrd('jc' + name);
-	}
+	SCP.reset = function(path, timeout) {
+		if (path > 0) {
+			timeout = path;
+			path = '';
+		}
+		return RESET(this.path + '.' + (path ? + path : '*'), timeout);
+	};
 
-	function initscopes(scopes) {
+	SCP.default = function(path, timeout) {
+		if (path > 0) {
+			timeout = path;
+			path = '';
+		}
+		return this.storing.default(this.path + '.' + (path ? path : '*'), timeout); // DEFAULT
+	};
 
-		var scope = scopes[scopes.length - 1];
-		if (scope.$scopedata) {
+	SCP.set = function(path, value, timeout, reset) {
+		return this.storing.setx(this.path + (path ? '.' + path : ''), value, timeout, reset); // SET
+	};
+
+	SCP.push = function(path, value, timeout, reset) {
+		return this.storing.push(this.path + (path ? '.' + path : ''), value, timeout, reset); // PUSH
+	};
+
+	SCP.update = function(path, timeout, reset) {
+		return this.storing.update(this.path + (path ? '.' + path : ''), timeout, reset); // UPDATE
+	};
+
+	SCP.get = function(path) {
+		return this.storing.get(this.path + (path ? '.' + path : '')); // GET
+	};
+
+	SCP.can = function(except) {
+		return this.storing.can(this.path + '.*', except);  // CAN
+	};
+
+	SCP.errors = function(except, highlight) {
+		return this.storing.errors(this.path + '.*', except, highlight); // ERRORS
+	};
+
+	SCP.remove = function() {
+		var self = this;
+		var arr = self.view.components;//M.components;
+
+		for (var i = 0; i < arr.length; i++) {
+			var a = arr[i];
+			a.scope && a.scope.path === self.path && a.remove(true);
+		}
+
+		if (self.isolated) {
+			arr = Object.keys(proxy);
+			for (var i = 0; i < arr.length; i++) {
+				var a = arr[i];
+				if (a.substring(0, self.path.length) === self.path)
+					delete proxy[a];
+			}
+		}
+
+		self.eventer.off('scope' + self._id + '#watch'); // OFF
+		var e = self.element;
+		e.find('*').off();
+		e.off();
+		e.remove();
+		langx.setTimeout2('$cleaner', cleaner2, 100);
+	};
+
+	SCP.FIND = function(selector, many, callback, timeout) {
+		return this.element.FIND(selector, many, callback, timeout);
+	};
+
+	SCP.SETTER = function(a, b, c, d, e, f, g) {
+		return this.element.SETTER(a, b, c, d, e, f, g);
+	};
+
+	SCP.RECONFIGURE = function(selector, name) {
+		return this.element.RECONFIGURE(selector, name);
+	};
+
+	return Scope;
+	
+});
+define('skylark-totaljs-jcomponent/views/scoper',[
+	"../components/Scope"
+],function(Scope){
+	function scoper(view) {
+		var helper = view.helper;
+
+		function initscopes(scopes) {
+
+			var scope = scopes[scopes.length - 1];
+			if (scope.$scopedata) {
+				return scope.$scopedata;
+			}
+
+			var path = helper.attrscope(scope); //attrcom(scope, 'scope');
+			var independent = path.substring(0, 1) === '!';
+
+			if (independent) {
+				path = path.substring(1);
+			}
+
+			var arr = [scope];
+			if (!independent) {
+				for (var i = scopes.length - 1; i > -1; i--) {
+					arr.push(scopes[i]);
+					if (helpers.attrscope(scopes[i]).substring(0, 1) === '!') { // scopes[i].getAttribute(ATTRSCOPE).
+						break;
+					}
+				}
+			}
+
+			var absolute = '';
+
+			arr.length && arr.reverse();
+
+			for (var i = 0, length = arr.length; i < length; i++) {
+
+				var sc = arr[i];
+				var p = sc.$scope || helper.attrscope(sc); //attrcom(sc, 'scope');
+
+				sc.$initialized = true;
+
+				if (sc.$processed) {
+					absolute = p;
+					continue;
+				}
+
+				sc.$processed = true;
+				sc.$isolated = p.substring(0, 1) === '!';
+
+				if (sc.$isolated) {
+					p = p.substring(1);
+				}
+
+				if (!p || p === '?')
+					p = langx.guid(25).replace(/\d/g, ''); //GUID
+
+				if (sc.$isolated) {
+					absolute = p;
+				} else {
+					absolute += (absolute ? '.' : '') + p;
+				}
+
+				sc.$scope = absolute;
+				var d = new Scope();
+				d._id = d.ID = d.id = langx.guid(10); //GUID
+				d.path = absolute;
+				d.elements = arr.slice(0, i + 1);
+				d.isolated = sc.$isolated;
+				d.element = $(arr[0]);
+				sc.$scopedata = d;
+
+				var tmp = helper.attrcom(sc, 'value');
+				if (tmp) {
+					var fn = new Function('return ' + tmp);
+					defaults['#' + HASH(p)] = fn; // paths by path (DEFAULT() --> can reset scope object)
+					tmp = fn();
+					set(p, tmp);
+					emitwatch(p, tmp, 1);
+				}
+
+				// Applies classes
+				var cls = helper.attrcom(sc, 'class');
+				if (cls) {
+					(function(cls) {
+						cls = cls.split(' ');
+						setTimeout(function() {
+							var el = $(sc);
+							for (var i = 0, length = cls.length; i < length; i++) {
+								el.tclass(cls[i]);
+							}
+						}, 5);
+					})(cls);
+				}
+
+				tmp = helper.attrcom(sc, 'init');
+				if (tmp) {
+					tmp = scopes.get(tmp);
+					if (tmp) {
+						var a = current_owner;
+						current_owner = 'scope' + d._id;
+						tmp.call(d, p, $(sc));
+						current_owner = a;
+					}
+				}
+			}
+
 			return scope.$scopedata;
 		}
 
-		var path = attrcom(scope, 'scope');
-		var independent = path.substring(0, 1) === '!';
 
-		if (independent) {
-			path = path.substring(1);
-		}
-
-		var arr = [scope];
-		if (!independent) {
-			for (var i = scopes.length - 1; i > -1; i--) {
-				arr.push(scopes[i]);
-				if (scopes[i].getAttribute(ATTRSCOPE).substring(0, 1) === '!') {
-					break;
-				}
-			}
-		}
-
-		var absolute = '';
-
-		arr.length && arr.reverse();
-
-		for (var i = 0, length = arr.length; i < length; i++) {
-
-			var sc = arr[i];
-			var p = sc.$scope || attrcom(sc, 'scope');
-
-			sc.$initialized = true;
-
-			if (sc.$processed) {
-				absolute = p;
-				continue;
-			}
-
-			sc.$processed = true;
-			sc.$isolated = p.substring(0, 1) === '!';
-
-			if (sc.$isolated) {
-				p = p.substring(1);
-			}
-
-			if (!p || p === '?')
-				p = GUID(25).replace(/\d/g, '');
-
-			if (sc.$isolated) {
-				absolute = p;
-			} else {
-				absolute += (absolute ? '.' : '') + p;
-			}
-
-			sc.$scope = absolute;
-			var d = new Scope();
-			d._id = d.ID = d.id = GUID(10);
-			d.path = absolute;
-			d.elements = arr.slice(0, i + 1);
-			d.isolated = sc.$isolated;
-			d.element = $(arr[0]);
-			sc.$scopedata = d;
-
-			var tmp = attrcom(sc, 'value');
-			if (tmp) {
-				var fn = new Function('return ' + tmp);
-				defaults['#' + HASH(p)] = fn; // paths by path (DEFAULT() --> can reset scope object)
-				tmp = fn();
-				set(p, tmp);
-				emitwatch(p, tmp, 1);
-			}
-
-			// Applies classes
-			var cls = attrcom(sc, 'class');
-			if (cls) {
-				(function(cls) {
-					cls = cls.split(' ');
-					setTimeout(function() {
-						var el = $(sc);
-						for (var i = 0, length = cls.length; i < length; i++) {
-							el.tclass(cls[i]);
-						}
-					}, 5);
-				})(cls);
-			}
-
-			tmp = attrcom(sc, 'init');
-			if (tmp) {
-				tmp = scopes.get(tmp);
-				if (tmp) {
-					var a = current_owner;
-					current_owner = 'scope' + d._id;
-					tmp.call(d, p, $(sc));
-					current_owner = a;
-				}
-			}
-		}
-
-		return scope.$scopedata;
 	}
 
-	function findcomponent(container, selector, callback) {
-
-		var s = (selector ? selector.split(' ') : EMPTYARRAY);
-		var path = '';
-		var name = '';
-		var id = '';
-		var version = '';
-		var index;
-
-		for (var i = 0, length = s.length; i < length; i++) {
-			switch (s[i].substring(0, 1)) {
-				case '*':
-					break;
-				case '.':
-					// path
-					path = s[i].substring(1);
-					break;
-				case '#':
-					// id;
-					id = s[i].substring(1);
-					index = id.indexOf('[');
-					if (index !== -1) {
-						path = id.substring(index + 1, id.length - 1).trim();
-						id = id.substring(0, index);
-					}
-					break;
-				default:
-					// name
-					name = s[i];
-					index = name.indexOf('[');
-
-					if (index !== -1) {
-						path = name.substring(index + 1, name.length - 1).trim();
-						name = name.substring(0, index);
-					}
-
-					index = name.lastIndexOf('@');
-
-					if (index !== -1) {
-						version = name.substring(index + 1);
-						name = name.substring(0, index);
-					}
-
-					break;
-			}
-		}
-
-		var arr = callback ? undefined : [];
-		if (container) {
-			var stop = false;
-			container.find('[data-jc]').each(function() {
-				var com = this.$com;
-
-				if (stop || !com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || (path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path))))))
-					return;
-
-				if (callback) {
-					if (callback(com) === false)
-						stop = true;
-				} else
-					arr.push(com);
-			});
-		} else {
-			for (var i = 0, length = components.length; i < length; i++) { // M.components.length
-				var com = components[i]; // M.components[i]
-				if (!com || !com.$loaded || com.$removed || (id && com.id !== id) || (name && com.$name !== name) || (version && com.$version !== version) || ((path && (com.$pp || (com.path !== path && (!com.pathscope || ((com.pathscope + '.' + path) !== com.path)))))))
-					continue;
-
-				if (callback) {
-					if (callback(com) === false) {
-						break;
-					}
-				} else {
-					arr.push(com);
-				}
-			}
-		}
-
-		return arr;
-	}
-
-	function findcontrol2(com, input) {
-
-		if (com.$inputcontrol) {
-			if (com.$inputcontrol % 2 !== 0) {
-				com.$inputcontrol++;
-				return;
-			}
-		}
-
-		var target = input ? input : com.element;
-		findcontrol(target[0], function(el) {
-			if (!el.$com || el.$com !== com) {
-				el.$com = com;
-				com.$inputcontrol = 1;
-			}
-		});
-	}
-
-	function findcontrol(container, onElement, level) {
-
-		var arr = container.childNodes;
-		var sub = [];
-
-		domx.inputable(container) && onElement(container);
-
-		if (level == null) {
-			level = 0;
-		} else {
-			level++;
-		}
-
-		for (var i = 0, length = arr.length; i < length; i++) {
-			var el = arr[i];
-			if (el && el.tagName) {
-				el.childNodes.length && el.tagName !== 'SCRIPT' && el.getAttribute('data-jc') == null && sub.push(el);
-				if (domx.inputable(el) && el.getAttribute('data-jc-bind') != null && onElement(el) === false)
-					return;
-			}
-		}
-
-		for (var i = 0, length = sub.length; i < length; i++) {
-			el = sub[i];
-			if (el && findcontrol(el, onElement, level) === false) {
-				return;
-			}
-		}
-	}
-
-	// find all nested component
-	function nested(el) {
-		var $el = $(el),
-			arr = [];
-		$el.find(ATTRCOM).each(function() {
-			var el = $(this);
-			var com = el[0].$com;
-			if (com && !el.attr(ATTRDEL)) {
-				if (com instanceof Array) {
-					arr.push.apply(arr, com);
-				} else {
-					arr.push(com);
-				}
-			}
-		});
-		return arr;
-	}
-
-	// destory all nested component
-	function kill(el) {
-		var $el = $(el);
-		$el.removeData(ATTRDATA);
-		$el.attr(ATTRDEL, 'true').find(ATTRCOM).attr(ATTRDEL, 'true');
-	}
-
-
-	$.fn.scope = function() {
-
-		if (!this.length) {
-			return null; 
-		}
-
-		var data = this[0].$scopedata;
-		if (data) {
-			return data;
-		}
-		var el = this.closest('[' + ATTRSCOPE + ']');
-		if (el.length) {
-			data = el[0].$scopedata;
-			if (data) {
-				return data;
-			}
-		}
-		return null;
-	};
-
+	return scoper;
 });
-define('skylark-totaljs-jcomponent/views/crawler',[
-	"../utils/query",
-	"../components/helper",
-	"../binding/parsebinder"
-],function($, helper, parsebinder){
-	var attrcom = helper.attrcom;
-
-	function crawler(container, onComponent, level, paths) {
-
-		if (container) {
-			container = $(container)[0];
-		} else {
-			container = document.body;
-		}
-
-		if (!container) {
-			return;
-		}
-
-		var comp = attrcom(container, 'compile') ;
-		if (comp === '0' || comp === 'false') {
-			// no compile
-			return;
-		}
-
-		if (level == null || level === 0) {
-			paths = [];
-			if (container !== document.body) {
-				var scope = $(container).closest('[' + ATTRSCOPE + ']');
-				if (scope && scope.length) {
-					paths.push(scope[0]);
-				}
-			}
-		}
-
-		var b = null;
-		var released = container ? attrcom(container, 'released') === 'true' : false;
-		var tmp = attrcom(container, 'scope');
-		var binders = null;
-
-		if (tmp) {
-			paths.push(container);
-		}
-
-		if (!container.$jcbind) {
-			b = container.getAttribute('data-bind') || container.getAttribute('bind');
-			if (b) {
-				if (!binders) {
-					binders = [];
-				}
-				binders.push({ 
-					el: container, 
-					b: b 
-				});
-			}
-		}
-
-		var name = attrcom(container);
-		if (!container.$com && name != null) {
-			onComponent(name, container, 0, paths);
-		}
-
-		var arr = container.childNodes;
-		var sub = [];
-
-		if (level === undefined) {
-			level = 0;
-		} else {
-			level++;
-		}
-
-		for (var i = 0, length = arr.length; i < length; i++) {
-			var el = arr[i];
-			if (el) {
-
-				if (!el.tagName) {
-					continue;
-				}
-
-				comp = el.getAttribute('data-jc-compile');
-				if (comp === '0' || comp === 'false') {
-					continue;
-				}
-
-				if (el.$com === undefined) {
-					name = attrcom(el);
-					if (name != null) {
-						if (released) {
-							el.setAttribute(ATTRREL, 'true');
-						}
-						onComponent(name || '', el, level, paths);
-					}
-				}
-
-				if (!el.$jcbind) {
-					b = el.getAttribute('data-bind') || el.getAttribute('bind');
-					if (b) {
-						el.$jcbind = 1;
-						!binders && (binders = []);
-						binders.push({ el: el, b: b });
-					}
-				}
-
-				comp = el.getAttribute('data-jc-compile');
-				if (comp !== '0' && comp !== 'false') {
-					if (el.childNodes.length && el.tagName !== 'SCRIPT' && REGCOM.test(el.innerHTML) && sub.indexOf(el) === -1)  {
-					  sub.push(el);
-					}
-				}
-			}
-		}
-
-		for (var i = 0, length = sub.length; i < length; i++) {
-			el = sub[i];
-			if (el) {
-				crawler(el, onComponent, level, paths && paths.length ? paths : []);
-			}
-		}
-
-		if (binders) {
-			for (var i = 0; i < binders.length; i++) {
-				var a = binders[i];
-				a.el.$jcbind = parsebinder(a.el, a.b, paths);
-			}
-		}
-	}
-
-	return crawler;
-});
-
-define('skylark-totaljs-jcomponent/views/download',[
+define('skylark-totaljs-jcomponent/views/storing',[
 	"../langx",
-	"../utils/query",
-	"../utils/http"
-],function(langx, $, http){
-	function download(view) {
+	"../binding/pathmaker"
+],function(langx,pathmaker){
+	var	SELINPUT = 'input,textarea,select';
+	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
+	
+	var MULTIPLE = ' + ';
 
-		var arr = [];
-		var count = 0;
+		
+	function storing (store,view) {
+		var cache = {}; // lwf
 
-		$(ATTRURL).each(function() {
 
-			var t = this;
-			var el = $(t);
+		var data = store.data;
 
-			if (t.$downloaded) {
+		function parsepath(path) {
+			var arr = path.split('.');
+			var builder = [];
+			var all = [];
+
+			for (var i = 0; i < arr.length; i++) {
+				var p = arr[i];
+				var index = p.indexOf('[');
+				if (index === -1) {
+					if (p.indexOf('-') === -1) {
+						all.push(p);
+						builder.push(all.join('.'));
+					} else {
+						var a = all.splice(all.length - 1);
+						all.push(a + '[\'' + p + '\']');
+						builder.push(all.join('.'));
+					}
+				} else {
+					if (p.indexOf('-') === -1) {
+						all.push(p.substring(0, index));
+						builder.push(all.join('.'));
+						all.splice(all.length - 1);
+						all.push(p);
+						builder.push(all.join('.'));
+					} else {
+						all.push('[\'' + p.substring(0, index) + '\']');
+						builder.push(all.join(''));
+						all.push(p.substring(index));
+						builder.push(all.join(''));
+					}
+				}
+			}
+
+			return builder;
+		}
+
+
+		var binders = {},
+			paths = {},
+			defaults = {},
+			$formatter = [],
+			skips = {};
+			$parser = [],
+			nmCache = {},  // notmodified cache 
+			temp = {};
+
+		function binderbind(path, absolutePath, ticks) {
+			var arr = binders[path];
+			for (var i = 0; i < arr.length; i++) {
+				var item = arr[i];
+				if (item.ticks !== ticks) {
+					item.ticks = ticks;
+					item.exec(getx(item.path), absolutePath);  //GET no pathmake
+				}
+			}
+		}
+
+
+	   /**
+	   * Creates a watcher for all changes.
+	   * @param  {String} path 
+	   */
+		function create(path) { //W.CREATE
+
+			var is = false;
+			var callback;
+
+			if (langx.isString(path)) {
+				if (proxy[path]) {
+					return proxy[path];
+				}
+				is = true;
+				callback = function(key) {
+
+					var p = path + (key ? '.' + key : '');
+					if (M.skipproxy === p) {
+						M.skipproxy = '';
+						return;
+					}
+					setTimeout(function() {
+						if (M.skipproxy === p) {
+							M.skipproxy = '';
+						} else {
+							notify(p);  // NOTIFY
+							reset(p);   // REEST
+						}
+					}, MD.delaybinder);
+				};
+
+			} else {
+				callback = path;
+			}
+
+			var blocked = false;
+			var obj = path ? (get2(path) || {}) : {};
+			var handler = {
+				get: function(target, property, receiver) {
+					try {
+						return new Proxy(target[property], handler);
+					} catch (err) {
+						return Reflect.get(target, property, receiver);
+					}
+				},
+				defineProperty: function(target, property, descriptor) {
+					!blocked && callback(property, descriptor);
+					return Reflect.defineProperty(target, property, descriptor);
+				},
+				deleteProperty: function(target, property) {
+					!blocked && callback(property);
+					return Reflect.deleteProperty(target, property);
+				},
+				apply: function(target, thisArg, argumentsList) {
+					if (BLACKLIST[target.name]) {
+						blocked = true;
+						var result = Reflect.apply(target, thisArg, argumentsList);
+						callback('', argumentsList[0]);
+						blocked = false;
+						return result;
+					}
+					return Reflect.apply(target, thisArg, argumentsList);
+				}
+			};
+
+			var o = new Proxy(obj, handler);
+
+			if (is) {
+				M.skipproxy = path;
+				getx(path) == null && setx(path, obj, true);  // GET SET
+				return proxy[path] = o;
+			} else
+				return o;
+		}
+
+
+	 	//cache
+		function cache(path, expire, rebind) { // W.CACHEPATH = 
+			var key = '$jcpath';
+			WATCH(path, function(p, value) {
+				var obj = storages.get(key); // cachestorage(key);
+				if (obj) {
+					obj[path] = value;
+				}else {
+					obj = {};
+					obj[path] = value;
+				}
+				storages.put(key, obj, expire); // cachestorage(key, obj, expire);
+			});
+
+			if (rebind === undefined || rebind) {
+				var cache = storages.get(key); // cachestorage(key);
+				if (cache && cache[path] !== undefined && cache[path] !== get(path)){
+					setx(path, cache[path], true);	
+				} 
+			}
+			return this; //W 
+		};
+
+
+	   /**
+	   * Evaluates a global formatter.
+	   * @param  {String} path 
+	   * @param  {Object} value
+	   * @param  {String} type 
+	   * @returns {Boolean}   
+	   * OR
+	   * Registers a global formatter.
+	   * @param  {Function} value 
+	   * @param  {Boolean} path 
+	   */
+		function format(value, path, type) {  // W.FORMATTER = M.formatter =
+
+			if (langx.isFunction(value)) {
+				// Prepend
+				if (path === true) {
+					$formatter.unshift(value);
+				} else {
+					$formatter.push(value);
+				}
+
+				return M;
+			}
+
+			var a = $formatter;
+			if (a && a.length) {
+				for (var i = 0, length = a.length; i < length; i++) {
+					var val = a[i].call(M, path, value, type);
+					if (val !== undefined)
+						value = val;
+				}
+			}
+
+			return value;
+		};
+
+		//get... 
+
+		function get(path, scope) {
+
+			if (path == null) {
 				return;
 			}
 
-			t.$downloaded = 1;
-			var url = view.attrcom(el, 'url');
-
-			// Unique
-			var once = url.substring(0, 5).toLowerCase() === 'once ';
-			if (url.substring(0, 1) === '!' || once) {
-				if (once) {
-					url = url.substring(5);
-				} else {
-					url = url.substring(1);
-				}
-				if (statics[url]) {
-					return;
-				}
-				statics[url] = 2;
+			var code = path.charCodeAt(0);
+			if (code === 37)　{  // % 
+				path = 'jctmp.' + path.substring(1);
 			}
 
-			var item = {};
-			item.url = url;
-			item.element = el;
-			item.callback = attrcom(el, 'init');
-			item.path = attrcom(el, 'path');
-			item.toggle = (attrcom(el, 'class') || '').split(' ');
-			item.expire = attrcom(el, 'cache') || MD.importcache;
-			arr.push(item);
-		});
-
-		if (!arr.length) {
-			return;
-		}
-
-		var canCompile = false;
-		view.importing++;
-
-		langx.async(arr, function(item, next) {
-
-			var key = makeurl(item.url);
-			var can = false;
-
-			http.ajaxCache('GET ' + item.url, null, function(response) {
-
-				key = '$import' + key;
-
-				caches.current.element = item.element[0];
-
-				if (statics[key]) {
-					response = removescripts(response);
-				} else {
-					response = importscripts(importstyles(response));
-				}
-
-				can = response && REGCOM.test(response);
-
-				if (can) {
-					canCompile = true;
-				}
-
-				item.element.html(response);
-				statics[key] = true;
-				item.toggle.length && item.toggle[0] && toggles.push(item);
-
-				if (item.callback && !attrcom(item.element)) {
-					var callback = get(item.callback);
-					typeof(callback) === TYPE_FN && callback(item.element);
-				}
-
-				caches.current.element = null;
-				count++;
-				next();
-
-			}, item.expire);
-
-		}, function() {
-			view.importing--;
-			clear('valid', 'dirty', 'find');
-			if (count && canCompile){
-				view.compile();
+			var key = '=' + path;
+			if (paths[key]) {
+				return paths[key](scope || stores.root);
 			}
-		});
-	}
 
-	
-});
-define('skylark-totaljs-jcomponent/views/pend',[],function(){
-	var fallbackpending = [];
+			if (path.indexOf('?') !== -1) {
+				return;
+			}
 
-	function downloadfallback() {
-		if (C.importing) {
-			setTimeout(downloadfallback, 1000);
-		} else {
-			langx.setTimeout2('$fallback', function() {
-				fallbackpending.splice(0).wait(function(item, next) {
-					if (Component.registry[item]){ // M.$components
-						next();
-					}else {
-						warn('Downloading: ' + item);
-						http.importCache(MD.fallback.format(item), MD.fallbackcache, next);
-					}
-				}, 3);
-			}, 100);
+			var arr = parsepath(path);
+			var builder = [];
+
+			for (var i = 0, length = arr.length - 1; i < length; i++) {
+				var item = arr[i];
+				if (item.substring(0, 1) !== '[') {
+					item = '.' + item;
+				}
+				builder.push('if(!w' + item + ')return');
+			}
+
+			var v = arr[arr.length - 1];
+			if (v.substring(0, 1) !== '['){
+				v = '.' + v;
+			}
+
+			var fn = (new Function('w', builder.join(';') + ';return w' + v));
+			paths[key] = fn;
+			return fn(scope || MD.scope);
 		}
-	}
 
-	function nextpending() {
+		// set...
+		function set(path, value, is) {
 
-		var next = C.pending.shift();
-		if (next) {
-			next();
+			if (path == null) {
+				return;
+			}
+
+			var key = '+' + path;
+
+			if (paths[key]) {
+				return paths[key](store.data, value, path, binders, binderbind, is); // MD.scope
+			}
+
+			if (path.indexOf('?') !== -1) {
+				path = '';
+				return;
+			}
+
+			var arr = parsepath(path);
+			var builder = [];
+			var binder = [];
+
+			for (var i = 0; i < arr.length - 1; i++) {
+				var item = arr[i];
+				var type = arr[i + 1] ? (REGISARR.test(arr[i + 1]) ? '[]' : '{}') : '{}';
+				var p = 'w' + (item.substring(0, 1) === '[' ? '' : '.') + item;
+				builder.push('if(typeof(' + p + ')!==\'object\'||' + p + '==null)' + p + '=' + type);
+			}
+
+			for (var i = 0; i < arr.length - 1; i++) {
+				var item = arr[i];
+				binder.push('binders[\'' + item + '\']&&binderbind(\'' + item + '\',\'' + path + '\',$ticks)');
+			}
+
+			var v = arr[arr.length - 1];
+			binder.push('binders[\'' + v + '\']&&binderbind(\'' + v + '\',\'' + path + '\',$ticks)');
+			binder.push('binders[\'!' + v + '\']&&binderbind(\'!' + v + '\',\'' + path + '\',$ticks)');
+
+			if (v.substring(0, 1) !== '['){
+				v = '.' + v;
+			}
+
+			var fn = (new Function('w', 'a', 'b', 'binders', 'binderbind', 'nobind', 'var $ticks=Math.random().toString().substring(2,8);if(!nobind){' + builder.join(';') + ';var v=typeof(a)==\'function\'?a(MAIN.compiler.get(b)):a;w' + v + '=v}' + binder.join(';') + ';return a'));
+			paths[key] = fn;
+			fn(store.data, value, path, binders, binderbind, is); // MD.scope
+
+			return this; //C
 		}
-		else if ($domready) {
 
-			if (C.ready)
-				C.is = false;
+		function set2(scope, path, value) {
 
-			if (MD.fallback && fallback.$ && !C.importing) {
-				var arr = Object.keys(fallback);
-				for (var i = 0; i < arr.length; i++) {
-					if (arr[i] !== '$') {
-						var num = fallback[arr[i]];
-						if (num === 1) {
-							fallbackpending.push(arr[i].toLowerCase());
-							fallback[arr[i]] = 2;
+			if (path == null) {
+				return;
+			}
+
+			var key = '++' + path;
+
+			if (paths[key]) {
+				return paths[key](scope, value, path);
+			}
+
+			var arr = parsepath(path);
+
+			var builder = [];
+
+			for (var i = 0; i < arr.length - 1; i++) {
+				var item = arr[i];
+				var type = arr[i + 1] ? (REGISARR.test(arr[i + 1]) ? '[]' : '{}') : '{}';
+				var p = 'w' + (item.substring(0, 1) === '[' ? '' : '.') + item;
+				builder.push('if(typeof(' + p + ')!==\'object\'||' + p + '==null)' + p + '=' + type);
+			}
+
+			var v = arr[arr.length - 1];
+
+			if (v.substring(0, 1) !== '[') {
+				v = '.' + v;
+			}
+
+			var fn = (new Function('w', 'a', 'b', builder.join(';') + ';w' + v + '=a;return a'));
+			paths[key] = fn;
+			fn(scope, value, path);
+			return scope;
+		}
+
+		// 1 === manually
+		// 2 === by input
+		// 3 === default
+		function setx(path, value, type) {  // M.set
+
+			if (path instanceof Array) {
+				for (var i = 0; i < path.length; i++) 
+					setx(path[i], value, type);
+				return M;
+			}
+
+			path = pathmaker(path);
+
+			if (!path) {
+				return M;
+			}
+
+			var is = path.charCodeAt(0) === 33; // !
+			if (is) {
+				path = path.substring(1);
+			}
+
+			if (path.charCodeAt(0) === 43) { // +
+				path = path.substring(1);
+				return push(path, value, type);
+			}
+
+			if (!path) {
+				return M;
+			}
+
+			var isUpdate = (typeof(value) === 'object' && !(value instanceof Array) && value != null);
+			var reset = type === true;
+			if (reset) {
+				type = 1;
+			}
+
+			M.skipproxy = path;
+			set(path, value);
+
+			if (isUpdate) {
+				return update(path, reset, type, true);
+			}
+
+			var result = get(path);
+			var state = [];
+
+			if (type === undefined) {
+				type = 1;
+			}
+
+			var all = view.components;//M.components;
+
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+
+				if (!com || com.disabled || com.$removed || !com.$loaded || !com.path || !com.$compare(path))
+					continue;
+
+				if (com.setter) {
+					if (com.path === path) {
+						if (com.setter) {
+							com.setterX(result, path, type);
+							com.$interaction(type);
+						}
+					} else {
+						if (com.setter) {
+							com.setterX(get(com.path), path, type);
+							com.$interaction(type);
 						}
 					}
 				}
-				fallback.$ = 0;
-				fallbackpending.length && downloadfallback();
+
+				if (!com.$ready) {
+					com.$ready = true;
+				}
+
+				type !== 3 && com.state && state.push(com);
+
+				if (reset) {
+					if (!com.$dirty_disabled)
+						com.$dirty = true;
+					if (!com.$valid_disabled) {
+						com.$valid = true;
+						com.$validate = false;
+						if (com.validate) {
+							com.$valid = com.validate(result);
+							com.$interaction(102);
+						}
+					}
+
+					findControl2(com);
+
+				} else if (com.validate && !com.$valid_disabled) {
+					com.valid(com.validate(result), true);
+				}
+			}
+
+			if (reset) {
+				caches.clear('dirty', 'valid');
+			}
+
+			for (var i = 0, length = state.length; i < length; i++) {
+				state[i].stateX(type, 5);
+			}
+
+			emitwatch(path, result, type);
+			return M;
+		}
+
+		function defaultValue(path, timeout, onlyComponent, reset) { //M.default = 
+
+			if (timeout > 0) {
+				setTimeout(function() {
+					defaultValue(path, 0, onlyComponent, reset);
+				}, timeout);
+				return this;
+			}
+
+			if (typeof(onlyComponent) === 'boolean') {
+				reset = onlyComponent;
+				onlyComponent = null;
+			}
+
+			if (reset === undefined) {
+				reset = true;
+			}
+
+			path = pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
+
+			// Reset scope
+			var key = path.replace(/\.\*$/, '');
+			var fn = defaults['#' + langx.hashCode(key)]; // HASH
+			var tmp;
+
+			if (fn) {
+				tmp = fn();
+				set(key, tmp);
+			}
+
+			var arr = [];
+			var all = view.components;//M.components;
+
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+
+				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path)) {
+					continue;
+				}
+
+				if (com.state) {
+					arr.push(com);
+				}
+
+				if (onlyComponent && onlyComponent._id !== com._id) {
+					continue;
+				}
+
+				if (com.$default) {
+				 com.set(com.$default(), 3);
+				}
+
+				if (!reset) {
+					return;
+				}
+
+				findControl2(com);
+
+				if (!com.$dirty_disabled) {
+					com.$dirty = true;
+				}
+				if (!com.$valid_disabled) {
+					com.$valid = true;
+					com.$validate = false;
+					if (com.validate) {
+						com.$valid = com.validate(com.get());
+						com.$interaction(102);
+					}
+				}
+			}
+
+			if (reset) {
+				cache.clearPageData('valid', 'dirty');
+				langx.state(arr, 3, 3);
+			}
+
+			return this;
+		}
+
+
+		// 1 === manually
+		// 2 === by input
+		function update(path, reset, type, wasset) { // M.update =  // immUpdate
+			if (path instanceof Array) {
+				for (var i = 0; i < path.length; i++) {
+					update(store, path[i], reset, type);
+				}
+				return this;  // M
+			}
+
+			path = pathmaker(path);
+			if (!path) {
+				return this;  // M
+			}
+
+			var is = path.charCodeAt(0) === 33; // !
+			if (is) {
+				path = path.substring(1);
+			}
+
+			path = path.replaceWildcard();
+			if (!path) {
+				return this;  // M
+			}
+
+			if (!wasset) {
+				get(path, get(path), true);
+			}
+
+			var state = [];
+
+			if (type === undefined) {
+				type = 1; // manually
+			}
+
+			M.skipproxy = path;
+
+			var all = view.components;//M.components;
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+
+				if (!com || com.disabled || com.$removed || !com.$loaded || !com.path || !com.$compare(path))
+					continue;
+
+				var result = com.get();
+				if (com.setter) {
+					com.$skip = false;
+					com.setterX(result, path, type);
+					com.$interaction(type);
+				}
+
+				if (!com.$ready) {
+					com.$ready = true;
+				}
+
+				if (reset === true) {
+
+					if (!com.$dirty_disabled) {
+						com.$dirty = true;
+						com.$interaction(101);
+					}
+
+					if (!com.$valid_disabled) {
+						com.$valid = true;
+						com.$validate = false;
+						if (com.validate) {
+							com.$valid = com.validate(result);
+							com.$interaction(102);
+						}
+					}
+
+					findControl2(com);
+
+				} else if (com.validate && !com.$valid_disabled) {
+					com.valid(com.validate(result), true);
+				}
+
+				if (com.state) {
+					state.push(com);
+				}
+			}
+
+			if (reset) {
+				clear('dirty', 'valid');
+			}
+
+			for (var i = 0, length = state.length; i < length; i++) {
+				state[i].stateX(1, 4);
+			}
+
+			emitwatch(path, get(path), type);
+
+			return this; // M
+		}
+		
+	   /**
+	   * Evaluate String expression as JavaScript code.
+	   * @param  {String/Object} path Can be object if "path_is_real_value" is "true"
+	   * @param  {String} expression A condition.
+	   * @param  {Boolean} path_is_real_value Optional, default: false
+	   * @returns {Boolean}   
+	   */
+		function evaluate(path, expression, nopath) { //W.EVALUATE = 
+
+			var key = 'eval' + expression;
+			var exp = temp[key];
+			var val = null;
+
+			if (nopath) {
+				val = path;
+			} else {
+				val = get(path);
+			}
+
+			if (exp) {
+				return exp.call(val, val, path);
+			}
+
+			if (expression.indexOf('return') === -1) {
+				expression = 'return ' + expression;
+			}
+
+			exp = new Function('value', 'path', expression);
+			temp[key] = exp;
+			return exp.call(val, val, path);
+		}
+
+		// inc.. 
+		function inc(path, value, type) {  // M.inc
+
+			if (path instanceof Array) {
+				for (var i = 0; i < path.length; i++)
+					inc(path[i], value, type);
+				return this; // M
+			}
+
+			//path = pathmaker(path); ---
+
+			if (!path) {
+				return this; // M
+			}
+
+			var current = get(path);
+			if (!current) {
+				current = 0;
+			} else if (!langx.isNumber(current)) {
+				current = parseFloat(current);
+				if (isNaN(current))
+					current = 0;
+			}
+
+			current += value;
+			setx(path, current, type);
+			return this; // M
+		}
+
+
+		// extend...
+		function extend(path, value, type) { // M.extend
+			path = pathmaker(path);
+			if (path) {
+				var val = get(path);
+				if (val == null) {
+					val = {};
+				}
+				setx(path, langx.extend(val, value), type);
+			}
+			return this; // M
+		}
+
+
+		function push(path, value, type) { // M.push
+
+			if (path instanceof Array) {
+				for (var i = 0; i < path.length; i++) {
+					push(path[i], value, type);
+				}
+				return this; // M
+			}
+
+			var arr = get(path);
+			var n = false;
+
+			if (!(arr instanceof Array)) {
+				arr = [];
+				n = true;
+			}
+
+			var is = true;
+			M.skipproxy = path;
+
+			if (value instanceof Array) {
+				if (value.length)
+					arr.push.apply(arr, value);
+				else {
+					is = false;
+				}
+			} else {
+				arr.push(value);
+			}
+
+			if (n) {
+				setx(path, arr, type);
+			} else if (is) {
+				update(path, undefined, type);
+			}
+
+			return this; // M
+		}
+
+	   /**
+	   * Creates an object on the path and notifies all components
+	   * @param  {String} path 
+	   * @param  {Function} fn 
+	   * @param  {Boolean} update Optional Optional, default "true"
+	   */
+		function make(obj, fn, update) { // W.MAKE
+
+			switch (typeof(obj)) {
+				case 'function':
+					fn = obj;
+					obj = {};
+					break;
+				case 'string':
+					var p = obj;
+					var is = true;
+					obj = get(p);
+					if (obj == null) {
+						is = false;
+						obj = {};
+					}
+					fn.call(obj, obj, p, function(path, value) {
+						setx(obj, path, value);
+					});
+					if (is && (update === undefined || update === true))
+						update(p, true);
+					else {
+						if (C.ready) {
+							set(p, obj);
+						} else {
+							setx(p, obj, true);
+						}
+					}
+					return obj;
+			}
+
+			fn.call(obj, obj, '');
+			return obj;
+		}
+
+	   /**
+	   * Reads a state, it works with dirty state.
+	   * @param  {String} path 
+	   * @return {Boolean} 
+	   */
+		function changed(path) {
+			return !com_dirty(path);
+		};
+
+
+	   /**
+	   * Set a change for the path or can read the state, it works with dirty state.
+	   * @param  {String} path 
+	   * @param  {Boolean} value Optional
+	   * @return {Boolean} 
+	   */
+		function change(path, value) {
+			if (value == null) {
+				value = true;
+			}
+			return !com_dirty(path, !value);
+		};
+
+
+		/*
+		 * This method is same like EXEC() method but it returns a function.
+		 * It must be used as a callback. All callback arguments will be used for the targeted method.
+		 */
+		function exec2(path, tmp) { //W.EXEC2 = 
+			var is = path === true;
+			return function(a, b, c, d) {
+				if (is) {
+					exec(tmp, path, a, b, c, d);
+				} else {
+					exec(path, a, b, c, d);
+				}
+			};
+		};
+
+	  /**
+	   * Executes a method according to the path. It wont't throw any exception if the method not exist.
+	   * @param  {Boolean} wait Optional enables a waiter for the method instance (if method doesn't exist) 
+	   * @param  {String} path 
+	   * @param  {Object} a - Optional, additional argument
+	   * @param  {Object} b - Optional, additional argument
+	   * @param  {Object} c - Optional, additional argument
+	   */
+		function exec(path) {   // W.EXEC = 
+
+			var arg = [];
+			var f = 1;
+			var wait = false;
+			var p;
+			var ctx = this;
+
+			if (path === true) {
+				wait = true;
+				path = arguments[1];
+				f = 2;
+			}
+
+			path = path.env();
+
+			for (var i = f; i < arguments.length; i++) {
+				arg.push(arguments[i]);
+			}
+
+			var c = path.charCodeAt(0);
+
+			// Event
+			if (c === 35) { // # , ex: EXEC('#submit', true); --> EMIT('submit', true);
+				p = path.substring(1);
+				if (wait) {
+					!events[p] && exechelper(ctx, path, arg);
+				} else {
+					EMIT.call(ctx, p, arg[0], arg[1], arg[2], arg[3], arg[4]);
+				}
+				return EXEC;
+			}
+
+			var ok = 0;
+
+			// PLUGINS
+			if (c === 64) { // @ , ex: EXEC('@PLUGIN.method_name');
+				var index = path.indexOf('.');
+				p = path.substring(1, index);
+				var ctrl = plugins.find(p); //W.PLUGINS[p];
+				if (ctrl) {
+					var fn = ctrl[path.substring(index + 1)];
+					if (langx.isFunction(fn) ) { // if (typeof(fn) === TYPE_FN) {
+						fn.apply(ctx === Window ? ctrl : ctx, arg);
+						ok = 1;
+					}
+				}
+
+				if (wait && !ok) {
+				 exechelper(ctx, path, arg);
+				}
+				return EXEC;
+			}
+
+			// PLUGINS
+			var index = path.indexOf('/'); // ex : EXEC('PLUGIN/method_name');
+			if (index !== -1) {
+				p = path.substring(0, index);
+				var ctrl = plugins.find(p); //W.PLUGINS[p];
+				var fn = path.substring(index + 1);
+				if (ctrl && typeof(ctrl[fn]) === TYPE_FN) {
+					ctrl[fn].apply(ctx === W ? ctrl : ctx, arg);
+					ok = 1;
+				}
+
+				if (wait && !ok) {
+				 exechelper(ctx, path, arg);
+				}
+				return EXEC;
+			}
+
+			var fn = paths.get(path);
+
+			if (langx.isFunction(fn)) {
+				fn.apply(ctx, arg);
+				ok = 1;
+			}
+
+			if (wait && !ok) {
+				exechelper(ctx, path, arg);
+			}
+			return exec;
+		};
+
+
+
+	   /**
+	   * Checks dirty and valid paths for all declared components on the path. 
+	   * If the method return true then the components are validated and 
+	   * some component has been changed by user (otherwise: false).
+	   * @param  {String} path 
+	   * @param  {String|Array} except  With absolute paths for skipping
+	   * @returns {Boolean}   
+	   */
+		function can(path, except) { // W.CAN = 
+			path = pathmaker(path);
+			return !com_dirty(path, except) && com_valid(path, except);
+		}
+
+	   /**
+	   * Checks dirty and valid paths for all declared components on the path. 
+	   * If the method return false then the components are validated and 
+	   * some component has been changed by user (otherwise: true).
+	   * @param  {String} path 
+	   * @param  {String|Array} except  With absolute paths for skipping
+	   * @returns {Boolean}   
+	   */
+		function disabled(path, except) { // W.DISABLED = 
+			path = pathmaker(path);
+			return com_dirty(path, except) || !com_valid(path, except);
+		}
+
+	   /**
+	   * Highlights all components on the path as invalid. 
+	   * @param  {String} path 
+	   * @param  {String|Array} except  With absolute paths for skipping
+	   * @returns {Boolean}   
+	   */
+		function invalid(path, onlyComponent) {  // W.INVALID = 
+			path = pathmaker(path);
+			if (path) {
+				com_dirty(path, false, onlyComponent, true);
+				com_valid(path, false, onlyComponent);
+			}
+			return W;
+		};
+
+	   /**
+	   * Resets dirty and valid state in all components on the path.
+	   * @param  {String} path 
+	   * @param  {Number} delay  Optional, in milliseconds (default: 0)
+	   */
+		function reset(path, timeout, onlyComponent) { //W.RESET = M.reset
+
+			if (timeout > 0) {
+				setTimeout(function() {
+					reset(path);
+				}, timeout);
+				return this;
+			}
+
+			path = pathmaker(path).replaceWildcard();
+
+			var arr = [];
+			var all = view.components;//M.components;
+
+			for (var i = 0, length = all.length; i < length; i++) {
+				var com = all[i];
+				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path)) {
+					continue;
+				}
+
+				com.state && arr.push(com);
+
+				if (onlyComponent && onlyComponent._id !== com._id) {
+					continue;
+				}
+
+				findControl2(com);
+
+				if (!com.$dirty_disabled) {
+					com.$dirty = true;
+					com.$interaction(101);
+				}
+
+				if (!com.$valid_disabled) {
+					com.$valid = true;
+					com.$validate = false;
+					if (com.validate) {
+						com.$valid = com.validate(com.get());
+						com.$interaction(102);
+					}
+				}
+			}
+
+			clear('valid', 'dirty');
+			state(arr, 1, 3);
+			return this;
+		}
+
+		function used(path) {   //M.used
+			each(function(obj) {
+				!obj.disabled && obj.used();
+			}, path);
+			return this;
+		};
+
+	   /**
+	   * Performs SET() and CHANGE() together.
+	   * @param  {String} path 
+	   * @param  {Object|Array} value.
+	   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+	   * @param {Boolean} reset Optional
+	   */
+		function modify (path, value, timeout) { // W.MODIFY =
+			if (path && typeof(path) === 'object') {
+				Object.keys(path).forEach(function(k) {
+					modify(k, path[k], value);
+				});
+			} else {
+				if (langx.isFunction(value)) {
+					value = value(get(path));
+				}
+				setx(path, value, timeout); 
+				if (timeout) {
+					langx.setTimeout(change, timeout + 5, path);
+				} else {
+					change(path);
+				}
+			}
+			return this;
+		};
+
+	   /**
+	   * Returns all modified components by user on the path.
+	   * @param  {String} path 
+	   * @returns {Array<String>}   
+	   */
+		function modified(path) { //W.MODIFIED = 
+			var output = [];
+			each(function(obj) {
+				if (!(obj.disabled || obj.$dirty_disabled)) {
+					obj.$dirty === false && output.push(obj.path);
+				}
+			}, pathmaker(path));
+			return output;
+		}
+
+
+	   /**
+	   * Checks whether the value has not been modified on the path.
+	   * @param  {String} path 
+	   * @param {Object} value  Optional
+	   * @param {Array<String>} fields  Optional, field names
+	   * @returns {Booean}   
+	   */
+		function notmodified(path, value, fields) { // W.NOTMODIFIED = 
+
+			if (value === undefined) {
+				value = get(path);
+			}
+
+			if (value === undefined) {
+				value = null;
+			}
+
+			if (fields) {
+				path = path.concat('#', fields);
+			}
+
+			var s = langx.stringify(value, false, fields); // STRINGIFY
+			var hash = langx.hashCode(s); // HASH
+			var key =  path; // 'notmodified.' + path
+
+			if (nmCache[key] === hash) { // cache
+				return true;
+			}
+
+			nmCache[key] = hash; //cache 
+			return false;
+		}
+
+		function errors(path, except, highlight) { //W.ERRORS = 
+
+			if (path instanceof Array) {
+				except = path;
+				path = undefined;
+			}
+
+			if (except === true) {
+				except = highlight instanceof Array ? highlight : null;
+				highlight = true;
+			}
+
+			var arr = [];
+
+			each(function(obj) { // M.each
+				if (!obj.disabled && (!except || !obj.$except(except)) && obj.$valid === false && !obj.$valid_disabled)
+					arr.push(obj);
+			}, pathmaker(path));
+
+			highlight && langx.state(arr, 1, 1);
+			return arr;
+		}
+
+
+		function rewrite(path, value, type) { // W.REWRITE = 
+			path = pathmaker(path);
+			if (path) {
+				M.skipproxy = path;
+				set(path, value);
+				emitwatch(path, value, type);
+			}
+			return this; // W
+		}
+
+		// ===============================================================
+		// MAIN FUNCTIONS
+		// ===============================================================
+
+	   /**
+	   * Evaluates a global parser.
+	   * @param  {String} path 
+	   * @param  {Object} value
+	   * @param  {String} type 
+	   * @returns {Boolean}   
+	   * OR
+	   * Registers a global parser.
+	   * @param  {Function} value 
+	   */
+		function parser(value, path, type) { //W.PARSER = M.parser =  
+
+			if (langx.isFunction(value)) {
+
+				// Prepend
+				if (path === true) {
+					$parser.unshift(value);
+				} else {
+					$parser.push(value);
+				}
+
+				return this;
+			}
+
+			var a = $parser;
+			if (a && a.length) {
+				for (var i = 0, length = a.length; i < length; i++) {
+					value = a[i].call(this, path, value, type);
+				}
+			}
+
+			return value;
+		}
+
+		parser(function(path, value, type) {
+
+			switch (type) {
+				case 'number':
+				case 'currency':
+				case 'float':
+					var v = +(langx.isString(value) ? value.trimAll().replace(REGCOMMA, '.') : value);
+					return isNaN(v) ? null : v;
+
+				case 'date':
+				case 'datetime':
+
+					if (!value) {
+						return null;
+					}
+
+					if (value instanceof Date) {
+						return value;
+					}
+
+					value = value.parseDate();
+					return value && value.getTime() ? value : null;
+			}
+
+			return value;
+		});
+
+	   /**
+	   * skips component.setter for future update. It's incremental.
+	   * @param  {String} pathA Absolute path according to the component "data-jc-path"  
+	   * @param  {String} pathB Absolute path according to the component "data-jc-path"  
+	   * @param  {String} pathN Absolute path according to the component "data-jc-path"  
+	   */
+		function skip() { // W.SKIP = 
+			for (var j = 0; j < arguments.length; j++) {
+				var arr = arguments[j].split(',');
+				for (var i = 0, length = arr.length; i < length; i++) {
+					var p = arr[i].trim();
+					if (skips[p]) {
+						skips[p]++;
+					} else {
+						skips[p] = 1;
+					}
+				}
 			}
 		}
+
+
+		return {
+		
+			"cache" : cache,
+			"can" : can,
+			"change" : change,
+			"changed" : changed,
+			"create" : create,
+			"default" : defaultValue,
+			"disabled" : disabled,
+			"errors" : errors,
+			"evaluate" : evaluate,
+			"exec" : exec,
+			"exec2" : exec2,
+			"extend" : extend,
+			"format" : format,
+			"get"  : get,
+			"inc"  : inc,
+			"invalid" : invalid,
+			"make" : make,
+			"modify" : modify,
+			"modified" : modified,
+			"parser" : parser,
+			"push" : push,
+			"reset" : reset,
+			"rewrite" : rewrite,
+			"set"  : set,
+			"set2" : set2,
+ 			"setx" : setx,
+ 			"skip" : skip,
+ 			"update" : update,
+ 			"used" : used,
+ 			"validate" : validate
+		};
 	}
 
-	return nextpending;
-	
+	return storing;
 });
 define('skylark-totaljs-jcomponent/views/View',[
 	"../langx",
-	"./compose",
-	"./crawler",
-	"./download",
-	"./pend"
-],function(langx, compose, crawler, download, pend){
+	"../utils/domx",
+	"./binding",
+	"./componenter",
+	"./eventer",
+	"./compiler",
+	"./helper",
+	"./scoper",
+	"./storing",
+],function(langx, domx, binding, componenter, eventer,compiler, helper,scoper,storing){
 
 	var $rebinder;
 
@@ -17266,101 +20646,65 @@ define('skylark-totaljs-jcomponent/views/View',[
 	}
 
 
-	var View = langx.Evented.inherit({
+	// data-scope    
+	// data-compile 
+	// data-released 
+	// data-vendor
+	// data-store
+	// data-com
+	// data-bind
+	var View = domx.Plugin.inherit({
 	    options : {
-	      elmComAttrNames: {
-	        base : "data-jc",
-	        url : "data-jc-url",
-	        removed : "data-jc-removed",
-	        released : "data-jc-released",
-	        scope : "data-jc-scope"
+	      elmAttrNames: {
+	        scope   : "data-scope",             // data-jc-scope
+	        bind    : "data-bind",              // data-bind
+	        store   : "data-store",
+	      	com  : {
+		        base     : "data-com",          // data-jc
+		        url      : "data-comp-url",     // data-jc-url
+		        removed  : "data-com-removed",  //data-jc-removed
+		        released : "data-com-released", //data-jc-released
+	      	},
+	        compile : "data-compile"            // data-jc-comile
 	      }
 	    },
 
 		_construct : function(elm,options) {
 
-			this.is = false;
-			this.recompile = false;
-			this.importing = 0;
-			this.pending = [];
-			this.init = [];
-			this.imports = {};
-			this.ready = [];
-
+			this.eventer = eventer(this);
+			this.scoper = scoper(this);
 			this.storing = storing(this);
+			this.helper = helper(this);
+			this.componenter = componenter(this);
+			this.binding = binding(this);
+			this.compiler = compiler(this);
 		},
 
-		attrcom : function(el) {
-			return attrcom(el);
+	   /**
+	   * Create new components dynamically.
+	   * @param  {String|Array<String>} declaration 
+	   * @param  {jQuery Element/Component/Scope/Plugin} element optional,a parent element (default: "document.body")
+	   */
+		add : function (value, element) { // W.ADD =
+			if (element instanceof COM || element instanceof Scope || element instanceof Plugin) {
+				element = element.element;
+			}
+			if (value instanceof Array) {
+				for (var i = 0; i < value.length; i++)
+					ADD(value[i], element);
+			} else {
+				$(element || document.body).append('<div data-jc="{0}"></div>'.format(value));
+				setTimeout2('ADD', COMPILE, 10);
+			}
 		},
 
 		compile : function (container,immediate) {
-			var self = this;
 
-			if (self.is) {
-				self.recompile = true;
-				return;
-			}
-
-			var arr = [];
-
-			if (W.READY instanceof Array)  {
-				arr.push.apply(arr, W.READY);
-			}
-			if (W.jComponent instanceof Array) {
-				arr.push.apply(arr, W.jComponent);
-			}
-			if (W.components instanceof Array) {
-				arr.push.apply(arr, W.components);
-			}
-
-			if (arr.length) {
-				while (true) {
-					var fn = arr.shift();
-					if (!fn){
-						break;
-					}
-					fn();
-				}
-			}
-
-			self.is = true;
-			download(self);
-
-			if (self.pending.length) {
-				(function(container) {
-					self.pending.push(function() {
-						compile(self,container);
-					});
-				})(container);
-				return;
-			}
-
-			var has = false;
-
-			crawler(self,container, compose);
-
-			// perform binder
-			rebindbinder();
-
-			if (!has || !self.pending.length) {
-				self.is = false;
-			}
-
-			if (container !== undefined || !toggles.length) {
-				return pend();
-			}
-
-			langx.async(toggles, function(item, next) {
-				for (var i = 0, length = item.toggle.length; i < length; i++)
-					item.element.tclass(item.toggle[i]);
-				next();
-			}, pend);
 		},
 
 		refresh : function () {
 			setTimeout2('$refresh', function() {
-				all.sort(function(a, b) {  // M.components.sort
+				componenter.components.sort(function(a, b) {  // M.components.sort
 					if (a.$removed || !a.path)
 						return 1;
 					if (b.$removed || !b.path)
@@ -17544,14 +20888,41 @@ define('skylark-totaljs-jcomponent/globals',[
 	"./views"
 ],function(jc, defaults, langx,utils,plugins,Components,binding,stores,views){
 
+	$.fn.scope = function() {
+
+		if (!this.length) {
+			return null; 
+		}
+
+		var data = this[0].$scopedata;
+		if (data) {
+			return data;
+		}
+		var el = this.closest('[' + ATTRSCOPE + ']');
+		if (el.length) {
+			data = el[0].$scopedata;
+			if (data) {
+				return data;
+			}
+		}
+		return null;
+	};	
+
+
 	var W = Window;
 
 	var gv = new views.View(document.body,{
-		store : new stores.Store({
-					data : W
-				})
+			store : new stores.Store({
+							data : W
+						})
 		}),
-		gs = gv.storing;
+		gs = gv.storing,
+		gh = gv.helper,
+		gm = gv.composer,
+		gl = gv.compiler,
+		ge = gv.eventer;
+
+	$.components = gv.components;
 
 	langx.mixin(W, {
 		isPRIVATEMODE : false,
@@ -17658,7 +21029,7 @@ define('skylark-totaljs-jcomponent/globals',[
 		PLUGINS : plugins.registry
 	});
 
-	W.ADD = components.add;
+	W.ADD = gv.add;
 
 	W.BLOCKED  = blocking.blocked;
 	
@@ -17698,7 +21069,7 @@ define('skylark-totaljs-jcomponent/globals',[
    * @param  {Boolean} reset Optional, default: true
    */
 	W.DEFAULT = function (path, timeout, reset) { //
-		var arr = path.split(REGMETA);
+		var arr = path.split(/_{2,}/);
 		if (arr.length > 1) {
 			var def = arr[1];
 			path = arr[0];
@@ -17712,7 +21083,7 @@ define('skylark-totaljs-jcomponent/globals',[
 	}
 
 	W.EMIT = function(name) {
-		return gs.emit.apply(gs,arguments);
+		return ge.emit.apply(gs,arguments);
 	};
 
    /**
@@ -17752,8 +21123,9 @@ define('skylark-totaljs-jcomponent/globals',[
 		return gs.evaluate(path, expression, nopath);
 	};
 
+
 	W.FIND = function (value, many, noCache, callback) {  
-		return gs.find(value, many, noCache, callback);
+		return gm.find(value, many, noCache, callback);
 	};
 
 	W.FREE = function(timeout) {
@@ -17821,7 +21193,7 @@ define('skylark-totaljs-jcomponent/globals',[
 	};	
 
 	W.LASTMODIFICATION = W.USAGE = function (name, expire, path, callback) {
-		return gs.usage(name,expire,path,callback);
+		return gm.usage(name,expire,path,callback);
 	};
 
 	W.MAKE = function (obj, fn, update) {
@@ -17848,12 +21220,17 @@ define('skylark-totaljs-jcomponent/globals',[
 		return W;
 	};
 
+	W.NOTIFY = function() {
+		gm.notify.apply(gm,arguments);
+		return W;
+	};
+
 	W.OFF = function(name, path, fn) {
-		return gs.off(name,path,fn);
+		return ge.off(name,path,fn);
 	};	
 
 	W.ON = function(name, path, fn, init, context) {
-		return gs.on(name,path,fn,init,context);
+		return ge.on(name,path,fn,init,context);
 	};
    /**
     * creates an object with more readable properties.
@@ -18028,13 +21405,13 @@ define('skylark-totaljs-jcomponent/globals',[
 	W.VBINDARRAY = binding.vbindArray;
 
 	W.VALIDATE = function(path, except) {
-		return gs.validate(path,except);
+		return gm.validate(path,except);
 	};
 
 	W.VERSION = components.version;
 
 	W.WATCH	= function (path, fn, init) { // 
-		return gs.watch(path, fn, init);
+		return ge.watch(path, fn, init);
 	};
 
 	return W;

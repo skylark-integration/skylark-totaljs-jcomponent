@@ -3358,7 +3358,7 @@
 
 	function initialize() {
 		var item = C.init.pop();
-		if (item === undefined)
+		if (item === undefined) 
 			!C.ready && compile();
 		else {
 			!item.$removed && prepare(item);

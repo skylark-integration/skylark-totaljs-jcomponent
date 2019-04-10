@@ -22,10 +22,11 @@ define([
 		}
 
 		var cb = function() {
-			if (typeof(callback) === TYPE_S)
+			if (typeof(callback) === TYPE_S) {
 				SET(callback, value);
-			else
+			} else {
 				callback(value);
+			}
 		};
 
 		var keys = name.split(',');
@@ -53,8 +54,9 @@ define([
 					next();
 				});
 			}, cb);
-		} else
+		} else {
 			cb();
+		}
 
 		return this;
 	};

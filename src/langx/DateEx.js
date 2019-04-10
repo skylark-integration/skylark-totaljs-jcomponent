@@ -1,6 +1,7 @@
 define([
-	"./regexp"
-],function(regexp){
+	"./regexp",
+	"./statics"
+],function(regexp,statics){
 
 	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
 	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');

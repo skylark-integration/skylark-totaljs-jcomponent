@@ -88,6 +88,20 @@ define([
 	};
 
 
+	cache.clean = function () { 
+		for (var key in storage) {
+			var item = storage[key];
+			if (!item.expire || item.expire <= now) {
+				delete storage[key];
+			}
+		}
+
+		save();		
+
+		return this;
+	};
+
+
 	cache.clear = function () { // W.CLEARCACHE = 
 		if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
 			var rem = localStorage.removeItem;
@@ -233,6 +247,11 @@ define([
 		}
 
 		M.loaded = true;
+	}
+
+
+	function clean() {
+
 	}
 
 	return cache;
