@@ -841,6 +841,73 @@ define([
 			}, nextpending);
 		}		
 
+	function request() {
+
+		langx.setTimeout2('$ready', function() {
+
+			mediaquery();
+			view.refresh(); // TODO
+
+			function initialize() {
+				var item = initing.pop();
+				if (item === undefined)
+					!ready && compile();
+				else {
+					!item.$removed && prepare(item);
+					initialize();
+				}
+			}
+
+			initialize();
+
+			var count = components.length; // M.components
+			$(document).trigger('components', [count]);
+
+			if (!$loaded) {
+				$loaded = true;
+				caches.clear('valid', 'dirty', 'find');
+				topic.emit('init');
+				topic.emit('ready');
+			}
+
+			langx.setTimeout2('$initcleaner', function() {
+				components.cleaner();
+				var arr = autofill.splice(0);
+				for (var i = 0; i < arr.length; i++) {
+					var com = arr[i];
+					!com.$default && findcontrol(com.element[0], function(el) {
+						var val = $(el).val();
+						if (val) {
+							var tmp = com.parser(val);
+							if (tmp && com.get() !== tmp) {
+								com.dirty(false, true);
+								com.set(tmp, 0);
+							}
+						}
+						return true;
+					});
+				}
+			}, 1000);
+
+			is = false;
+
+			if (recompile) {
+				recompile = false;
+				compile();
+			}
+
+			if (ready) {
+				var arr = ready;
+				for (var i = 0, length = arr.length; i < length; i++)
+					arr[i](count);
+				ready = undefined;
+				compile();
+				setTimeout(compile, 3000);
+				setTimeout(compile, 6000);
+				setTimeout(compile, 9000);
+			}
+		}, 100);
+	}
 
 		return {
 

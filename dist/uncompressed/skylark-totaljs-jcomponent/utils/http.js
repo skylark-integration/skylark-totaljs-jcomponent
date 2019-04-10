@@ -835,8 +835,7 @@ define([
 		makeParams,
 		ping,
 		parseQuery,
-		upload,
-		uptodate
+		upload
 	};
 
 });

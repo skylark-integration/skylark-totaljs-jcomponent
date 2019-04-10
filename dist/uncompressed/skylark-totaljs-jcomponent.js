@@ -2556,6 +2556,8 @@ define('skylark-totaljs-jcomponent/stores/Store',[
 		}
 
 	});
+
+	return Store;
 });
 define('skylark-totaljs-jcomponent/stores',[
 	"skylark-langx/langx",
@@ -4035,7 +4037,7 @@ define('skylark-totaljs-jcomponent/binding',[
 		"findFormat" : findFormat,
 		"func" : func,
 		"pathmaker" : pathmaker,
-		"parse" : parase,
+		"parse" : parse,
 
 		"Binder" : Binder,
 		"bind" : bind,
@@ -5859,6 +5861,34 @@ define('skylark-totaljs-jcomponent/components/register',[
     return register;
 	
 });
+define('skylark-totaljs-jcomponent/components/version',[],function(){
+	var versions = {};
+	
+   /**
+   * sets a version for specific components.
+   * ex : version('textbox@1', 'dropdown@1');
+   */
+	function version() { // W.VERSION = 
+		for (var j = 0; j < arguments.length; j++) {
+			var keys = arguments[j].split(',');
+			for (var i = 0; i < keys.length; i++) {
+				var key = keys[i].trim();
+				var tmp = key.indexOf('@');
+				if (tmp === -1) {
+					continue;
+				}
+				var version = key.substring(tmp + 1);
+				key = key.substring(0, tmp);
+				if (version) {
+					versions[key] = version;
+				}
+			}
+		}
+	}
+
+	return version;
+	
+});
 define('skylark-totaljs-jcomponent/components',[
 	"./jc",
 	"./langx",
@@ -5872,8 +5902,9 @@ define('skylark-totaljs-jcomponent/components',[
 	"./components/extend",
 	"./components/registry",
 	"./components/register",
-	"./components/Usage"
-],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage){
+	"./components/Usage",
+	"./components/version"
+],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,version){
 
 
 //	var components = {};
@@ -6967,8 +6998,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		makeParams,
 		ping,
 		parseQuery,
-		upload,
-		uptodate
+		upload
 	};
 
 });
@@ -7078,6 +7108,8 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 	function componentor(view) {
 		var helper = view.helper,
 			storing = view.storing,
+			eventer = view.eventer,
+			compiler = view.compiler,
 			components = [],
 			caches = {
 				dirty : {},
@@ -7291,14 +7323,6 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			cache[key] = valid ;
 			langx.state(arr, 1, 1);
 			return valid;
-		}
-
-		function clean() {
-			caches = {
-				dirty : {},
-				valid : {},
-				find : {}
-			};
 		}
 
 	  /**
@@ -7546,9 +7570,9 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 					var val = find(value, many, noCache);
 					if (lazycom[value] && lazycom[value].state === 1) {
 						lazycom[value].state = 2;
-						topic.emit('lazy', value, true); // EMIT
+						eventer.emit('lazy', value, true); // EMIT
 						warn('Lazy load: ' + value);
-						view.compile();
+						compiler.compile();
 					}
 					return val instanceof Array ? val.length > 0 : !!val;
 				}, function(err) {
@@ -7566,7 +7590,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				if (!(value instanceof jQuery)) {
 					value = $(value);
 				}
-				var output = findComponent(value, '');
+				var output = helper.findComponent(value, '');
 				return many ? output : output[0];
 			}
 
@@ -7580,7 +7604,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				}
 			}
 
-			var r = findComponent(null, value);
+			var r = helper.findComponent(null, value);
 			if (!many) {
 				r = r[0];
 			}
@@ -7629,7 +7653,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 						lazycom[selector].state = 2;
 						storing.emit('lazy', selector, true); // EMIT
 						warn('Lazy load: ' + selector);
-						compile();
+						compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -7659,7 +7683,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 						lazycom[selector].state = 2;
 						storing.emit('lazy', selector, true);  // EMIT
 						warn('Lazy load: ' + selector);
-						compile();
+						compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -7753,8 +7777,8 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 					}
 				}
 
-				topic.emit('destroy', component.name, component);
-				topic.emit('component.destroy', component.name, component);
+				eventer.emit('destroy', component.name, component);
+				eventer.emit('component.destroy', component.name, component);
 
 				delete statics['$ST_' + component.name];
 				component.destroy && component.destroy();
@@ -7782,11 +7806,27 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				length = all.length; // M.components.length
 				is = true;
 			}
+
+			caches = {
+				dirty : {},
+				valid : {},
+				find : {}
+			};			
 		}
 
 
 		return {
-
+			"clean" : clean,
+			"com_valid" : com_valid,
+			"com_dirty" : com_dirty,
+			"each" : each,
+			"find"  : find,
+			"notify" : notify,
+			"prepare" : prepare,
+			"reconfigure" : reconfigure,
+			"setter" : setter,
+			"usage" : usage,
+			"validate" : validate
 		}
 	}
 	
@@ -9003,6 +9043,73 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			}, nextpending);
 		}		
 
+	function request() {
+
+		langx.setTimeout2('$ready', function() {
+
+			mediaquery();
+			view.refresh(); // TODO
+
+			function initialize() {
+				var item = initing.pop();
+				if (item === undefined)
+					!ready && compile();
+				else {
+					!item.$removed && prepare(item);
+					initialize();
+				}
+			}
+
+			initialize();
+
+			var count = components.length; // M.components
+			$(document).trigger('components', [count]);
+
+			if (!$loaded) {
+				$loaded = true;
+				caches.clear('valid', 'dirty', 'find');
+				topic.emit('init');
+				topic.emit('ready');
+			}
+
+			langx.setTimeout2('$initcleaner', function() {
+				components.cleaner();
+				var arr = autofill.splice(0);
+				for (var i = 0; i < arr.length; i++) {
+					var com = arr[i];
+					!com.$default && findcontrol(com.element[0], function(el) {
+						var val = $(el).val();
+						if (val) {
+							var tmp = com.parser(val);
+							if (tmp && com.get() !== tmp) {
+								com.dirty(false, true);
+								com.set(tmp, 0);
+							}
+						}
+						return true;
+					});
+				}
+			}, 1000);
+
+			is = false;
+
+			if (recompile) {
+				recompile = false;
+				compile();
+			}
+
+			if (ready) {
+				var arr = ready;
+				for (var i = 0, length = arr.length; i < length; i++)
+					arr[i](count);
+				ready = undefined;
+				compile();
+				setTimeout(compile, 3000);
+				setTimeout(compile, 6000);
+				setTimeout(compile, 9000);
+			}
+		}, 100);
+	}
 
 		return {
 
@@ -9196,6 +9303,10 @@ define('skylark-totaljs-jcomponent/views/helper',[
 
 		function attrbind(el) {
 			return el.getAttribute('data-bind') || el.getAttribute('bind');
+		}
+
+		function attrscope(el) {
+			return el.getAttribute(ATTRSCOPE);
 		}
 
 		function scope(el) {
@@ -10752,8 +10863,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
  			"setx" : setx,
  			"skip" : skip,
  			"update" : update,
- 			"used" : used,
- 			"validate" : validate
+ 			"used" : used
 		};
 	}
 
@@ -11042,7 +11152,8 @@ define('skylark-totaljs-jcomponent/globals',[
 	"./stores",
 	"./views"
 ],function(jc, defaults, langx,utils,plugins,Components,binding,stores,views){
-
+	var $ = utils.query;
+	
 	$.fn.scope = function() {
 
 		if (!this.length) {
@@ -11088,6 +11199,7 @@ define('skylark-totaljs-jcomponent/globals',[
 	}); // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	//jc
+	/*
 	langx.each({
 		"MONTHS" : "months",
 		"DAYS" : "days"
@@ -11101,6 +11213,7 @@ define('skylark-totaljs-jcomponent/globals',[
 		    }
 		});	
 	});
+	*/
 
 	var blocks = utils.blocks,
 		cache = utils.cache,
@@ -11554,6 +11667,31 @@ define('skylark-totaljs-jcomponent/globals',[
 		CHANGE(path); 
 		return W; 
 	};	
+
+	W.UPTODATE =function uptodate(period, url, callback, condition) {   
+
+		if (langx.isFunction(url)) {
+			condition = callback;
+			callback = url;
+			url = '';
+		}
+
+		var dt = new Date().add(period);
+		topic.on('knockknock', function() {
+			if (dt > langx.now()) //W.NOW)
+				return;
+			if (!condition || !condition())
+				return;
+			var id = setTimeout(function() {
+				var l = window.location;
+				if (url)
+					l.href = url.$env();
+				else
+					l.reload(true);
+			}, 5000);
+			callback && callback(id);
+		});
+	}
 
 	W.VBIND = binding.vbind,
 

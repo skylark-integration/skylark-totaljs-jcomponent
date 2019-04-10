@@ -181,6 +181,10 @@ define([
 			return el.getAttribute('data-bind') || el.getAttribute('bind');
 		}
 
+		function attrscope(el) {
+			return el.getAttribute(ATTRSCOPE);
+		}
+
 		function scope(el) {
 			var results = $(el).closest('[' + this.option("elmAttrNames.scope") + ']');
 			if (results && results.length) {

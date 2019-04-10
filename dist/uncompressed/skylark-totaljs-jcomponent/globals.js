@@ -9,7 +9,8 @@ define([
 	"./stores",
 	"./views"
 ],function(jc, defaults, langx,utils,plugins,Components,binding,stores,views){
-
+	var $ = utils.query;
+	
 	$.fn.scope = function() {
 
 		if (!this.length) {
@@ -55,6 +56,7 @@ define([
 	}); // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	//jc
+	/*
 	langx.each({
 		"MONTHS" : "months",
 		"DAYS" : "days"
@@ -68,6 +70,7 @@ define([
 		    }
 		});	
 	});
+	*/
 
 	var blocks = utils.blocks,
 		cache = utils.cache,
@@ -521,6 +524,31 @@ define([
 		CHANGE(path); 
 		return W; 
 	};	
+
+	W.UPTODATE =function uptodate(period, url, callback, condition) {   
+
+		if (langx.isFunction(url)) {
+			condition = callback;
+			callback = url;
+			url = '';
+		}
+
+		var dt = new Date().add(period);
+		topic.on('knockknock', function() {
+			if (dt > langx.now()) //W.NOW)
+				return;
+			if (!condition || !condition())
+				return;
+			var id = setTimeout(function() {
+				var l = window.location;
+				if (url)
+					l.href = url.$env();
+				else
+					l.reload(true);
+			}, 5000);
+			callback && callback(id);
+		});
+	}
 
 	W.VBIND = binding.vbind,
 

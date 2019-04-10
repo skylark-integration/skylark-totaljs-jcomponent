@@ -11,8 +11,9 @@ define([
 	"./components/extend",
 	"./components/registry",
 	"./components/register",
-	"./components/Usage"
-],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage){
+	"./components/Usage",
+	"./components/version"
+],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,version){
 
 
 //	var components = {};

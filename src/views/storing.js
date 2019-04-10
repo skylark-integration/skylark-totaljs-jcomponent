@@ -1234,8 +1234,7 @@ define([
  			"setx" : setx,
  			"skip" : skip,
  			"update" : update,
- 			"used" : used,
- 			"validate" : validate
+ 			"used" : used
 		};
 	}
 

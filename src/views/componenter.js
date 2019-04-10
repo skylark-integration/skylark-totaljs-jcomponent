@@ -7,6 +7,8 @@ define([
 	function componentor(view) {
 		var helper = view.helper,
 			storing = view.storing,
+			eventer = view.eventer,
+			compiler = view.compiler,
 			components = [],
 			caches = {
 				dirty : {},
@@ -220,14 +222,6 @@ define([
 			cache[key] = valid ;
 			langx.state(arr, 1, 1);
 			return valid;
-		}
-
-		function clean() {
-			caches = {
-				dirty : {},
-				valid : {},
-				find : {}
-			};
 		}
 
 	  /**
@@ -475,9 +469,9 @@ define([
 					var val = find(value, many, noCache);
 					if (lazycom[value] && lazycom[value].state === 1) {
 						lazycom[value].state = 2;
-						topic.emit('lazy', value, true); // EMIT
+						eventer.emit('lazy', value, true); // EMIT
 						warn('Lazy load: ' + value);
-						view.compile();
+						compiler.compile();
 					}
 					return val instanceof Array ? val.length > 0 : !!val;
 				}, function(err) {
@@ -495,7 +489,7 @@ define([
 				if (!(value instanceof jQuery)) {
 					value = $(value);
 				}
-				var output = findComponent(value, '');
+				var output = helper.findComponent(value, '');
 				return many ? output : output[0];
 			}
 
@@ -509,7 +503,7 @@ define([
 				}
 			}
 
-			var r = findComponent(null, value);
+			var r = helper.findComponent(null, value);
 			if (!many) {
 				r = r[0];
 			}
@@ -558,7 +552,7 @@ define([
 						lazycom[selector].state = 2;
 						storing.emit('lazy', selector, true); // EMIT
 						warn('Lazy load: ' + selector);
-						compile();
+						compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -588,7 +582,7 @@ define([
 						lazycom[selector].state = 2;
 						storing.emit('lazy', selector, true);  // EMIT
 						warn('Lazy load: ' + selector);
-						compile();
+						compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -682,8 +676,8 @@ define([
 					}
 				}
 
-				topic.emit('destroy', component.name, component);
-				topic.emit('component.destroy', component.name, component);
+				eventer.emit('destroy', component.name, component);
+				eventer.emit('component.destroy', component.name, component);
 
 				delete statics['$ST_' + component.name];
 				component.destroy && component.destroy();
@@ -711,11 +705,27 @@ define([
 				length = all.length; // M.components.length
 				is = true;
 			}
+
+			caches = {
+				dirty : {},
+				valid : {},
+				find : {}
+			};			
 		}
 
 
 		return {
-
+			"clean" : clean,
+			"com_valid" : com_valid,
+			"com_dirty" : com_dirty,
+			"each" : each,
+			"find"  : find,
+			"notify" : notify,
+			"prepare" : prepare,
+			"reconfigure" : reconfigure,
+			"setter" : setter,
+			"usage" : usage,
+			"validate" : validate
 		}
 	}
 	

@@ -40,7 +40,7 @@ define([
 		"findFormat" : findFormat,
 		"func" : func,
 		"pathmaker" : pathmaker,
-		"parse" : parase,
+		"parse" : parse,
 
 		"Binder" : Binder,
 		"bind" : bind,

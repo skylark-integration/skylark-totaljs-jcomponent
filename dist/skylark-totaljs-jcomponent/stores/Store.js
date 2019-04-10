@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../langx"],function(n){n.Evented.inherit({_construct:function(n){this.data=n.data}})});
+define(["../langx"],function(n){return n.Evented.inherit({_construct:function(n){this.data=n.data}})});
 //# sourceMappingURL=../sourcemaps/stores/Store.js.map
