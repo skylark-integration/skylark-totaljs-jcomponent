@@ -3504,7 +3504,7 @@ define('skylark-langx/langx',[
     "./topic",
     "./types",
     "./Xhr"
-], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,Restful,Stateful,strings,types,topic,Xhr) {
+], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,Restful,Stateful,strings,topic,types,Xhr) {
     "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
@@ -11028,7 +11028,7 @@ define('skylark-totaljs-jcomponent/langx',[
 	return jc.langx = {
 
 		Evented : slangx.Evented,
-		hoster : hoster,
+		hoster  : slangx.hoster,
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
 		isObject : slangx.isObject,
@@ -12082,7 +12082,7 @@ define('skylark-totaljs-jcomponent/binding/findFormat',[
 
 	return findFormat;
 });
-define('skylark-totaljs-jcomponent/binding/parsebinder',[
+define('skylark-totaljs-jcomponent/binding/parse',[
 	"../langx",
 	"../utils/query",
 	"./func",
@@ -12511,7 +12511,7 @@ define('skylark-totaljs-jcomponent/binding/parsebinder',[
 define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
 	"../langx",
 	"../utils/query",
-	"./parsebinder"
+	"./parse"
 ],function(langx, $, parsebinder){
 	var ATTRBIND = '[data-bind],[bind],[data-vbind]';
 	
@@ -13852,10 +13852,14 @@ define('skylark-totaljs-jcomponent/binding',[
 	"./plugins",
 	"./binding/Binder",
 	"./binding/bind",
+	"./binding/findFormat",
+	"./binding/func",
+	"./binding/parse",
+	"./binding/pathmaker",
 	"./binding/VirtualBinder",
 	"./binding/vbind",
 	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,bind,VirtualBinder,vbind,vbindArray){
+],function($, jc,langx,plugins,Binder,bind,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
 
 	var REGCOMMA = /,/g;
 
@@ -13880,7 +13884,10 @@ define('skylark-totaljs-jcomponent/binding',[
 //	jc.$parser.push(function(path, value, type) {
 
 	return jc.binding = {
-		parser,
+		"findFormat" : findFormat,
+		"func" : func,
+		"pathmaker" : pathmaker,
+		"parse" : parase,
 
 		"Binder" : Binder,
 		"bind" : bind,
@@ -16860,7 +16867,7 @@ define('skylark-totaljs-jcomponent/utils',[
 });
 define('skylark-totaljs-jcomponent/views/binding',[
 	"../utils/domx",
-	"../binding/parsebinder"
+	"../binding/parse"
 ],function(domx, parsebinder){
 	function binding(view) {
 		var binders = [];

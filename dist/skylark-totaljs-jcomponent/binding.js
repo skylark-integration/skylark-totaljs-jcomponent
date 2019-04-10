@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["skylark-utils-dom/query","./jc","./langx","./plugins","./binding/Binder","./binding/bind","./binding/VirtualBinder","./binding/vbind","./binding/vbindArray"],function(i,n,d,r,b,e,a,g,u){return n.binding={parser:parser,Binder:b,bind:e,VirtualBinder:a,vbind:g,vbindArray:u}});
+define(["skylark-utils-dom/query","./jc","./langx","./plugins","./binding/Binder","./binding/bind","./binding/findFormat","./binding/func","./binding/parse","./binding/pathmaker","./binding/VirtualBinder","./binding/vbind","./binding/vbindArray"],function(n,i,d,r,a,b,e,g,t,u,f,l,p){return i.binding={findFormat:e,func:g,pathmaker:u,parse:parase,Binder:a,bind:b,VirtualBinder:f,vbind:l,vbindArray:p}});
 //# sourceMappingURL=sourcemaps/binding.js.map

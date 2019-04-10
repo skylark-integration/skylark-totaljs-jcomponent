@@ -1,6 +1,6 @@
 define([
 	"../utils/domx",
-	"../binding/parsebinder"
+	"../binding/parse"
 ],function(domx, parsebinder){
 	function binding(view) {
 		var binders = [];

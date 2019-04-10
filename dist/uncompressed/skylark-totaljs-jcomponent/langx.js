@@ -322,7 +322,7 @@ define([
 	return jc.langx = {
 
 		Evented : slangx.Evented,
-		hoster : hoster,
+		hoster  : slangx.hoster,
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
 		isObject : slangx.isObject,

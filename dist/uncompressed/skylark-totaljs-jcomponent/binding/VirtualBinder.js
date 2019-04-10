@@ -1,7 +1,7 @@
 define([
 	"../langx",
 	"../utils/query",
-	"./parsebinder"
+	"./parse"
 ],function(langx, $, parsebinder){
 	var ATTRBIND = '[data-bind],[bind],[data-vbind]';
 	

@@ -5,10 +5,14 @@ define([
 	"./plugins",
 	"./binding/Binder",
 	"./binding/bind",
+	"./binding/findFormat",
+	"./binding/func",
+	"./binding/parse",
+	"./binding/pathmaker",
 	"./binding/VirtualBinder",
 	"./binding/vbind",
 	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,bind,VirtualBinder,vbind,vbindArray){
+],function($, jc,langx,plugins,Binder,bind,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
 
 	var REGCOMMA = /,/g;
 
@@ -33,7 +37,10 @@ define([
 //	jc.$parser.push(function(path, value, type) {
 
 	return jc.binding = {
-		parser,
+		"findFormat" : findFormat,
+		"func" : func,
+		"pathmaker" : pathmaker,
+		"parse" : parase,
 
 		"Binder" : Binder,
 		"bind" : bind,
