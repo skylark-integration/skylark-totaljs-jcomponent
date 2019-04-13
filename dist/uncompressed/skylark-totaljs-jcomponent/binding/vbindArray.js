@@ -102,10 +102,5 @@ define([
 		return obj;
 	};
 
-	$.fn.vbindarray = function() {
-		return domx.findinstance(this, '$vbindarray');
-	};
-
-
 	return vbindArray;
 });

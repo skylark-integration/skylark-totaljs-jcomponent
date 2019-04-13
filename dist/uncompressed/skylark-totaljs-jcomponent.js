@@ -193,6 +193,13 @@ define('skylark-totaljs-jcomponent/jc',[
 
 	return M;
 });
+define('skylark-totaljs-jcomponent/langx/localCompare',[],function(){
+	var localeCompare = window.Intl ? window.Intl.Collator().compare : function(a, b) {  // LCOMPARER
+		return a.localeCompare(b);
+	};
+
+	return localeCompare;
+});
 define('skylark-totaljs-jcomponent/langx/regexp',[],function(){
 	var MR = {};
 	MR.int = /(-|\+)?[0-9]+/;
@@ -226,8 +233,9 @@ define('skylark-totaljs-jcomponent/langx/statics',[],function(){
 });
 define('skylark-totaljs-jcomponent/langx/ArrayEx',[
 	"skylark-langx/langx",
+	"./localCompare",
 	"./regexp"
-],function(slangx,regexp){
+],function(slangx,localCompare,regexp){
 
 	var AP = Array.prototype;
 	AP.wait = AP.waitFor = function(onItem, callback, thread, tmp) {
@@ -549,7 +557,7 @@ define('skylark-totaljs-jcomponent/langx/ArrayEx',[
 
 			// String
 			if (type === 1) {
-				return va && vb ? (asc ? LCOMPARER(va, vb) : LCOMPARER(vb, va)) : 0;
+				return va && vb ? (asc ? localCompare(va, vb) : localCompare(vb, va)) : 0;
 			} else if (type === 2) {
 				return va > vb ? (asc ? 1 : -1) : va < vb ? (asc ? -1 : 1) : 0;
 			} else if (type === 3) {
@@ -932,7 +940,7 @@ define('skylark-totaljs-jcomponent/langx/NumberEx',[
 		}
 
 		if (separator === undefined)
-			separator = MD.thousandsseparator;
+			separator = thousandsseparator; //MD.thousandsseparator
 
 		if (index !== -1) {
 			dec = num.substring(index + 1);
@@ -1060,9 +1068,10 @@ define('skylark-totaljs-jcomponent/langx/NumberEx',[
 	
 });
 define('skylark-totaljs-jcomponent/langx/StringEx',[
+	"skylark-langx/langx",
 	"./regexp",
 	"./now"
-],function(regexp,now){
+],function(slangx,regexp,now){
 	var REGWILDCARD = /\.\*/;
 
 	var REGEMPTY = /\s/g;
@@ -1089,10 +1098,11 @@ define('skylark-totaljs-jcomponent/langx/StringEx',[
 		var replace = function(t) {
 			return t.substring(0, 1) + '/';
 		};
-		if (r)
-			url = typeof(r) === TYPE_FN ? r(url) : ext.test(url) ? url : (r + url);
-		else if (!noBase && b)
-			url = typeof(b) === TYPE_FN ? b(url) : ext.test(url) ? url : (b + url);
+		if (r) {
+			url = slangx.isFunction(r) ? r(url) : ext.test(url) ? url : (r + url);
+		} else if (!noBase && b) {
+			url = slangx.isFunction(b)  ? b(url) : ext.test(url) ? url : (b + url);
+		}
 		return url.replace(/[^:]\/{2,}/, replace);
 	};
 
@@ -1105,14 +1115,14 @@ define('skylark-totaljs-jcomponent/langx/StringEx',[
 		var output;
 
 		switch (typeof(def)) {
-			case TYPE_FN:
+			case 'function':
 				callback = def;
 				output = {};
 				break;
-			case TYPE_S:
+			case 'string':
 				output = def.parseConfig();
 				break;
-			case TYPE_O:
+			case 'object':
 				if (def != null)
 					output = def;
 				else
@@ -1448,6 +1458,7 @@ define('skylark-totaljs-jcomponent/langx/StringEx',[
 define('skylark-totaljs-jcomponent/langx',[
 	"skylark-langx/langx",
 	"./jc",
+	"./langx/localCompare",
 	"./langx/regexp",
 	"./langx/now",
 	"./langx/statics",
@@ -1455,7 +1466,7 @@ define('skylark-totaljs-jcomponent/langx',[
 	"./langx/DateEx",
 	"./langx/NumberEx",
 	"./langx/StringEx"
-],function(slangx,jc,regexp,now,statics){
+],function(slangx,jc,localCompare,regexp,now,statics){
 	var waits = {};
 
 	function async(arr, fn, done) {
@@ -1486,7 +1497,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		if (obj instanceof Date)
 			return new Date(obj.getTime());
 
-		return PARSE(JSON.stringify(obj));
+		return parse(JSON.stringify(obj));
 	}
 
 	function copy(a, b) {
@@ -1530,7 +1541,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		else if (s instanceof Date)
 			return s.getTime();
 		else if (type === TYPE_O)
-			s = STRINGIFY(s);
+			s = stringify(s);
 		var hash = 0, i, char;
 		if (!s.length)
 			return hash;
@@ -1547,7 +1558,7 @@ define('skylark-totaljs-jcomponent/langx',[
 	 *  Parses JSON String to Object.
 	 *
 	 */
-	function parse(value, date) {
+	function parse(value, date) { // PARSE
 
 		// Is selector?
 		var c = value.substring(0, 1);
@@ -1565,10 +1576,6 @@ define('skylark-totaljs-jcomponent/langx',[
 			return null;
 		}
 	}
-
-	var LCOMPARER = window.Intl ? window.Intl.Collator().compare : function(a, b) {
-		return a.localeCompare(b);
-	};
 
    /**
    * Wait for a feature
@@ -1650,7 +1657,7 @@ define('skylark-totaljs-jcomponent/langx',[
 	 * @param 
 	 * @param {Array|Object} fields
 	 */
-	function stringify(obj, compress, fields) {
+	function stringify(obj, compress, fields) { //STRINGIFY
 		if(compress === undefined) {
 			compress = MD.jsoncompress;
 		} 
@@ -1776,6 +1783,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		isString : slangx.isString,
 		klass : slangx.klass,
 		mixin : slangx.mixin,
+		result : slangx.result,
 		topic : slangx.topic,
 
 		async:async,
@@ -1786,6 +1794,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		Evented : slangx.Evented,
 		guid:guid,
 		hashCode:hashCode,
+		localCompare : localCompare,
 		now:now,
 		parse:parse,
 		regexp:regexp,
@@ -2105,85 +2114,11 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 
 	return cache;
 });
-define('skylark-totaljs-jcomponent/plugins/schedulers',[
-	"../jc",
-	"../langx"
-],function(jc,langx){
-	var schedulers = [];
-	var schedulercounter = 0;
-
-
-	function clearAll(ownerId) {
-		schedulers.remove('owner', ownerId);
-		return this;
-	}	
-
-	// scheduler
-	schedulercounter = 0;
-	setInterval(function() {
-
-		if (!schedulers.length)
-			return;
-
-		schedulercounter++;
-		//var now = new Date();
-		//W.DATETIME = W.NOW = now;
-		var now = langx.now(true);
-		for (var i = 0, length = schedulers.length; i < length; i++) {
-			var item = schedulers[i];
-			if (item.type === 'm') {
-				if (schedulercounter % 30 !== 0)
-					continue;
-			} else if (item.type === 'h') {
-				// 1800 seconds --> 30 minutes
-				// 1800 / 2 (seconds) --> 900
-				if (schedulercounter % 900 !== 0)
-					continue;
-			}
-
-			var dt = now.add(item.expire);
-			var arr = FIND(item.selector, true);
-			for (var j = 0; j < arr.length; j++) {
-				var a = arr[j];
-				a && a.usage.compare(item.name, dt) && item.callback(a);
-			}
-		}
-	}, 3500);
-
-
-	function schedule(selector, name, expire, callback) { //W.SCHEDULE = 
-		if (expire.substring(0, 1) !== '-')
-			expire = '-' + expire;
-		var arr = expire.split(' ');
-		var type = arr[1].toLowerCase().substring(0, 1);
-		var id = langx.guid(10); //GUID
-		schedulers.push({ 
-			id: id, 
-			name: name, 
-			expire: expire, 
-			selector: selector, callback: callback, type: type === 'y' || type === 'd' ? 'h' : type, owner: current_owner });
-		return id;
-	};
-
-	function clear(id) {  //W.CLEARSCHEDULE
-		schedulers = schedulers.remove('id', id);
-		return this;
-	};
-
-
-	return jc.schedulers = {
-		clear,
-		clearAll,
-		schedule
-	}
-});
 define('skylark-totaljs-jcomponent/plugins/Plugin',[
 	"skylark-utils-dom/query",
-	"../jc",
 	"../utils/cache",
-	"./_registry",
-	"./schedulers"
-],function($, jc, caches, registry,schedulers){
+	"./_registry"
+],function($, caches, registry){
 	
 	function Plugin(name, fn) {
 		if ((/\W/).test(name)) {
@@ -2234,7 +2169,7 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 
 		// Remove schedulers
 		//schedulers = schedulers.remove('owner', self.id);
-		schedulers.clearAll(self.id);
+		//schedulers.clearAll(self.id);
 
 		// self.element.remove();
 		self.element = null;
@@ -2285,11 +2220,852 @@ define('skylark-totaljs-jcomponent/utils/query',[
 ], function($) {
 	return $;
 });
+define('skylark-totaljs-jcomponent/utils/http',[
+	"../jc",
+	"../langx",
+	"./cache"
+],function(jc,langx,topic,cache){
+	var statics = langx.statics;
+	
+	/* TODo
+	function remap(path, value) {
+
+		var index = path.replace('-->', '->').indexOf('->');
+
+		if (index !== -1) {
+			value = value[path.substring(0, index).trim()];
+			path = path.substring(index + 3).trim();
+		}
+
+		immSetx(path, value);
+	}
+	*/
+
+	var ajaxconfig = {};
+	var defaults = {
+
+	};
+	defaults.ajaxerrors = false;
+	defaults.pingdata = {};
+	defaults.baseurl = ''; // String or Function
+	defaults.makeurl = null; // Function
+	defaults.delayrepeat = 2000;
+	defaults.jsondate = true;
+	defaults.jsonconverter = {
+		'text json': function(text) {
+			return PARSE(text);
+		}
+	};
+	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
+
+	function parseHeaders(val) {
+		var h = {};
+		val.split('\n').forEach(function(line) {
+			var index = line.indexOf(':');
+			if (index !== -1) {
+				h[line.substring(0, index).toLowerCase()] = line.substring(index + 1).trim();
+			}
+		});
+		return h;
+	}
+
+	function cacherest(method, url, params, value, expire) {
+
+		if (params && !params.version && M.$version)
+			params.version = M.$version;
+
+		if (params && !params.language && M.$language)
+			params.language = M.$language;
+
+		params = langx.stringify(params);
+		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
+		return cache.set(key, value, expire);
+	}
+	
+
+
+	function makeParams(url, values, type) { //W.MAKEPARAMS = 
+
+		var l = location;
+
+		if (typeof(url) === TYPE_O) {
+			type = values;
+			values = url;
+			url = l.pathname + l.search;
+		}
+
+		var query;
+		var index = url.indexOf('?');
+		if (index !== -1) {
+			query = M.parseQuery(url.substring(index + 1));
+			url = url.substring(0, index);
+		} else
+			query = {};
+
+		var keys = Object.keys(values);
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i];
+			query[key] = values[key];
+		}
+
+		var val = $.param(query, type == null || type === true);
+		return url + (val ? '?' + val : '');
+	}
+
+	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
+
+		if (!langx.isNumber(timeout) && progress == null) {
+			progress = timeout;
+			timeout = null;
+		}
+
+		if (!url)
+			url = location.pathname;
+
+		var method = 'POST';
+		var index = url.indexOf(' ');
+		var tmp = null;
+
+		if (index !== -1) {
+			method = url.substring(0, index).toUpperCase();
+		}
+
+		var isCredentials = method.substring(0, 1) === '!';
+		if (isCredentials) {
+			method = method.substring(1);
+		}
+
+		var headers = {};
+		tmp = url.match(/\{.*?\}/g);
+
+		if (tmp) {
+			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
+			tmp = (new Function('return ' + tmp))();
+			if (typeof(tmp) === TYPE_O)
+				headers = tmp;
+		}
+
+		url = url.substring(index).trim().$env();
+
+		if (typeof(callback) === TYPE_N) {
+			timeout = callback;
+			callback = undefined;
+		}
+
+		var output = {};
+		output.url = url;
+		output.process = true;
+		output.error = false;
+		output.upload = true;
+		output.method = method;
+		output.data = data;
+
+		topic.emit('request', output);
+
+		if (output.cancel)
+			return;
+
+		setTimeout(function() {
+
+			var xhr = new XMLHttpRequest();
+
+			if (isCredentials) {
+				xhr.withCredentials = true;
+			}
+
+			xhr.addEventListener('load', function() {
+
+				var self = this;
+				var r = self.responseText;
+				try {
+					r = PARSE(r, defaults.jsondate);
+				} catch (e) {}
+
+				if (progress) {
+					/* TODO
+					if (typeof(progress) === TYPE_S) {
+						remap(progress, 100);
+					} else {
+						progress(100);
+					}
+					*/
+					progress(100);
+				}
+
+				output.response = r;
+				output.status = self.status;
+				output.text = self.statusText;
+				output.error = self.status > 399;
+				output.headers = parseHeaders(self.getAllResponseHeaders());
+
+				topic.emit('response', output);
+
+				if (!output.process || output.cancel)
+					return;
+
+				if (!r && output.error)
+					r = output.response = self.status + ': ' + self.statusText;
+
+				if (!output.error || defaults.ajaxerrors) {
+					typeof(callback) === TYPE_S ? remap(callback.env(), r) : (callback && callback(r, null, output));
+				} else {
+					topic.emit('error', output);
+					output.process && typeof(callback) === TYPE_FN && callback({}, r, output);
+				}
+
+			}, false);
+
+			xhr.upload.onprogress = function(evt) {
+				if (!progress) {
+					return;
+				}
+				var percentage = 0;
+				if (evt.lengthComputable) {
+					percentage = Math.round(evt.loaded * 100 / evt.total);
+				}
+				/* TODO
+				if (langx.isString(progress)) {
+					remap(progress.env(), percentage);
+				} else {
+					progress(percentage, evt.transferSpeed, evt.timeRemaining);
+				}
+				*/
+				progress(percentage, evt.transferSpeed, evt.timeRemaining);
+			};
+
+			xhr.open(method, makeurl(output.url));
+
+			var keys = Object.keys(defaults.headers);
+			for (var i = 0; i < keys.length; i++) {
+				xhr.setRequestHeader(keys[i].env(), defaults.headers[keys[i]].env());
+			}
+
+			if (headers) {
+				var keys = Object.keys(headers);
+				for (var i = 0; i < keys.length; i++) {
+					xhr.setRequestHeader(keys[i], headers[keys[i]]);
+				}
+			}
+
+			xhr.send(data);
+
+		}, timeout || 0);
+
+		return W;
+	}
+
+
+	function importCache(url, expire, target, callback, insert, preparator) { // W.IMPORTCACHE = 
+
+		var w;
+
+		url = url.$env().replace(/<.*?>/, function(text) {
+			w = text.substring(1, text.length - 1).trim();
+			return '';
+		}).trim();
+
+		// unique
+		var first = url.substring(0, 1);
+		var once = url.substring(0, 5).toLowerCase() === 'once ';
+
+		if (langx.isFunction(target)) {
+
+			if (langx.isFunction(callback)) {
+				preparator = callback;
+				insert = true;
+			} else if (typeof(insert) === TYPE_FN) {
+				preparator = insert;
+				insert = true;
+			}
+
+			callback = target;
+			target = 'body';
+		} else if (langx.isFunction(insert)) {
+			preparator = insert;
+			insert = true;
+		}
+
+		if (w) {
+
+			var wf = w.substring(w.length - 2) === '()';
+			if (wf) {
+				w = w.substring(0, w.length - 2);
+			}
+
+			var wo = GET(w);
+			if (wf && langx.isFunction(wo)) {
+				if (wo()) {
+					callback && callback(0);
+					return;
+				}
+			} else if (wo) {
+				callback && callback(0);
+				return;
+			}
+		}
+
+		if (url.substring(0, 2) === '//') {
+			url = location.protocol + url;
+		}
+
+		var index = url.lastIndexOf(' .');
+		var ext = '';
+
+		if (index !== -1) {
+			ext = url.substring(index).trim().toLowerCase();
+			url = url.substring(0, index).trim();
+		}
+
+		if (first === '!' || once) {
+
+			if (once) {
+				url = url.substring(5);
+			} else {
+				url = url.substring(1);
+			}
+
+			if (statics[url]) {
+				if (callback) {
+					if (statics[url] === 2)
+						callback(0);
+					else {
+						langx.wait(function() {
+							return statics[url] === 2;
+						}, function() {
+							callback(0);
+						});
+					}
+				}
+				return W;
+			}
+
+			statics[url] = 1;
+		}
+
+		if (target && target.setPath)
+			target = target.element;
+
+		if (!target) {
+			target = 'body';
+		}
+
+		if (!ext) {
+			index = url.lastIndexOf('?');
+			if (index !== -1) {
+				var index2 = url.lastIndexOf('.', index);
+				if (index2 !== -1) {
+					ext = url.substring(index2, index).toLowerCase();
+				}
+			} else {
+				index = url.lastIndexOf('.');
+				if (index !== -1) {
+					ext = url.substring(index).toLowerCase();
+				}
+			}
+		}
+
+		var d = document;
+		if (ext === '.js') {
+			var scr = d.createElement('script');
+			scr.type = 'text/javascript';
+			scr.async = false;
+			scr.onload = function() {
+				statics[url] = 2;
+				callback && callback(1);
+				setTimeout(compile, 300);//W.jQuery && 
+			};
+			scr.src = makeurl(url, true);
+			d.getElementsByTagName('head')[0].appendChild(scr);
+			topic.emit('import', url, $(scr));
+			return this;
+		}
+
+		if (ext === '.css') {
+			var stl = d.createElement('link');
+			stl.type = 'text/css';
+			stl.rel = 'stylesheet';
+			stl.href = makeurl(url, true);
+			d.getElementsByTagName('head')[0].appendChild(stl);
+			statics[url] = 2;
+			callback && setTimeout(callback, 200, 1);
+			topic.emit('import', url, $(stl));
+			return this;
+		}
+
+		langx.wait(function() {
+			return !!W.jQuery;
+		}, function() {
+
+			statics[url] = 2;
+			var id = 'import' + langx.hashCode(url); // HASH
+
+			var cb = function(response, code, output) {
+
+				if (!response) {
+					callback && callback(0);
+					return;
+				}
+
+				url = '$import' + url;
+
+				if (preparator)
+					response = preparator(response, output);
+
+				var is = REGCOM.test(response);
+				response = importscripts(importstyles(response, id)).trim();
+				target = $(target);
+
+				if (response) {
+					//caches.current.element = target[0];
+					if (insert === false) {
+						target.html(response);
+					} else {
+						target.append(response);
+					}
+					//caches.current.element = null;
+				}
+
+				setTimeout(function() {
+					// is && compile(response ? target : null);
+					// because of paths
+					is && compile();
+					callback && langx.wait(function() {
+						return C.is == false;
+					}, function() {
+						callback(1);
+					});
+					topic.emit('import', url, target);
+				}, 10);
+			};
+
+			if (expire) {
+				ajaxCache('GET ' + url, null, cb, expire);
+			}else {
+				ajax('GET ' + url, cb);
+			}
+		});
+
+		return W;
+	}
+
+	function import2(url, target, callback, insert, preparator) { //W.IMPORT = M.import = 
+		if (url instanceof Array) {
+
+			if (langx.isFunction(target)) {
+				preparator = insert;
+				insert = callback;
+				callback = target;
+				target = null;
+			}
+
+			url.wait(function(url, next) {
+				importCache(url, null, target, next, insert, preparator);
+			}, function() {
+				callback && callback();
+			});
+		} else {
+			importCache(url, null, target, callback, insert, preparator);
+		}
+
+		return this;
+	}
+
+	/* 
+	function uptodate(period, url, callback, condition) { // W.UPTODATE = 
+
+		if (langx.isFunction(url)) {
+			condition = callback;
+			callback = url;
+			url = '';
+		}
+
+		var dt = new Date().add(period);
+		topic.on('knockknock', function() {
+			if (dt > langx.now()) //W.NOW)
+				return;
+			if (!condition || !condition())
+				return;
+			var id = setTimeout(function() {
+				var l = window.location;
+				if (url)
+					l.href = url.$env();
+				else
+					l.reload(true);
+			}, 5000);
+			callback && callback(id);
+		});
+	}
+	*/
+
+	function ping(url, timeout, execute) { // W.PING = 
+
+		if (navigator.onLine != null && !navigator.onLine)
+			return;
+
+		if (typeof(timeout) === 'boolean') {
+			execute = timeout;
+			timeout = 0;
+		}
+
+		url = url.$env();
+
+		var index = url.indexOf(' ');
+		var method = 'GET';
+
+		if (index !== -1) {
+			method = url.substring(0, index).toUpperCase();
+			url = url.substring(index).trim();
+		}
+
+		var options = {};
+		var data = $.param(defaults.pingdata);
+
+		if (data) {
+			index = url.lastIndexOf('?');
+			if (index === -1)
+				url += '?' + data;
+			else
+				url += '&' + data;
+		}
+
+		options.type = method;
+		options.headers = { 'x-ping': location.pathname, 'x-cookies': navigator.cookieEnabled ? '1' : '0', 'x-referrer': document.referrer };
+
+		options.success = function(r) {
+			if (r) {
+				try {
+					(new Function(r))();
+				} catch (e) {}
+			}
+		};
+
+		execute && $.ajax(makeurl(url), options);
+
+		return setInterval(function() {
+			$.ajax(makeurl(url), options);
+		}, timeout || 30000);
+	}
+
+	function parseQuery(value) { //M.parseQuery = W.READPARAMS = 
+
+		if (!value)
+			value = location.search;
+
+		if (!value)
+			return {};
+
+		var index = value.indexOf('?');
+		if (index !== -1)
+			value = value.substring(index + 1);
+
+		var arr = value.split('&');
+		var obj = {};
+		for (var i = 0, length = arr.length; i < length; i++) {
+			var sub = arr[i].split('=');
+			var key = sub[0];
+			var val = decodeURIComponent((sub[1] || '').replace(/\+/g, '%20'));
+
+			if (!obj[key]) {
+				obj[key] = val;
+				continue;
+			}
+
+			if (!(obj[key] instanceof Array))
+				obj[key] = [obj[key]];
+			obj[key].push(val);
+		}
+		return obj;
+	}
+
+	function configure(name, fn) {  // W.AJAXCONFIG = 
+		ajaxconfig[name] = fn;  
+		return this;
+	}
+
+	function ajax(url, data, callback, timeout) { // W.AJAX = 
+
+		if (typeof(url) === TYPE_FN) {
+			timeout = callback;
+			callback = data;
+			data = url;
+			url = location.pathname;
+		}
+
+		var td = typeof(data);
+		var arg = EMPTYARRAY;
+		var tmp;
+
+		if (!callback && (td === TYPE_FN || td === TYPE_S)) {
+			timeout = callback;
+			callback = data;
+			data = undefined;
+		}
+
+		var index = url.indexOf(' ');
+		if (index === -1)
+			return W;
+
+		var repeat = false;
+
+		url = url.replace(/\srepeat/i, function() {
+			repeat = true;
+			return '';
+		});
+
+		if (repeat)
+			arg = [url, data, callback, timeout];
+
+		var method = url.substring(0, index).toUpperCase();
+		var isCredentials = method.substring(0, 1) === '!';
+		if (isCredentials)
+			method = method.substring(1);
+
+		var headers = {};
+		tmp = url.match(/\{.*?\}/g);
+
+		if (tmp) {
+			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
+			tmp = (new Function('return ' + tmp))();
+			if (typeof(tmp) === TYPE_O)
+				headers = tmp;
+		}
+
+		url = url.substring(index).trim().$env();
+
+		setTimeout(function() {
+
+			if (method === 'GET' && data) {
+				var qs = (typeof(data) === TYPE_S ? data : jQuery.param(data, true));
+				if (qs)
+					url += '?' + qs;
+			}
+
+			var options = {};
+			options.method = method;
+			options.converters = defaults.jsonconverter;
+
+			if (method !== 'GET') {
+				if (typeof(data) === TYPE_S) {
+					options.data = data;
+				} else {
+					options.contentType = 'application/json; charset=utf-8';
+					options.data = STRINGIFY(data);
+				}
+			}
+
+			options.headers = $.extend(headers, defaults.headers);
+
+			if (url.match(/http:\/\/|https:\/\//i)) {
+				options.crossDomain = true;
+				delete options.headers['X-Requested-With'];
+				if (isCredentials)
+					options.xhrFields = { withCredentials: true };
+			} else
+				url = url.ROOT();
+
+			var custom = url.match(/\([a-z0-9\-.,]+\)/i);
+			if (custom) {
+				url = url.replace(custom, '').replace(/\s+/g, '');
+				options.url = url;
+				custom = custom.toString().replace(/\(|\)/g, '').split(',');
+				for (var i = 0; i < custom.length; i++) {
+					var opt = ajaxconfig[custom[i].trim()];
+					opt && opt(options);
+				}
+			}
+
+			if (!options.url)
+				options.url = url;
+
+			//topic.emit('request', options); //TODO
+
+			if (options.cancel)
+				return;
+
+			options.type = options.method;
+			delete options.method;
+
+			var output = {};
+			output.url = options.url;
+			output.process = true;
+			output.error = false;
+			output.upload = false;
+			output.method = method;
+			output.data = data;
+
+			delete options.url;
+
+			options.success = function(r, s, req) {
+				output.response = r;
+				output.status = req.status || 999;
+				output.text = s;
+				output.headers = parseHeaders(req.getAllResponseHeaders());
+				//topic.emit('response', output); TODO
+				if (output.process && !output.cancel) {
+					/* TODO
+					if (typeof(callback) === TYPE_S)
+						remap(callback, output.response);
+					else
+						callback && callback.call(output, output.response, undefined, output);
+					*/
+					callback && callback.call(output, output.response, undefined, output);
+				}
+			};
+
+			options.error = function(req, s) {
+
+				var code = req.status;
+
+				if (repeat && (!code || code === 408 || code === 502 || code === 503 || code === 504 || code === 509)) {
+					// internal error
+					// internet doesn't work
+					setTimeout(function() {
+						arg[0] += ' REPEAT';
+						W.AJAX.apply(M, arg);
+					}, defaults.delayrepeat);
+					return;
+				}
+
+				output.response = req.responseText;
+				output.status = code || 999;
+				output.text = s;
+				output.error = true;
+				output.headers = parseHeaders(req.getAllResponseHeaders());
+				var ct = output.headers['content-type'];
+
+				if (ct && ct.indexOf('/json') !== -1) {
+					try {
+						output.response = PARSE(output.response, defaults.jsondate);
+					} catch (e) {}
+				}
+
+				//topic.emit('response', output); TODO
+
+				if (output.cancel || !output.process)
+					return;
+
+				if (defaults.ajaxerrors) {
+					/* TODO
+					if (typeof(callback) === TYPE_S)
+						remap(callback, output.response);
+					else
+						callback && callback.call(output, output.response, output.status, output);
+					*/
+					callback && callback.call(output, output.response, output.status, output);
+				} else {
+					//topic.emit('error', output); TODO
+					if (langx.isFunction(callback)) 
+					callback.call(output, output.response, output.status, output);
+				}
+			};
+
+			$.ajax(makeurl(output.url), options);
+
+		}, timeout || 0);
+
+		return this;
+	}
+
+	function ajaxCacheReview(url, data, callback, expire, timeout, clear) { //W.AJAXCACHEREVIEW = 
+		return ajaxCache(url, data, callback, expire, timeout, clear, true);
+	}
+
+	function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
+
+
+		if (langx.isFunction(data) || (langx.isString(data) && langx.isString(callback)  && !langx.isString(expire))) {
+			clear = timeout;
+			timeout = expire;
+			expire = callback;
+			callback = data;
+			data = null;
+		}
+
+		if (langx.isBoolean(timeout)) {
+			clear = timeout === true;
+			timeout = 0;
+		}
+
+		var index = url.indexOf(' ');
+		if (index === -1)
+			return W;
+
+		var method = url.substring(0, index).toUpperCase();
+		var uri = url.substring(index).trim().$env();
+
+		setTimeout(function() {
+			var value = clear ? undefined : cacherest(method, uri, data, undefined, expire);
+			if (value !== undefined) {
+
+				var diff = review ? STRINGIFY(value) : null;
+
+				/* TODO
+				if (typeof(callback) === TYPE_S)
+					remap(callback, value);
+				else
+					callback(value, true);
+				*/
+				callback(value, true);
+
+				if (!review)
+					return;
+
+				ajax(url, data, function(r, err) {
+					if (err)
+						r = err;
+					// Is same?
+					if (diff !== STRINGIFY(r)) {
+						cacherest(method, uri, data, r, expire);
+						/* TODO
+						if (typeof(callback) === TYPE_S)
+							remap(callback, r);
+						else
+							callback(r, false, true);
+						*/
+						callback(r, false, true);
+					}
+				});
+				return;
+			}
+
+			ajax(url, data, function(r, err) {
+				if (err)
+					r = err;
+				cacherest(method, uri, data, r, expire);
+				/* TODO
+				if (typeof(callback) === TYPE_S)
+					remap(callback, r);
+				else
+					callback(r, false);
+				*/
+				callback(r, false);
+			});
+		}, timeout || 1);
+
+		return this;
+	}
+
+	return jc.http = {
+		defaults,
+		ajax,
+		ajaxCache,
+		ajaxCacheReview,
+		configure,
+		"import" : import2,
+		importCache,
+		makeParams,
+		ping,
+		parseQuery,
+		upload
+	};
+
+});
 define('skylark-totaljs-jcomponent/binding/Binder',[
 	"../utils/query",
-	"../jc",
+	"../utils/http",
 	"../langx"
-],function($, jc,langx){
+],function($, langx){
 
 	var DEFMODEL = { value: null };
 	/*
@@ -2423,11 +3199,11 @@ define('skylark-totaljs-jcomponent/binding/Binder',[
 			if (langx.isFunction(item.import)) {
 				if (value) {
 					!item.$ic && (item.$ic = {});
-					!item.$ic[value] && IMPORT('ONCE ' + value, el);
+					!item.$ic[value] && http.import('ONCE ' + value, el); //IMPORT
 					item.$ic[value] = 1;
 				}
 			} else {
-				IMPORT(item.import, el);
+				http.import(item.import, el); //IMPORT
 				delete item.import;
 			}
 		}
@@ -2547,87 +3323,6 @@ define('skylark-totaljs-jcomponent/binding/Binder',[
 
 	return jBinder;
 });
-define('skylark-totaljs-jcomponent/stores/Store',[
-	"../langx"
-],function(langx){
-	var Store = langx.Evented.inherit({
-		_construct : function(options) {
-			this.data = options.data;
-		}
-
-	});
-
-	return Store;
-});
-define('skylark-totaljs-jcomponent/stores',[
-	"skylark-langx/langx",
-	"./jc",
-	"./stores/Store"
-],function(langx, jc, Store){
-
-
-	// paths -> view model
-
-	var REGPARAMS = /\{{1,2}[a-z0-9_.-\s]+\}{1,2}/gi;
-
-	var skipproxy = ''
-	var proxy = {};
-
-	// ===============================================================
-	// PRIVATE FUNCTIONS
-	// ===============================================================
-
-	var REGISARR = /\[\d+\]$/;
-
-
-	Array.prototype.findValue = function(cb, value, path, def, cache) {
-
-		if (langx.isFunction(cb)) {
-			def = path;
-			path = value;
-			value = undefined;
-			cache = false;
-		}
-
-		var key, val = def;
-
-		if (cache) {
-			key = 'fv_' + cb + '=' + value;
-			if (caches.temp[key]) {
-				return caches.temp[key];
-			}
-		}
-
-		var index = this.findIndex(cb, value);
-		if (index !== -1) {
-			var item = this[index];
-			if (path.indexOf('.') === -1) {
-				item = item[path];
-			} else {
-				item = get(path, item);
-			}
-			cache && (caches.temp[key] = val);
-			val = item == null ? def : item;
-		}
-
-		return val;
-	};
-
-	String.prototype.params = String.prototype.arg = function(obj) {
-		return this.replace(REGPARAMS, function(text) {
-			// Is double?
-			var l = text.charCodeAt(1) === 123 ? 2 : 1;
-			var val = get(text.substring(l, text.length - l).trim(), obj);
-			return val == null ? text : val;
-		});
-	};
-
-
-
-	return jc.stores  = {
-		"Store" : Store
-	}
-});
 define('skylark-totaljs-jcomponent/binding/pathmaker',[
 	"../plugins"
 ],function(plugins){
@@ -2672,35 +3367,6 @@ define('skylark-totaljs-jcomponent/binding/pathmaker',[
 	return pathmaker;
 
 });
-define('skylark-totaljs-jcomponent/binding/bind',[
-	"../stores",
-	"./pathmaker"
-],function(stores,pathmaker){
-
-	function bind(path) { // W.BIND = 
-		if (path instanceof Array) {
-			for (var i = 0; i < path.length; i++) {
-				bind(path[i]);
-			}
-			return this; // 
-		}
-		path = pathmaker(path);
-		if (!path) {
-			return this;
-		}
-		var is = path.charCodeAt(0) === 33; // !
-		if (is) {
-			path = path.substring(1);
-		}
-		path = path.replaceWildcard();
-		if(path){
-			stores.set(path, stores.get(path), true);	
-		} 
-	}
-
-	return bind;
-});
-
 define('skylark-totaljs-jcomponent/binding/func',[
 	"./pathmaker",
 ],function(pathmaker){
@@ -2835,8 +3501,7 @@ define('skylark-totaljs-jcomponent/binding/parse',[
 ],function(langx, $,func,pathmaker,findFormat,jBinder){
 	
 
-	var bindersnew = [];
-	
+
 	function parsebinderskip(str) {
 		var a = arguments;
 		for (var i = 1; i < a.length; i++) {
@@ -2852,7 +3517,8 @@ define('skylark-totaljs-jcomponent/binding/parse',[
 	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
 	 */
 	function parsebinder(el, b, scopes, options,r) {
-		var binders = options.binders;
+		var binders = options.binders,
+			bindersnew = options.bindersnew;
 		
 		var meta = b.split(/_{2,}/);
 		if (meta.indexOf('|') !== -1) {
@@ -3266,10 +3932,10 @@ define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
 			var dom = this;
 			var el = $(dom);
 			var b = el.attrd('bind') || el.attr('bind') || el.attrd('vbind');
-			dom.$jcbind = parsebinder(dom, b, langx.empties.array); //EMPTYARRAY);
-			if(dom.$jcbind) {
-			   t.binders.push(dom.$jcbind);
-			}
+			dom.$jcbind = parsebinder(dom, b, langx.empties.array,t.binders); //EMPTYARRAY);
+			//if(dom.$jcbind) {
+			//   t.binders.push(dom.$jcbind);
+			//}
 		};
 		e.filter(ATTRBIND).each(fn);
 		e.find(ATTRBIND).each(fn);
@@ -3306,7 +3972,7 @@ define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
 		for (var i = 0; i < t.binders.length; i++) {
 			var b = t.binders[i];
 			if (!path || path === b.path) {
-				var val = path || !b.path ? model : $get(b.path, model);
+				var val = path || !b.path ? model : langx.result(model,b.path); // get(b.path, model)
 				t.binders[i].exec(val, b.path);
 			}
 		}
@@ -3849,6 +4515,10 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 		$(window).on('orientationchange', mediaquery);
 	//}, 100);
 
+	$(function(){
+		$domready = true;
+	});
+
 	return {
 		"devices" : $devices,
 		"findInstance" : findInstance,
@@ -3874,10 +4544,6 @@ define('skylark-totaljs-jcomponent/binding/vbind',[
 ],function(domx, $, VBinder){
 	function vbind(html) { // W.VBIND = 
 		return new VBinder(html);
-	};
-
-	$.fn.vbind = function() {
-		return domx.findinstance(this, '$vbind');
 	};
 
 	return vbind;
@@ -3987,11 +4653,6 @@ define('skylark-totaljs-jcomponent/binding/vbindArray',[
 		return obj;
 	};
 
-	$.fn.vbindarray = function() {
-		return domx.findinstance(this, '$vbindarray');
-	};
-
-
 	return vbindArray;
 });
 
@@ -4001,7 +4662,6 @@ define('skylark-totaljs-jcomponent/binding',[
 	"./langx",
 	"./plugins",
 	"./binding/Binder",
-	"./binding/bind",
 	"./binding/findFormat",
 	"./binding/func",
 	"./binding/parse",
@@ -4009,7 +4669,7 @@ define('skylark-totaljs-jcomponent/binding',[
 	"./binding/VirtualBinder",
 	"./binding/vbind",
 	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,bind,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
+],function($, jc,langx,plugins,Binder,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
 
 	var REGCOMMA = /,/g;
 
@@ -4040,7 +4700,6 @@ define('skylark-totaljs-jcomponent/binding',[
 		"parse" : parse,
 
 		"Binder" : Binder,
-		"bind" : bind,
 		"VirtualBinder" : VirtualBinder,
 		"vbind" : vbind,
 		"vbindArray" : vbindArray
@@ -4121,33 +4780,6 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 	var counter = 0;
 
-	function com_validate2(com) {
-
-		var valid = true;
-
-		if (com.disabled) {
-			return valid;
-		}
-
-		if (com.$valid_disabled) {
-			return valid;
-		}
-
-		var arr = [];
-		com.state && arr.push(com);
-		com.$validate = true;
-
-		if (com.validate) {
-			com.$valid = com.validate(get(com.path));
-			com.$interaction(102);
-			if (!com.$valid)
-				valid = false;
-		}
-
-		clear('valid');
-		langx.state(arr, 1, 1);
-		return valid;
-	}
 
 	// ===============================================================
 	// COMPONENT DECLARATION
@@ -4175,7 +4807,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 			self.view = view;
 			self.storing = view.storing;
-			
+
 			self.name = name;
 			self.$name = version === -1 ? name : name.substring(0, version);
 			self.version = version === -1 ? '' : name.substring(version + 1);
@@ -4206,13 +4838,13 @@ define('skylark-totaljs-jcomponent/components/Component',[
 
 				// Binds a value
 				if (nobind) {
-					com_validate2(self);
+					self.view.componenter.com_validate2(self);
 				} else if (value !== self.get()) {
 					self.set(value, 2);
 				} else if (realtime === 3) {
 					// A validation for same values, "realtime=3" is in "blur" event
 					// Because we need to validate the input if the user leaves from the control
-					com_validate2(self);
+					self.view.componenter.com_validate2(self);
 				}
 			};
 
@@ -5861,14 +6493,14 @@ define('skylark-totaljs-jcomponent/components/register',[
     return register;
 	
 });
-define('skylark-totaljs-jcomponent/components/version',[],function(){
+define('skylark-totaljs-jcomponent/components/versions',[],function(){
 	var versions = {};
 	
    /**
    * sets a version for specific components.
    * ex : version('textbox@1', 'dropdown@1');
    */
-	function version() { // W.VERSION = 
+	function setVersion() { // W.VERSION = 
 		for (var j = 0; j < arguments.length; j++) {
 			var keys = arguments[j].split(',');
 			for (var i = 0; i < keys.length; i++) {
@@ -5886,7 +6518,14 @@ define('skylark-totaljs-jcomponent/components/version',[],function(){
 		}
 	}
 
-	return version;
+	function getVersion(name) {
+		return versions[name]
+	}
+
+	return {
+		"get" : getVersion,
+		"set" : setVersion
+	};
 	
 });
 define('skylark-totaljs-jcomponent/components',[
@@ -5903,8 +6542,8 @@ define('skylark-totaljs-jcomponent/components',[
 	"./components/registry",
 	"./components/register",
 	"./components/Usage",
-	"./components/version"
-],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,version){
+	"./components/versions"
+],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,versions){
 
 
 //	var components = {};
@@ -5993,10 +6632,90 @@ define('skylark-totaljs-jcomponent/components',[
 		"registry" : registry,
 		"register" : register,
 		"Usage" : Usage,
-		"version" : version
+		"versions" : versions
 
 	};
 
+});
+define('skylark-totaljs-jcomponent/stores/Store',[
+	"../langx"
+],function(langx){
+	var Store = langx.Evented.inherit({
+		_construct : function(options) {
+			this.data = options.data;
+		}
+
+	});
+
+	return Store;
+});
+define('skylark-totaljs-jcomponent/stores',[
+	"skylark-langx/langx",
+	"./jc",
+	"./stores/Store"
+],function(langx, jc, Store){
+
+
+	// paths -> view model
+
+	var REGPARAMS = /\{{1,2}[a-z0-9_.-\s]+\}{1,2}/gi;
+
+	var proxy = {};
+
+	// ===============================================================
+	// PRIVATE FUNCTIONS
+	// ===============================================================
+
+	var REGISARR = /\[\d+\]$/;
+
+
+	Array.prototype.findValue = function(cb, value, path, def, cache) {
+
+		if (langx.isFunction(cb)) {
+			def = path;
+			path = value;
+			value = undefined;
+			cache = false;
+		}
+
+		var key, val = def;
+
+		if (cache) {
+			key = 'fv_' + cb + '=' + value;
+			if (caches.temp[key]) {
+				return caches.temp[key];
+			}
+		}
+
+		var index = this.findIndex(cb, value);
+		if (index !== -1) {
+			var item = this[index];
+			if (path.indexOf('.') === -1) {
+				item = item[path];
+			} else {
+				item = get(path, item);
+			}
+			cache && (caches.temp[key] = val);
+			val = item == null ? def : item;
+		}
+
+		return val;
+	};
+
+	String.prototype.params = String.prototype.arg = function(obj) {
+		return this.replace(REGPARAMS, function(text) {
+			// Is double?
+			var l = text.charCodeAt(1) === 123 ? 2 : 1;
+			var val = get(text.substring(l, text.length - l).trim(), obj);
+			return val == null ? text : val;
+		});
+	};
+
+
+
+	return jc.stores  = {
+		"Store" : Store
+	}
 });
 define('skylark-totaljs-jcomponent/utils/blocks',[
 	"./localStorage"
@@ -6161,847 +6880,6 @@ define('skylark-totaljs-jcomponent/utils/env',[
 
 	return jc.env = env;
 });
-define('skylark-totaljs-jcomponent/utils/http',[
-	"../jc",
-	"../langx",
-	"./cache"
-],function(jc,langx,topic,cache){
-	var statics = langx.statics;
-	
-	/* TODo
-	function remap(path, value) {
-
-		var index = path.replace('-->', '->').indexOf('->');
-
-		if (index !== -1) {
-			value = value[path.substring(0, index).trim()];
-			path = path.substring(index + 3).trim();
-		}
-
-		immSetx(path, value);
-	}
-	*/
-
-	var ajaxconfig = {};
-	var defaults = {
-
-	};
-	defaults.ajaxerrors = false;
-	defaults.pingdata = {};
-	defaults.baseurl = ''; // String or Function
-	defaults.makeurl = null; // Function
-	defaults.delayrepeat = 2000;
-	defaults.jsondate = true;
-	defaults.jsonconverter = {
-		'text json': function(text) {
-			return PARSE(text);
-		}
-	};
-	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
-
-	function parseHeaders(val) {
-		var h = {};
-		val.split('\n').forEach(function(line) {
-			var index = line.indexOf(':');
-			if (index !== -1) {
-				h[line.substring(0, index).toLowerCase()] = line.substring(index + 1).trim();
-			}
-		});
-		return h;
-	}
-
-	function cacherest(method, url, params, value, expire) {
-
-		if (params && !params.version && M.$version)
-			params.version = M.$version;
-
-		if (params && !params.language && M.$language)
-			params.language = M.$language;
-
-		params = langx.stringify(params);
-		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
-		return cache.set(key, value, expire);
-	}
-	
-
-
-	function makeParams(url, values, type) { //W.MAKEPARAMS = 
-
-		var l = location;
-
-		if (typeof(url) === TYPE_O) {
-			type = values;
-			values = url;
-			url = l.pathname + l.search;
-		}
-
-		var query;
-		var index = url.indexOf('?');
-		if (index !== -1) {
-			query = M.parseQuery(url.substring(index + 1));
-			url = url.substring(0, index);
-		} else
-			query = {};
-
-		var keys = Object.keys(values);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			query[key] = values[key];
-		}
-
-		var val = $.param(query, type == null || type === true);
-		return url + (val ? '?' + val : '');
-	}
-
-	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
-
-		if (!langx.isNumber(timeout) && progress == null) {
-			progress = timeout;
-			timeout = null;
-		}
-
-		if (!url)
-			url = location.pathname;
-
-		var method = 'POST';
-		var index = url.indexOf(' ');
-		var tmp = null;
-
-		if (index !== -1) {
-			method = url.substring(0, index).toUpperCase();
-		}
-
-		var isCredentials = method.substring(0, 1) === '!';
-		if (isCredentials) {
-			method = method.substring(1);
-		}
-
-		var headers = {};
-		tmp = url.match(/\{.*?\}/g);
-
-		if (tmp) {
-			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
-			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
-				headers = tmp;
-		}
-
-		url = url.substring(index).trim().$env();
-
-		if (typeof(callback) === TYPE_N) {
-			timeout = callback;
-			callback = undefined;
-		}
-
-		var output = {};
-		output.url = url;
-		output.process = true;
-		output.error = false;
-		output.upload = true;
-		output.method = method;
-		output.data = data;
-
-		topic.emit('request', output);
-
-		if (output.cancel)
-			return;
-
-		setTimeout(function() {
-
-			var xhr = new XMLHttpRequest();
-
-			if (isCredentials) {
-				xhr.withCredentials = true;
-			}
-
-			xhr.addEventListener('load', function() {
-
-				var self = this;
-				var r = self.responseText;
-				try {
-					r = PARSE(r, defaults.jsondate);
-				} catch (e) {}
-
-				if (progress) {
-					/* TODO
-					if (typeof(progress) === TYPE_S) {
-						remap(progress, 100);
-					} else {
-						progress(100);
-					}
-					*/
-					progress(100);
-				}
-
-				output.response = r;
-				output.status = self.status;
-				output.text = self.statusText;
-				output.error = self.status > 399;
-				output.headers = parseHeaders(self.getAllResponseHeaders());
-
-				topic.emit('response', output);
-
-				if (!output.process || output.cancel)
-					return;
-
-				if (!r && output.error)
-					r = output.response = self.status + ': ' + self.statusText;
-
-				if (!output.error || defaults.ajaxerrors) {
-					typeof(callback) === TYPE_S ? remap(callback.env(), r) : (callback && callback(r, null, output));
-				} else {
-					topic.emit('error', output);
-					output.process && typeof(callback) === TYPE_FN && callback({}, r, output);
-				}
-
-			}, false);
-
-			xhr.upload.onprogress = function(evt) {
-				if (!progress) {
-					return;
-				}
-				var percentage = 0;
-				if (evt.lengthComputable) {
-					percentage = Math.round(evt.loaded * 100 / evt.total);
-				}
-				/* TODO
-				if (langx.isString(progress)) {
-					remap(progress.env(), percentage);
-				} else {
-					progress(percentage, evt.transferSpeed, evt.timeRemaining);
-				}
-				*/
-				progress(percentage, evt.transferSpeed, evt.timeRemaining);
-			};
-
-			xhr.open(method, makeurl(output.url));
-
-			var keys = Object.keys(defaults.headers);
-			for (var i = 0; i < keys.length; i++) {
-				xhr.setRequestHeader(keys[i].env(), defaults.headers[keys[i]].env());
-			}
-
-			if (headers) {
-				var keys = Object.keys(headers);
-				for (var i = 0; i < keys.length; i++) {
-					xhr.setRequestHeader(keys[i], headers[keys[i]]);
-				}
-			}
-
-			xhr.send(data);
-
-		}, timeout || 0);
-
-		return W;
-	}
-
-
-	function importCache(url, expire, target, callback, insert, preparator) { // W.IMPORTCACHE = 
-
-		var w;
-
-		url = url.$env().replace(/<.*?>/, function(text) {
-			w = text.substring(1, text.length - 1).trim();
-			return '';
-		}).trim();
-
-		// unique
-		var first = url.substring(0, 1);
-		var once = url.substring(0, 5).toLowerCase() === 'once ';
-
-		if (langx.isFunction(target)) {
-
-			if (langx.isFunction(callback)) {
-				preparator = callback;
-				insert = true;
-			} else if (typeof(insert) === TYPE_FN) {
-				preparator = insert;
-				insert = true;
-			}
-
-			callback = target;
-			target = 'body';
-		} else if (langx.isFunction(insert)) {
-			preparator = insert;
-			insert = true;
-		}
-
-		if (w) {
-
-			var wf = w.substring(w.length - 2) === '()';
-			if (wf) {
-				w = w.substring(0, w.length - 2);
-			}
-
-			var wo = GET(w);
-			if (wf && langx.isFunction(wo)) {
-				if (wo()) {
-					callback && callback(0);
-					return;
-				}
-			} else if (wo) {
-				callback && callback(0);
-				return;
-			}
-		}
-
-		if (url.substring(0, 2) === '//') {
-			url = location.protocol + url;
-		}
-
-		var index = url.lastIndexOf(' .');
-		var ext = '';
-
-		if (index !== -1) {
-			ext = url.substring(index).trim().toLowerCase();
-			url = url.substring(0, index).trim();
-		}
-
-		if (first === '!' || once) {
-
-			if (once) {
-				url = url.substring(5);
-			} else {
-				url = url.substring(1);
-			}
-
-			if (statics[url]) {
-				if (callback) {
-					if (statics[url] === 2)
-						callback(0);
-					else {
-						langx.wait(function() {
-							return statics[url] === 2;
-						}, function() {
-							callback(0);
-						});
-					}
-				}
-				return W;
-			}
-
-			statics[url] = 1;
-		}
-
-		if (target && target.setPath)
-			target = target.element;
-
-		if (!target) {
-			target = 'body';
-		}
-
-		if (!ext) {
-			index = url.lastIndexOf('?');
-			if (index !== -1) {
-				var index2 = url.lastIndexOf('.', index);
-				if (index2 !== -1) {
-					ext = url.substring(index2, index).toLowerCase();
-				}
-			} else {
-				index = url.lastIndexOf('.');
-				if (index !== -1) {
-					ext = url.substring(index).toLowerCase();
-				}
-			}
-		}
-
-		var d = document;
-		if (ext === '.js') {
-			var scr = d.createElement('script');
-			scr.type = 'text/javascript';
-			scr.async = false;
-			scr.onload = function() {
-				statics[url] = 2;
-				callback && callback(1);
-				setTimeout(compile, 300);//W.jQuery && 
-			};
-			scr.src = makeurl(url, true);
-			d.getElementsByTagName('head')[0].appendChild(scr);
-			topic.emit('import', url, $(scr));
-			return this;
-		}
-
-		if (ext === '.css') {
-			var stl = d.createElement('link');
-			stl.type = 'text/css';
-			stl.rel = 'stylesheet';
-			stl.href = makeurl(url, true);
-			d.getElementsByTagName('head')[0].appendChild(stl);
-			statics[url] = 2;
-			callback && setTimeout(callback, 200, 1);
-			topic.emit('import', url, $(stl));
-			return this;
-		}
-
-		langx.wait(function() {
-			return !!W.jQuery;
-		}, function() {
-
-			statics[url] = 2;
-			var id = 'import' + langx.hashCode(url); // HASH
-
-			var cb = function(response, code, output) {
-
-				if (!response) {
-					callback && callback(0);
-					return;
-				}
-
-				url = '$import' + url;
-
-				if (preparator)
-					response = preparator(response, output);
-
-				var is = REGCOM.test(response);
-				response = importscripts(importstyles(response, id)).trim();
-				target = $(target);
-
-				if (response) {
-					//caches.current.element = target[0];
-					if (insert === false) {
-						target.html(response);
-					} else {
-						target.append(response);
-					}
-					//caches.current.element = null;
-				}
-
-				setTimeout(function() {
-					// is && compile(response ? target : null);
-					// because of paths
-					is && compile();
-					callback && langx.wait(function() {
-						return C.is == false;
-					}, function() {
-						callback(1);
-					});
-					topic.emit('import', url, target);
-				}, 10);
-			};
-
-			if (expire) {
-				ajaxCache('GET ' + url, null, cb, expire);
-			}else {
-				ajax('GET ' + url, cb);
-			}
-		});
-
-		return W;
-	}
-
-	function import2(url, target, callback, insert, preparator) { //W.IMPORT = M.import = 
-		if (url instanceof Array) {
-
-			if (langx.isFunction(target)) {
-				preparator = insert;
-				insert = callback;
-				callback = target;
-				target = null;
-			}
-
-			url.wait(function(url, next) {
-				importCache(url, null, target, next, insert, preparator);
-			}, function() {
-				callback && callback();
-			});
-		} else {
-			importCache(url, null, target, callback, insert, preparator);
-		}
-
-		return this;
-	}
-
-	/* 
-	function uptodate(period, url, callback, condition) { // W.UPTODATE = 
-
-		if (langx.isFunction(url)) {
-			condition = callback;
-			callback = url;
-			url = '';
-		}
-
-		var dt = new Date().add(period);
-		topic.on('knockknock', function() {
-			if (dt > langx.now()) //W.NOW)
-				return;
-			if (!condition || !condition())
-				return;
-			var id = setTimeout(function() {
-				var l = window.location;
-				if (url)
-					l.href = url.$env();
-				else
-					l.reload(true);
-			}, 5000);
-			callback && callback(id);
-		});
-	}
-	*/
-
-	function ping(url, timeout, execute) { // W.PING = 
-
-		if (navigator.onLine != null && !navigator.onLine)
-			return;
-
-		if (typeof(timeout) === 'boolean') {
-			execute = timeout;
-			timeout = 0;
-		}
-
-		url = url.$env();
-
-		var index = url.indexOf(' ');
-		var method = 'GET';
-
-		if (index !== -1) {
-			method = url.substring(0, index).toUpperCase();
-			url = url.substring(index).trim();
-		}
-
-		var options = {};
-		var data = $.param(defaults.pingdata);
-
-		if (data) {
-			index = url.lastIndexOf('?');
-			if (index === -1)
-				url += '?' + data;
-			else
-				url += '&' + data;
-		}
-
-		options.type = method;
-		options.headers = { 'x-ping': location.pathname, 'x-cookies': navigator.cookieEnabled ? '1' : '0', 'x-referrer': document.referrer };
-
-		options.success = function(r) {
-			if (r) {
-				try {
-					(new Function(r))();
-				} catch (e) {}
-			}
-		};
-
-		execute && $.ajax(makeurl(url), options);
-
-		return setInterval(function() {
-			$.ajax(makeurl(url), options);
-		}, timeout || 30000);
-	}
-
-	function parseQuery(value) { //M.parseQuery = W.READPARAMS = 
-
-		if (!value)
-			value = location.search;
-
-		if (!value)
-			return {};
-
-		var index = value.indexOf('?');
-		if (index !== -1)
-			value = value.substring(index + 1);
-
-		var arr = value.split('&');
-		var obj = {};
-		for (var i = 0, length = arr.length; i < length; i++) {
-			var sub = arr[i].split('=');
-			var key = sub[0];
-			var val = decodeURIComponent((sub[1] || '').replace(/\+/g, '%20'));
-
-			if (!obj[key]) {
-				obj[key] = val;
-				continue;
-			}
-
-			if (!(obj[key] instanceof Array))
-				obj[key] = [obj[key]];
-			obj[key].push(val);
-		}
-		return obj;
-	}
-
-	function configure(name, fn) {  // W.AJAXCONFIG = 
-		ajaxconfig[name] = fn;  
-		return this;
-	}
-
-	function ajax(url, data, callback, timeout) { // W.AJAX = 
-
-		if (typeof(url) === TYPE_FN) {
-			timeout = callback;
-			callback = data;
-			data = url;
-			url = location.pathname;
-		}
-
-		var td = typeof(data);
-		var arg = EMPTYARRAY;
-		var tmp;
-
-		if (!callback && (td === TYPE_FN || td === TYPE_S)) {
-			timeout = callback;
-			callback = data;
-			data = undefined;
-		}
-
-		var index = url.indexOf(' ');
-		if (index === -1)
-			return W;
-
-		var repeat = false;
-
-		url = url.replace(/\srepeat/i, function() {
-			repeat = true;
-			return '';
-		});
-
-		if (repeat)
-			arg = [url, data, callback, timeout];
-
-		var method = url.substring(0, index).toUpperCase();
-		var isCredentials = method.substring(0, 1) === '!';
-		if (isCredentials)
-			method = method.substring(1);
-
-		var headers = {};
-		tmp = url.match(/\{.*?\}/g);
-
-		if (tmp) {
-			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
-			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
-				headers = tmp;
-		}
-
-		url = url.substring(index).trim().$env();
-
-		setTimeout(function() {
-
-			if (method === 'GET' && data) {
-				var qs = (typeof(data) === TYPE_S ? data : jQuery.param(data, true));
-				if (qs)
-					url += '?' + qs;
-			}
-
-			var options = {};
-			options.method = method;
-			options.converters = defaults.jsonconverter;
-
-			if (method !== 'GET') {
-				if (typeof(data) === TYPE_S) {
-					options.data = data;
-				} else {
-					options.contentType = 'application/json; charset=utf-8';
-					options.data = STRINGIFY(data);
-				}
-			}
-
-			options.headers = $.extend(headers, defaults.headers);
-
-			if (url.match(/http:\/\/|https:\/\//i)) {
-				options.crossDomain = true;
-				delete options.headers['X-Requested-With'];
-				if (isCredentials)
-					options.xhrFields = { withCredentials: true };
-			} else
-				url = url.ROOT();
-
-			var custom = url.match(/\([a-z0-9\-.,]+\)/i);
-			if (custom) {
-				url = url.replace(custom, '').replace(/\s+/g, '');
-				options.url = url;
-				custom = custom.toString().replace(/\(|\)/g, '').split(',');
-				for (var i = 0; i < custom.length; i++) {
-					var opt = ajaxconfig[custom[i].trim()];
-					opt && opt(options);
-				}
-			}
-
-			if (!options.url)
-				options.url = url;
-
-			//topic.emit('request', options); //TODO
-
-			if (options.cancel)
-				return;
-
-			options.type = options.method;
-			delete options.method;
-
-			var output = {};
-			output.url = options.url;
-			output.process = true;
-			output.error = false;
-			output.upload = false;
-			output.method = method;
-			output.data = data;
-
-			delete options.url;
-
-			options.success = function(r, s, req) {
-				output.response = r;
-				output.status = req.status || 999;
-				output.text = s;
-				output.headers = parseHeaders(req.getAllResponseHeaders());
-				//topic.emit('response', output); TODO
-				if (output.process && !output.cancel) {
-					/* TODO
-					if (typeof(callback) === TYPE_S)
-						remap(callback, output.response);
-					else
-						callback && callback.call(output, output.response, undefined, output);
-					*/
-					callback && callback.call(output, output.response, undefined, output);
-				}
-			};
-
-			options.error = function(req, s) {
-
-				var code = req.status;
-
-				if (repeat && (!code || code === 408 || code === 502 || code === 503 || code === 504 || code === 509)) {
-					// internal error
-					// internet doesn't work
-					setTimeout(function() {
-						arg[0] += ' REPEAT';
-						W.AJAX.apply(M, arg);
-					}, defaults.delayrepeat);
-					return;
-				}
-
-				output.response = req.responseText;
-				output.status = code || 999;
-				output.text = s;
-				output.error = true;
-				output.headers = parseHeaders(req.getAllResponseHeaders());
-				var ct = output.headers['content-type'];
-
-				if (ct && ct.indexOf('/json') !== -1) {
-					try {
-						output.response = PARSE(output.response, defaults.jsondate);
-					} catch (e) {}
-				}
-
-				//topic.emit('response', output); TODO
-
-				if (output.cancel || !output.process)
-					return;
-
-				if (defaults.ajaxerrors) {
-					/* TODO
-					if (typeof(callback) === TYPE_S)
-						remap(callback, output.response);
-					else
-						callback && callback.call(output, output.response, output.status, output);
-					*/
-					callback && callback.call(output, output.response, output.status, output);
-				} else {
-					//topic.emit('error', output); TODO
-					if (langx.isFunction(callback)) 
-					callback.call(output, output.response, output.status, output);
-				}
-			};
-
-			$.ajax(makeurl(output.url), options);
-
-		}, timeout || 0);
-
-		return this;
-	}
-
-	function ajaxCacheReview(url, data, callback, expire, timeout, clear) { //W.AJAXCACHEREVIEW = 
-		return ajaxCache(url, data, callback, expire, timeout, clear, true);
-	}
-
-	function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
-
-
-		if (langx.isFunction(data) || (langx.isString(data) && langx.isString(callback)  && !langx.isString(expire))) {
-			clear = timeout;
-			timeout = expire;
-			expire = callback;
-			callback = data;
-			data = null;
-		}
-
-		if (langx.isBoolean(timeout)) {
-			clear = timeout === true;
-			timeout = 0;
-		}
-
-		var index = url.indexOf(' ');
-		if (index === -1)
-			return W;
-
-		var method = url.substring(0, index).toUpperCase();
-		var uri = url.substring(index).trim().$env();
-
-		setTimeout(function() {
-			var value = clear ? undefined : cacherest(method, uri, data, undefined, expire);
-			if (value !== undefined) {
-
-				var diff = review ? STRINGIFY(value) : null;
-
-				/* TODO
-				if (typeof(callback) === TYPE_S)
-					remap(callback, value);
-				else
-					callback(value, true);
-				*/
-				callback(value, true);
-
-				if (!review)
-					return;
-
-				ajax(url, data, function(r, err) {
-					if (err)
-						r = err;
-					// Is same?
-					if (diff !== STRINGIFY(r)) {
-						cacherest(method, uri, data, r, expire);
-						/* TODO
-						if (typeof(callback) === TYPE_S)
-							remap(callback, r);
-						else
-							callback(r, false, true);
-						*/
-						callback(r, false, true);
-					}
-				});
-				return;
-			}
-
-			ajax(url, data, function(r, err) {
-				if (err)
-					r = err;
-				cacherest(method, uri, data, r, expire);
-				/* TODO
-				if (typeof(callback) === TYPE_S)
-					remap(callback, r);
-				else
-					callback(r, false);
-				*/
-				callback(r, false);
-			});
-		}, timeout || 1);
-
-		return this;
-	}
-
-	return jc.http = {
-		defaults,
-		ajax,
-		ajaxCache,
-		ajaxCacheReview,
-		configure,
-		import2,
-		importCache,
-		makeParams,
-		ping,
-		parseQuery,
-		upload
-	};
-
-});
 define('skylark-totaljs-jcomponent/utils/logs',[
 	"../langx"
 ],function(langx){
@@ -7045,20 +6923,43 @@ define('skylark-totaljs-jcomponent/utils',[
 });
 define('skylark-totaljs-jcomponent/views/binding',[
 	"../utils/domx",
-	"../binding/parse"
-],function(domx, parsebinder){
+	"../binding/parse",
+	"../binding/pathmaker"
+],function(domx, parsebinder,pathmaker){
 	function binding(view) {
 		var binders = [];
+		var bindersnew = [];
+
  		//function parsebinder(el, b, scopes,
 
 		function parse(el,b,scopes) {
 			return parsebinder(el,b,scopes,{
-				"binders" : binders
+				"binders" : binders,
+				"bindersnew" : bindersnew
 			});
 		}
 
 		function binder(el) {
 			return el.$jcbind; 
+		}
+
+		var $rebinder;
+
+		function rebindbinder() {
+			$rebinder && clearTimeout($rebinder);
+			$rebinder = setTimeout(function() {
+				var arr = bindersnew.splice(0);
+				for (var i = 0; i < arr.length; i++) {
+					var item = arr[i];
+					if (!item.init) {
+						if (item.com) {
+							item.exec(item.com.data(item.path), item.path);
+						} else {
+							item.exec(getx(item.path), item.path);  // GET
+						}
+					}
+				}
+			}, 50);
 		}
 
 		function clean() {
@@ -7091,7 +6992,9 @@ define('skylark-totaljs-jcomponent/views/binding',[
 
 		return {
 			"parse" : parse,
+			"pathmaker" : pathmaker,
 			"binder" : binder,
+			"rebindbinder" : rebindbinder,
 			"clean" : clean
 		}
 
@@ -7111,15 +7014,33 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			eventer = view.eventer,
 			compiler = view.compiler,
 			components = [],
+			lazycom = {},
 			caches = {
 				dirty : {},
 				valid : {},
-				find : {}
+				find : {},
+				clear : function(key1,key2,key3) {
+					for (var i = 1; i<arguments.length;i++) {
+						var key = arguments[i];
+						this[key] = {};
+					}
+				},
+
+				get : function(category,key) {
+					this[category][key];
+				},
+
+				set : function(category,key,value) {
+					this[category][key] = value;
+				}
+
 			},
 
 			defaults = {};
 
 		var knockknockcounter = 0;
+
+
 
 		setInterval(function() {
 			//W.DATETIME = W.NOW = new Date();
@@ -7130,6 +7051,19 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			eventer.emit('knockknock', knockknockcounter++);  // EMIT
 		}, 60000);
 
+		function checkLazy(name) {
+			var lo = lazycom[name];
+
+			if (!lo) {
+				var namea = name.substring(0, name.indexOf('@'));
+				if (namea && name !== namea) {
+					lo = lazycom[name] = lazycom[namea] = { state: 1 };
+				} else {
+					lo = lazycom[name] = { state: 1 };
+				}
+			}
+			return lo;			
+		}
 
 		function each(fn, path) {   // M.each
 			var wildcard = path ? path.lastIndexOf('*') !== -1 : false;
@@ -7151,6 +7085,33 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			return this;
 		}
 
+		function com_validate2(com) {
+
+			var valid = true;
+
+			if (com.disabled) {
+				return valid;
+			}
+
+			if (com.$valid_disabled) {
+				return valid;
+			}
+
+			var arr = [];
+			com.state && arr.push(com);
+			com.$validate = true;
+
+			if (com.validate) {
+				com.$valid = com.validate(get(com.path));
+				com.$interaction(102);
+				if (!com.$valid)
+					valid = false;
+			}
+
+			caches.clear('valid');
+			langx.state(arr, 1, 1);
+			return valid;
+		}
 
 		function com_dirty(path, value, onlyComponent, skipEmitState) {
 			var cache = caches.dirty;
@@ -7230,8 +7191,8 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 					dirty = false;
 			}
 
-			cache = caches.dirty = {};  //clear('dirty');
-			cache[key] = dirty;
+			caches.clear('dirty');
+			caches.set('dirty',key,dirty);
 
 			// For double hitting component.state() --> look into COM.invalid()
 			!skipEmitState && state(arr, 1, 2);
@@ -7239,7 +7200,6 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 		}
 
 		function com_valid(path, value, onlyComponent) {
-			var cache = caches.valid;
 
 			var isExcept = value instanceof Array;
 			var key =  path + (isExcept ? '>' + value.join('|') : ''); // 'valid' +
@@ -7250,8 +7210,10 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				value = undefined;
 			}
 
-			if (typeof(value) !== 'boolean' && cache[key] !== undefined) {
-				return cache[key];
+			var valid = caches.get("valid",key);
+
+			if (typeof(value) !== 'boolean' && valid !== undefined) {
+				return valid; //cache[key];
 			}
 
 			var flags = null;
@@ -7271,7 +7233,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				isExcept = except.length > 0;
 			}
 
-			var valid = true;
+			valid = true;
 			var arr = value !== undefined ? [] : null;
 
 			var index = path.lastIndexOf('.*');
@@ -7319,8 +7281,8 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				}
 			}
 
-			cache = caches.valid = {};  //clear('valid');
-			cache[key] = valid ;
+			caches.clear('valid');
+			caches.set('valid',key, valid) ;
 			langx.state(arr, 1, 1);
 			return valid;
 		}
@@ -7414,7 +7376,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				}
 			}
 
-			clear('valid');
+			caches.clear('valid');
 			state(arr, 1, 1);
 			return valid;
 		}
@@ -7524,7 +7486,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			}
 			storing.emit('@' + obj.name, obj); // EMIT
 			storing.emit(n, obj);  // EMIT
-			clear('find.');
+			caches.clear('find');
 			if (obj.$lazy) {
 				obj.$lazy.state = 3;
 				delete obj.$lazy;
@@ -7598,7 +7560,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 
 			if (!noCache) {
 				key = value + '.' + (many ? 0 : 1);  // 'find.' + 
-				output = cache[key];
+				output = caches.get("find",key);//output = cache[key];
 				if (output) {
 					return output;
 				}
@@ -7610,7 +7572,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			}
 			output = r;
 			if (!noCache) {
-				cache[key] = output;
+				caches.set("find",key,output);//cache[key] = output;
 			}
 			return output;
 		}
@@ -7816,8 +7778,10 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 
 
 		return {
+			"checkLazy" : checkLazy,
 			"clean" : clean,
 			"com_valid" : com_valid,
+			"com_validate2" : com_validate2,
 			"com_dirty" : com_dirty,
 			"each" : each,
 			"find"  : find,
@@ -8206,14 +8170,16 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../utils/domx",
 	"../utils/http",
 	"../components/registry",
+	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, registry,plugins){
+],function(langx, $, domx, http, registry,versions,plugins){
 	var statics = langx.statics;
 
 	var MD = {
 		fallback : 'https://cdn.componentator.com/j-{0}.html',
 		fallbackcache : '',
-		version : 'v16'
+		importcache : 'session',
+		version : ''
 	};
 
 	var fallback = { $: 0 }; // $ === count of new items in fallback
@@ -8279,6 +8245,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			eventer = view.eventer,
 			storing = view.storing,
 			scoper = view.scoper,
+			binding = view.binding,
 			componentater = view.componentater;
     
 		var is = false;
@@ -8289,7 +8256,6 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			imports = {},
 			toggles = [],
 			ready = [],
-			lazycom = {},
 			caches = {
 				current : {}
 			};
@@ -8304,12 +8270,12 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 		var fallbackPending = [];
 
-		function download(view) {
+		function download() {
 
 			var arr = [];
 			var count = 0;
 
-			helper.findUrl(view._elm).each(function() {
+			helper.findUrl(view.elm()).each(function() {
 
 				var t = this;
 				var el = $(t);
@@ -8396,7 +8362,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				importing--;
 				componenter.clean(); // clear('valid', 'dirty', 'find');
 				if (count && canCompile){
-					view.compile();
+					compile();
 				}
 			});
 		}
@@ -8423,7 +8389,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			var next = pending.shift();
 			if (next) {
 				next();
-			} else if ($domready) {
+			} else { //if ($domready) {
 				if (ready) {
 					is = false;
 				}
@@ -8558,8 +8524,9 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				}
 
 				if (!is && name.lastIndexOf('@') === -1) {
-					if (versions[name]) {
-						name += '@' + versions[name];
+					var version = versions.get(name); 
+					if (version) {
+						name += '@' + version;
 					} else if (MD.version) {
 						name += '@' + MD.version;
 					}
@@ -8569,16 +8536,8 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				var lo = null;
 
 				if (lazy && name) {
-					var namea = name.substring(0, name.indexOf('@'));
-					lo = lazycom[name];
-					if (!lo) {
-						if (namea && name !== namea) {
-							lazycom[name] = lazycom[namea] = { state: 1 };
-						} else {
-							lazycom[name] = { state: 1 };
-						}
-						continue;
-					}
+					lo = componenter.checkLazy(name);;
+
 					if (lo.state === 1) {
 						continue;
 					}
@@ -8609,7 +8568,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					imports[x] = 1;
 					importing++;
 
-					http.import2(x, function() {
+					http.import(x, function() {
 						importing--;
 						imports[x] = 2;
 					});
@@ -8654,7 +8613,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					obj.$noscope = true;
 				}
 
-				obj.setPath(pathmaker(p, true), 1);
+				obj.setPath(binding.pathmaker(p, true), 1);
 				obj.config = {};
 
 				// Default config
@@ -8834,13 +8793,10 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 		}
 		function crawler(container, onComponent, level, paths) {
-			var helper = view.helper,
-				binding = view.binding;
-
 			if (container) {
 				container = $(container)[0];
 			} else {
-				container = document.body;
+				container = view.elm();//document.body;
 			}
 
 			if (!container) {
@@ -8860,7 +8816,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 			if (level == null || level === 0) {
 				paths = [];
-				if (container !== document.body) {
+				if (container !== view.elm()) { // document.body) {
 					/*
 					var scope = $(container).closest('[' + ATTRSCOPE + ']'); //ATTRCOPE
 					if (scope && scope.length) {
@@ -8977,7 +8933,6 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				}
 			}
 		}
-
 	
 		function compile(container,immediate) {
 			var self = this;
@@ -9026,90 +8981,90 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			crawler(container, onComponent);
 
 			// perform binder
-			rebindbinder();
+			binding.rebindbinder();
 
 			if (!has || !pending.length) {
 				is = false;
 			}
 
 			if (container !== undefined || !toggles.length) {
-				return nextpending();
+				return nextPending();
 			}
 
 			langx.async(toggles, function(item, next) {
 				for (var i = 0, length = item.toggle.length; i < length; i++)
 					item.element.tclass(item.toggle[i]);
 				next();
-			}, nextpending);
+			}, nextPending);
 		}		
 
-	function request() {
+		function request() {
 
-		langx.setTimeout2('$ready', function() {
+			langx.setTimeout2('$ready', function() {
 
-			mediaquery();
-			view.refresh(); // TODO
+				mediaquery();
+				view.refresh(); // TODO
 
-			function initialize() {
-				var item = initing.pop();
-				if (item === undefined)
-					!ready && compile();
-				else {
-					!item.$removed && prepare(item);
-					initialize();
+				function initialize() {
+					var item = initing.pop();
+					if (item === undefined)
+						!ready && compile();
+					else {
+						!item.$removed && prepare(item);
+						initialize();
+					}
 				}
-			}
 
-			initialize();
+				initialize();
 
-			var count = components.length; // M.components
-			$(document).trigger('components', [count]);
+				var count = componenter.components.length; // M.components
+				$(document).trigger('components', [count]);
 
-			if (!$loaded) {
-				$loaded = true;
-				caches.clear('valid', 'dirty', 'find');
-				topic.emit('init');
-				topic.emit('ready');
-			}
+				if (!$loaded) {
+					$loaded = true;
+					caches.clear('valid', 'dirty', 'find');
+					topic.emit('init');
+					topic.emit('ready');
+				}
 
-			langx.setTimeout2('$initcleaner', function() {
-				components.cleaner();
-				var arr = autofill.splice(0);
-				for (var i = 0; i < arr.length; i++) {
-					var com = arr[i];
-					!com.$default && findcontrol(com.element[0], function(el) {
-						var val = $(el).val();
-						if (val) {
-							var tmp = com.parser(val);
-							if (tmp && com.get() !== tmp) {
-								com.dirty(false, true);
-								com.set(tmp, 0);
+				langx.setTimeout2('$initcleaner', function() {
+					components.cleaner();
+					var arr = autofill.splice(0);
+					for (var i = 0; i < arr.length; i++) {
+						var com = arr[i];
+						!com.$default && helper.findControl(com.element[0], function(el) {
+							var val = $(el).val();
+							if (val) {
+								var tmp = com.parser(val);
+								if (tmp && com.get() !== tmp) {
+									com.dirty(false, true);
+									com.set(tmp, 0);
+								}
 							}
-						}
-						return true;
-					});
+							return true;
+						});
+					}
+				}, 1000);
+
+				is = false;
+
+				if (recompile) {
+					recompile = false;
+					compile();
 				}
-			}, 1000);
 
-			is = false;
-
-			if (recompile) {
-				recompile = false;
-				compile();
-			}
-
-			if (ready) {
-				var arr = ready;
-				for (var i = 0, length = arr.length; i < length; i++)
-					arr[i](count);
-				ready = undefined;
-				compile();
-				setTimeout(compile, 3000);
-				setTimeout(compile, 6000);
-				setTimeout(compile, 9000);
-			}
-		}, 100);
-	}
+				if (ready) {
+					var arr = ready;
+					for (var i = 0, length = arr.length; i < length; i++)
+						arr[i](count);
+					ready = undefined;
+					compile();
+					setTimeout(compile, 3000);
+					setTimeout(compile, 6000);
+					setTimeout(compile, 9000);
+				}
+			}, 100);
+		}
 
 		return {
 
@@ -9124,8 +9079,9 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 });
 define('skylark-totaljs-jcomponent/views/helper',[
 	"../langx",	
+	"../utils/query",	
 	"../components/Component"
-],function(langx, Component){
+],function(langx, $,Component){
 
 
 	function helper(view) {
@@ -9134,10 +9090,11 @@ define('skylark-totaljs-jcomponent/views/helper',[
 			ATTRDATA = 'jc',
 			ATTRDEL = 'data-jc-removed',
 			ATTRREL = 'data-jc-released',
-			ATTRSCOPE = 'data-jc-scope';
+			ATTRSCOPE = 'data-jc-scope',
+			ATTRCOMPILE = 'data-jc-comile';
 
 
-		var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind):|COMPONENT\(/;
+		var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind)=|COMPONENT\(/;
 
 		function findControl2(com, input) {
 
@@ -9310,7 +9267,7 @@ define('skylark-totaljs-jcomponent/views/helper',[
 		}
 
 		function scope(el) {
-			var results = $(el).closest('[' + this.option("elmAttrNames.scope") + ']');
+			var results = $(el).closest('[' + ATTRCOMPILE + ']');
 			if (results && results.length) {
 				return reesults[0];
 			}
@@ -9318,30 +9275,30 @@ define('skylark-totaljs-jcomponent/views/helper',[
 
 		function nocompile(el,value) {
 			if (value === undefined) {
-				var value = $(el).attr(view.option("elmAttrNames.compile")) ;
-				if (value === '0' || comp === 'false') {
+				var value = $(el).attr(ATTRCOMPILE) ;
+				if (value === '0' || value === 'false') {
 					// no compile
 					return true;
 				} else {
 					return false;
 				}
 			} else {
-				$(el).attr(view.option("elmAttrNames.compile"),value);
+				$(el).attr(ATTRCOMPILE,value);
 				return this; 
 			}
 		}
 
 		function released(el,value) {
 			if (value === undefined) {
-				var value = $(el).attr(view.option("elmAttrNames.released")) ;
-				if (value === '0' || comp === 'false') {
+				var value = $(el).attr(ATTRREL) ;
+				if (value === '0' || value === 'false') {
 					// no compile
 					return true;
 				} else {
 					return false;
 				}
 			} else {
-				$(el).attr(view.option("elmAttrNames.released"),value);
+				$(el).attr(ATTRREL,value);
 				return this; 
 			}
 		}		
@@ -9351,8 +9308,8 @@ define('skylark-totaljs-jcomponent/views/helper',[
 			return REGCOM.test(html);
 		}
 
-		function findUrl(container,callback) {
-			return $(ATTRURL);
+		function findUrl(container) {
+			return $(ATTRURL,container);
 		}
 
 		function makeurl(url, make) {
@@ -9382,18 +9339,21 @@ define('skylark-totaljs-jcomponent/views/helper',[
 		}
 
 		return {
+			"attrcom" 		: attrcom,
+			"attrbind"      : attrbind,
+			"attrscope"     : attrscope,
+			"canCompile"    : canCompile,
 			"Component"     : Component,
 			"findComponent" : findComponent,
 			"findControl" 	: findControl,
 			"findControl2" 	: findControl2,
-			"attrcom" 		: attrcom,
-			"attrbind"      : attrbind,
-			"attrscope"     : attrscope,
+			"findUrl"       : findUrl,
 			"kill"          : kill,
 			"makeurl"		: makeurl,
-			"scope" 		: scope,
+			"nested"        : nested,
 			"nocompile" 	: nocompile,
-			"released" 		: released
+			"released" 		: released,
+			"scope" 		: scope
 		};
 
 	}
@@ -9640,6 +9600,8 @@ define('skylark-totaljs-jcomponent/views/storing',[
 	function storing (store,view) {
 		var cache = {}; // lwf
 
+		var skipproxy = '';
+
 
 		var data = store.data;
 
@@ -9681,6 +9643,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 
 		var binders = {},
+
 			paths = {},
 			defaults = {},
 			$formatter = [],
@@ -9688,6 +9651,28 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			$parser = [],
 			nmCache = {},  // notmodified cache 
 			temp = {};
+
+
+		function bind(path) { // W.BIND = 
+			if (path instanceof Array) {
+				for (var i = 0; i < path.length; i++) {
+					bind(path[i]);
+				}
+				return this; // 
+			}
+			path = pathmaker(path);
+			if (!path) {
+				return this;
+			}
+			var is = path.charCodeAt(0) === 33; // !
+			if (is) {
+				path = path.substring(1);
+			}
+			path = path.replaceWildcard();
+			if(path){
+				set(path, get(path), true);	
+			} 
+		}
 
 		function binderbind(path, absolutePath, ticks) {
 			var arr = binders[path];
@@ -9718,13 +9703,13 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				callback = function(key) {
 
 					var p = path + (key ? '.' + key : '');
-					if (M.skipproxy === p) {
-						M.skipproxy = '';
+					if (skipproxy === p) {
+						skipproxy = '';
 						return;
 					}
 					setTimeout(function() {
-						if (M.skipproxy === p) {
-							M.skipproxy = '';
+						if (skipproxy === p) {
+							skipproxy = '';
 						} else {
 							notify(p);  // NOTIFY
 							reset(p);   // REEST
@@ -9769,7 +9754,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			var o = new Proxy(obj, handler);
 
 			if (is) {
-				M.skipproxy = path;
+				skipproxy = path;
 				getx(path) == null && setx(path, obj, true);  // GET SET
 				return proxy[path] = o;
 			} else
@@ -9877,7 +9862,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 			var fn = (new Function('w', builder.join(';') + ';return w' + v));
 			paths[key] = fn;
-			return fn(scope || MD.scope);
+			return fn(scope || store.data);  // MD.scope
 		}
 
 		// set...
@@ -10001,7 +9986,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				type = 1;
 			}
 
-			M.skipproxy = path;
+			skipproxy = path;
 			set(path, value);
 
 			if (isUpdate) {
@@ -10189,7 +10174,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				type = 1; // manually
 			}
 
-			M.skipproxy = path;
+			skipproxy = path;
 
 			var all = view.components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
@@ -10343,7 +10328,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			}
 
 			var is = true;
-			M.skipproxy = path;
+			skipproxy = path;
 
 			if (value instanceof Array) {
 				if (value.length)
@@ -10740,7 +10725,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 		function rewrite(path, value, type) { // W.REWRITE = 
 			path = pathmaker(path);
 			if (path) {
-				M.skipproxy = path;
+				skipproxy = path;
 				set(path, value);
 				emitwatch(path, value, type);
 			}
@@ -10834,7 +10819,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 
 		return {
-		
+			"bind"  : bind,
 			"cache" : cache,
 			"can" : can,
 			"change" : change,
@@ -10881,25 +10866,6 @@ define('skylark-totaljs-jcomponent/views/View',[
 	"./storing",
 ],function(langx, domx, binding, componenter, eventer,compiler, helper,scoper,storing){
 
-	var $rebinder;
-
-	function rebindbinder() {
-		$rebinder && clearTimeout($rebinder);
-		$rebinder = setTimeout(function() {
-			var arr = bindersnew.splice(0);
-			for (var i = 0; i < arr.length; i++) {
-				var item = arr[i];
-				if (!item.init) {
-					if (item.com) {
-						item.exec(item.com.data(item.path), item.path);
-					} else {
-						item.exec(getx(item.path), item.path);  // GET
-					}
-				}
-			}
-		}, 50);
-	}
-
 	function keypressdelay(self) {
 		var com = self.$com;
 		// Reset timeout
@@ -10935,6 +10901,7 @@ define('skylark-totaljs-jcomponent/views/View',[
 	    },
 
 		_construct : function(elm,options) {
+			domx.Plugin.prototype._construct.apply(this,arguments);
 
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
@@ -10976,7 +10943,7 @@ define('skylark-totaljs-jcomponent/views/View',[
 						return -1;
 					var al = a.path.length;
 					var bl = b.path.length;
-					return al > bl ? - 1 : al === bl ? LCOMPARER(a.path, b.path) : 1;
+					return al > bl ? - 1 : al === bl ? langx.localCompare(a.path, b.path) : 1;
 				});
 			}, 200);
 		},
@@ -11101,7 +11068,6 @@ define('skylark-totaljs-jcomponent/views/View',[
 				});
 
 				setTimeout(compile, 2);
-				$domready = true;
 			});
 
 		},
@@ -11141,6 +11107,144 @@ define('skylark-totaljs-jcomponent/defaults',[
 
 	return jc.defaults = defaults;
 });
+define('skylark-totaljs-jcomponent/others/schedulers',[
+	"../langx"
+],function(langx){
+	var schedulers = [];
+	var schedulercounter = 0;
+
+
+	function clearAll(ownerId) {
+		schedulers.remove('owner', ownerId);
+		return this;
+	}	
+
+	// scheduler
+	schedulercounter = 0;
+	setInterval(function() {
+
+		if (!schedulers.length)
+			return;
+
+		schedulercounter++;
+		//var now = new Date();
+		//W.DATETIME = W.NOW = now;
+		var now = langx.now(true);
+		for (var i = 0, length = schedulers.length; i < length; i++) {
+			var item = schedulers[i];
+			if (item.type === 'm') {
+				if (schedulercounter % 30 !== 0)
+					continue;
+			} else if (item.type === 'h') {
+				// 1800 seconds --> 30 minutes
+				// 1800 / 2 (seconds) --> 900
+				if (schedulercounter % 900 !== 0)
+					continue;
+			}
+
+			var dt = now.add(item.expire);
+			var arr = FIND(item.selector, true);
+			for (var j = 0; j < arr.length; j++) {
+				var a = arr[j];
+				a && a.usage.compare(item.name, dt) && item.callback(a);
+			}
+		}
+	}, 3500);
+
+
+	function schedule(selector, name, expire, callback) { //W.SCHEDULE = 
+		if (expire.substring(0, 1) !== '-')
+			expire = '-' + expire;
+		var arr = expire.split(' ');
+		var type = arr[1].toLowerCase().substring(0, 1);
+		var id = langx.guid(10); //GUID
+		schedulers.push({ 
+			id: id, 
+			name: name, 
+			expire: expire, 
+			selector: selector, callback: callback, type: type === 'y' || type === 'd' ? 'h' : type, owner: current_owner });
+		return id;
+	};
+
+	function clear(id) {  //W.CLEARSCHEDULE
+		schedulers = schedulers.remove('id', id);
+		return this;
+	};
+
+
+	return  {
+		clear,
+		clearAll,
+		schedule
+	}
+});
+define('skylark-totaljs-jcomponent/others/transforms',[
+],function(){
+	var registry = { //M.transforms
+
+	};
+
+	function register(name, callback) { // W.NEWTRANSFORM
+		registry[name] = callback;  
+		return this;
+	};
+
+	function transform(name, value, callback) { //W.TRANSFORM
+
+		var m = registry;
+
+		if (arguments.length === 2) {
+			// name + value (is callback)
+			return function(val) {
+				transform(name, val, value);
+			};
+		}
+
+		var cb = function() {
+			if (typeof(callback) === TYPE_S) {
+				SET(callback, value);
+			} else {
+				callback(value);
+			}
+		};
+
+		var keys = name.split(',');
+		var async = [];
+		var context = {};
+
+		context.value = value;
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i].trim();
+			key && m[key] && async.push(m[key]);
+		}
+
+		if (async.length === 1)
+			async[0].call(context, value, function(val) {
+				if (val !== undefined)
+					value = val;
+				cb();
+			});
+		else if (async.length) {
+			async.wait(function(fn, next) {
+				fn.call(context, value, function(val) {
+					if (val !== undefined)
+						value = val;
+					next();
+				});
+			}, cb);
+		} else {
+			cb();
+		}
+
+		return this;
+	};
+
+	return  {
+		register,
+		transform
+	}
+});
 define('skylark-totaljs-jcomponent/globals',[
 	"./jc",
 	"./defaults",
@@ -11150,72 +11254,12 @@ define('skylark-totaljs-jcomponent/globals',[
 	"./components",
 	"./binding",
 	"./stores",
-	"./views"
-],function(jc, defaults, langx,utils,plugins,Components,binding,stores,views){
-	var $ = utils.query;
-	
-	$.fn.scope = function() {
-
-		if (!this.length) {
-			return null; 
-		}
-
-		var data = this[0].$scopedata;
-		if (data) {
-			return data;
-		}
-		var el = this.closest('[' + ATTRSCOPE + ']');
-		if (el.length) {
-			data = el[0].$scopedata;
-			if (data) {
-				return data;
-			}
-		}
-		return null;
-	};	
-
-
-	var W = Window;
-
-	var gv = new views.View(document.body,{
-			store : new stores.Store({
-							data : W
-						})
-		}),
-		gs = gv.storing,
-		gh = gv.helper,
-		gm = gv.composer,
-		gl = gv.compiler,
-		ge = gv.eventer;
-
-	$.components = gv.components;
-
-	langx.mixin(W, {
-		isPRIVATEMODE : false,
-		isMOBILE : /Mobi/.test(navigator.userAgent),
-		isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
-		isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
-		isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
-	}); // W.MAIN = W.M = W.jC = W.COM = M = {};
-
-	//jc
-	/*
-	langx.each({
-		"MONTHS" : "months",
-		"DAYS" : "days"
-	},function(name1,name2){
-		Object.defineProperty(W, name1, {
-		    get() {
-		      return jc[name2];
-		    },
-		    set(value) {
-		    	jc[name2] = value;
-		    }
-		});	
-	});
-	*/
-
-	var blocks = utils.blocks,
+	"./views",
+	"./others/schedulers",
+	"./others/transforms"
+],function(jc, defaults, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
+	var $ = utils.query,
+	    blocks = utils.blocks,
 		cache = utils.cache,
 		cookies = utils.cookies,
 		domx = utils.domx;
@@ -11223,491 +11267,577 @@ define('skylark-totaljs-jcomponent/globals',[
 		http = utils.http,
 		localStorage = utils.localStorage,
 		logs = utils.logs;
+		W = window,
+		inited = false; 
 
-	// langx
-	langx.mixin(W,{
-		AJAXCONFIG: http.configure,
-		AJAX: http.ajax,
-		AJAXCACHE: http.ajaxCache,
-		AJAXCACHEREVIEW: http.ajaxCacheReview,
+	function init() {
+		if (inited) {
+			return W;
+		}
 
-		clearTimeout2: langx.clearTimeout2,
-		CACHE : cache.put,
-		CLEARCACHE : cache.clear,
-		CLEARSCHEDULE : schedulers.clear,
-		CLONE: langx.clone,
-		COOKIES : cookies,
-		COPY : langx.copy,
-		CSS : domx.style,
+		$.fn.scope = function() {
 
-		DEF : {},
+			if (!this.length) {
+				return null; 
+			}
 
-		EMPTYARRAY : langx.empties.array,
-		EMPTYOBJECT : langx.empties.object,
+			var data = this[0].$scopedata;
+			if (data) {
+				return data;
+			}
+			var el = this.closest('[' + ATTRSCOPE + ']');
+			if (el.length) {
+				data = el[0].$scopedata;
+				if (data) {
+					return data;
+				}
+			}
+			return null;
+		};	
 
-		GUID: langx.guid,
-		HASH: langx.hashCode,
+		$.fn.vbindarray = function() {
+			return domx.findinstance(this, '$vbindarray');
+		};
 
-		IMPORTCACHE: http.importCache,
-		IMPORT: http.import,
-
-		MAKEPARAMS: http.makeParams,
-		MEDIAQUERY : domx.watchMedia,
-
-		NOOP : langx.empties.fn,
-
-		PING: http.ping,
-
-		READPARAMS: http.parseQuery,
-		REMOVECACHE : cache.remove,
-
-		PARSE: langx.parse,
-
-		setTimeout2 : langx.setTimeout2,
-		SCHEDULE : schedulers.schedule,	
-		SCROLLBARWIDTH : domx.scrollbarWidth,
-		SINGLETON: langx.singleton,
-		STRINGIFY: langx.stringify,
-		STYLE: domx.style,
-
-		UPLOAD: http.upload,
-		UPTODATE: http.uptodate,
-
-		WAIT : langx.wait,
-
-		ERRORS : paths.errors,
-
-		WARN : logs.warn,
-
-		WIDTH : domx.mediaWidth,
+		$.fn.vbind = function() {
+			return domx.findinstance(this, '$vbind');
+		};
 		
 
-		FN : langx.arrowFn
-	});
+		var gv = new views.View(document.body,{
+				store : new stores.Store({
+								data : W
+							})
+			}),
+			gs = gv.storing,
+			gh = gv.helper,
+			gm = gv.composer,
+			gl = gv.compiler,
+			ge = gv.eventer;
+
+		$.components = gv.components;
+
+		langx.mixin(W, {
+			isPRIVATEMODE : false,
+			isMOBILE : /Mobi/.test(navigator.userAgent),
+			isROBOT : navigator.userAgent ? (/search|agent|bot|crawler|spider/i).test(navigator.userAgent) : true,
+			isSTANDALONE : navigator.standalone || window.matchMedia('(display-mode: standalone)').matches,
+			isTOUCH : !!('ontouchstart' in window || navigator.maxTouchPoints)
+		}); // W.MAIN = W.M = W.jC = W.COM = M = {};
+
+		//jc
+		/*
+		langx.each({
+			"MONTHS" : "months",
+			"DAYS" : "days"
+		},function(name1,name2){
+			Object.defineProperty(W, name1, {
+			    get() {
+			      return jc[name2];
+			    },
+			    set(value) {
+			    	jc[name2] = value;
+			    }
+			});	
+		});
+		*/
+
+		// langx
+		langx.mixin(W,{
+			AJAXCONFIG: http.configure,
+			AJAX: http.ajax,
+			AJAXCACHE: http.ajaxCache,
+			AJAXCACHEREVIEW: http.ajaxCacheReview,
+
+			clearTimeout2: langx.clearTimeout2,
+			CACHE : cache.put,
+			CLEARCACHE : cache.clear,
+			CLEARSCHEDULE : schedulers.clear,
+			CLONE: langx.clone,
+			COOKIES : cookies,
+			COPY : langx.copy,
+			CSS : domx.style,
+
+			DEF : {},
+
+			EMPTYARRAY : langx.empties.array,
+			EMPTYOBJECT : langx.empties.object,
+
+			GUID: langx.guid,
+			HASH: langx.hashCode,
+
+			LCOMPARER : langx.localCompare,
+			IMPORTCACHE: http.importCache,
+			IMPORT: http.import,
+
+			MAKEPARAMS: http.makeParams,
+			MEDIAQUERY : domx.watchMedia,
+
+			NOOP : langx.empties.fn,
+
+			PING: http.ping,
+
+			READPARAMS: http.parseQuery,
+			REMOVECACHE : cache.remove,
+
+			PARSE: langx.parse,
+
+			setTimeout2 : langx.setTimeout2,
+			SCHEDULE : schedulers.schedule,	
+			SCROLLBARWIDTH : domx.scrollbarWidth,
+			SINGLETON: langx.singleton,
+			STRINGIFY: langx.stringify,
+			STYLE: domx.style,
+
+			UPLOAD: http.upload,
+			UPTODATE: http.uptodate,
+
+			WAIT : langx.wait,
+
+			WARN : logs.warn,
+
+			WIDTH : domx.mediaWidth,
+			
+
+			FN : langx.arrowFn
+		});
 
 
 
-	//W.SCHEMA = function(name, declaration) {
-	//	return M.schema(name, declaration);
-	//};
+		//W.SCHEMA = function(name, declaration) {
+		//	return M.schema(name, declaration);
+		//};
 
-	// plugins
-	langx.mixin(W,{
-		PLUGIN : plugins.register,
-		PLUGINS : plugins.registry
-	});
+		// plugins
+		langx.mixin(W,{
+			PLUGIN : plugins.register,
+			PLUGINS : plugins.registry
+		});
 
-	W.ADD = gv.add;
+		W.ADD = gv.add;
 
-	W.BLOCKED  = blocking.blocked;
-	
-	W.CACHEPATH = function (path, expire, rebind) { 
-		return gs.cache(path, expire, rebind) ;
-	};
+		W.BIND = function(path) {
+			return gs.bind(path);
+		};
 
-	W.CHANGE = function (path, value) {
-		return gs.change(path.value);
-	};
+		W.BLOCKED  = blocks.blocked;
+		
+		W.CACHEPATH = function (path, expire, rebind) { 
+			return gs.cache(path, expire, rebind) ;
+		};
 
-	W.CHANGED = function(path) {
-		return gs.change(path);
-	};
+		W.CHANGE = function (path, value) {
+			return gs.change(path.value);
+		};
 
-	W.COMPILE = function(container) {
-		clearTimeout($recompile);
-		return compiler.compile(container);
-	};
+		W.CHANGED = function(path) {
+			return gs.change(path);
+		};
 
-	W.COMPONENT = components.register;
+		W.COMPILE = function(container) {
+			clearTimeout($recompile);
+			return gl.compile(container);
+		};
 
-	W.COMPONENT_CONFIG = components.configer;
+		W.COMPONENT = components.register;
 
-	W.COMPONENT_EXTEND = components.extend;
+		W.COMPONENT_CONFIG = components.configer;
 
-	W.CREATE = function(path) {
-		return gs.create(path);
-	}
+		W.COMPONENT_EXTEND = components.extend;
+
+		W.CREATE = function(path) {
+			return gs.create(path);
+		}
 
 
-   /**
-   * Sets default values for all declared components listen on the path.
-   * All components need to have declared data-jc-value="VALUE" attribute. 
-   * @param  {String} path 
-   * @param  {Number} delay Optional, default: 0 
-   * @param  {Boolean} reset Optional, default: true
-   */
-	W.DEFAULT = function (path, timeout, reset) { //
-		var arr = path.split(/_{2,}/);
-		if (arr.length > 1) {
-			var def = arr[1];
-			path = arr[0];
-			var index = path.indexOf('.*');
-			if (index !== -1)　{
-				path = path.substring(0, index);
+	   /**
+	   * Sets default values for all declared components listen on the path.
+	   * All components need to have declared data-jc-value="VALUE" attribute. 
+	   * @param  {String} path 
+	   * @param  {Number} delay Optional, default: 0 
+	   * @param  {Boolean} reset Optional, default: true
+	   */
+		W.DEFAULT = function (path, timeout, reset) { //
+			var arr = path.split(/_{2,}/);
+			if (arr.length > 1) {
+				var def = arr[1];
+				path = arr[0];
+				var index = path.indexOf('.*');
+				if (index !== -1)　{
+					path = path.substring(0, index);
+				}
+				SET(path, new Function('return ' + def)(), timeout > 10 ? timeout : 3, timeout > 10 ? 3 : null);
 			}
-			SET(path, new Function('return ' + def)(), timeout > 10 ? timeout : 3, timeout > 10 ? 3 : null);
+			return gs.default(arr[0], timeout, null, reset);
 		}
-		return gs.default(arr[0], timeout, null, reset);
-	}
 
-	W.EMIT = function(name) {
-		return ge.emit.apply(gs,arguments);
-	};
+		W.EMIT = function(name) {
+			return ge.emit.apply(gs,arguments);
+		};
 
-   /**
-   * Pushs a new item into the Array according to the path.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	W.EXTEND = function extend(path, value, timeout, reset) {
-		var t = typeof(timeout);
-		if (t === 'boolean') {
-			return gs.extend(path, value, timeout);
+		W.ERRORS =	function errors(path, except, highlight) { // 
+			return gs.errors(path,except,highlight);
+		};
+
+	   /**
+	   * Pushs a new item into the Array according to the path.
+	   * @param  {String} path 
+	   * @param  {Object|Array} value.
+	   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+	   * @param {Boolean} reset Optional
+	   */
+		W.EXTEND = function extend(path, value, timeout, reset) {
+			var t = typeof(timeout);
+			if (t === 'boolean') {
+				return gs.extend(path, value, timeout);
+			}
+			if (!timeout || timeout < 10 || t !== 'number') {
+				return gs.extend(path, value, timeout);
+			}
+			setTimeout(function() {
+				gs.extend(path, value, reset);
+			}, timeout);
+			return W; 
 		}
-		if (!timeout || timeout < 10 || t !== 'number') {
-			return gs.extend(path, value, timeout);
-		}
-		setTimeout(function() {
-			gs.extend(path, value, reset);
-		}, timeout);
-		return W; 
-	}
 
-   /**
-   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
-   * @param  {String} path 
-   * @param  {Object} value 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	W.EXTEND2 = function (path, value, type) {
-		W.EXTEND(path, value, type);
-		CHANGE(path);
+	   /**
+	   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
+	   * @param  {String} path 
+	   * @param  {Object} value 
+	   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+	   */
+		W.EXTEND2 = function (path, value, type) {
+			W.EXTEND(path, value, type);
+			CHANGE(path);
+			return W;
+		}
+
+		W.EVALUATE = function (path, expression, nopath) { 
+			return gs.evaluate(path, expression, nopath);
+		};
+
+
+		W.FIND = function (value, many, noCache, callback) {  
+			return gm.find(value, many, noCache, callback);
+		};
+
+		W.FREE = function(timeout) {
+			langx.setTimeout2('$clean', cleaner, timeout || 10);
+			return W;
+		};
+
+	   /**
+	   * Reads a value according to the path.
+	   * @param  {String} path 
+	   */
+		W.GET = function (path, scope) {
+			path = pathmaker(path);
+			if (scope === true) {
+				scope = null;
+				RESET(path, true);
+			}
+			return gs.get(path, scope); 
+		}
+
+	   /**
+	   * Reads value and resets all components according to the path.
+	   * @param  {String} path 
+	   */
+		W.GETR = function getr(path) { 
+			return GET(path, true);
+		}
+
+	   /**
+	   * Pushs a new item into the Array according to the path.
+	   * @param  {String} path 
+	   * @param  {Object|Array} value.
+	   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+	   * @param {Boolean} reset Optional
+	   */
+		W.INC = function (path, value, timeout, reset) {
+
+			if (value == null) {
+				value = 1;
+			}
+
+			var t = typeof(timeout);
+			if (t === 'boolean') {
+				return gs.inc(path, value, timeout);
+			}
+			if (!timeout || timeout < 10 || t !== 'number') {
+				return gs.inc(path, value, timeout);
+			}
+			setTimeout(function() {
+				gs.inc(path, value, reset);
+			}, timeout);
+			return W;
+		}
+
+	  /**
+	   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
+	   * @param  {String} path 
+	   * @param  {Object} value 
+	   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+	   */
+		W.INC2 = function (path, value, type) {
+			INC(path, value, type);
+			CHANGE(path);
+			return W;
+		};	
+
+		W.LASTMODIFICATION = W.USAGE = function (name, expire, path, callback) {
+			return gm.usage(name,expire,path,callback);
+		};
+
+		W.MAKE = function (obj, fn, update) {
+			return gs.make(obj,fn,update);
+		};
+
+		W.MODIFIED = function(path) {
+			return gs.modified(path);
+		};
+
+		W.NOTMODIFIED = function(path, value, fields) {
+
+		};	
+
+	   /**
+	   * Performs SET() and CHANGE() together.
+	   * @param  {String} path 
+	   * @param  {Object|Array} value.
+	   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+	   * @param {Boolean} reset Optional
+	   */
+		W.MODIFY =function (path, value, timeout) {
+			gs.modify(path,value,timeout);
+			return W;
+		};
+
+		W.NOTIFY = function() {
+			gm.notify.apply(gm,arguments);
+			return W;
+		};
+
+		W.OFF = function(name, path, fn) {
+			return ge.off(name,path,fn);
+		};	
+
+		W.ON = function(name, path, fn, init, context) {
+			return ge.on(name,path,fn,init,context);
+		};
+	   /**
+	    * creates an object with more readable properties.
+	    * @param  {String} obj  
+	    * @param  {Function} fn A maker
+	    */
+		W.OPT = function(obj, fn) {
+			if (langx.isFunction(obj)) {
+				fn = obj;
+				obj = {};
+			}
+			fn.call(obj, function(path, value) {
+				return gs.set2(obj, path, value);
+			});
+			return obj;
+		};
+
+
+	   /**
+	   * Pushs a new item into the Array according to the path.
+	   * @param  {String} path 
+	   * @param  {Object|Array} value.
+	   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
+	   * @param {Boolean} reset Optional
+	   */
+		W.PUSH =  function (path, value, timeout, reset) {
+			var t = typeof(timeout);
+			if (t === 'boolean') {
+				return gs.push(path, value, timeout);
+			}
+			if (!timeout || timeout < 10 || t !== 'number') {
+				return gs.push(path, value, timeout);
+			}
+			setTimeout(function() {
+				gs.push(path, value, reset);
+			}, timeout);
+			return W;
+		};
+
+	   /**
+	   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
+	   * @param  {String} path 
+	   * @param  {Object} value 
+	   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+	   */
+		W.PUSH2 = function (path, value, type) {
+			PUSH(path, value, type);
+			CHANGE(path);
+			return W;
+		};
+
+
+		var $recompile;
+
+		W.RECOMPILE = function () { 
+			$recompile && clearTimeout($recompile);
+			$recompile = setTimeout(function() {
+				COMPILE();
+				$recompile = null;
+			}, 700);
+		};
+
+		W.REMOVECACHE = cache.remove;
+
+		W.RESET = function(path, timeout, onlyComponent) {
+			return gs.reset(path,timeout,onlyComponent);
+		};
+
+		W.REWRITE =	function (path, value, type) {
+			return gs.rewrite(path,value,type);
+		};
+
+	   /**
+	   * Sets a new value according to the path..
+	   * @param  {String} path 
+	   * @param  {Object} value.
+	   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
+	   * @param {Boolean} reset Optional  default: false
+	   */
+		W.SET = function (path, value, timeout, reset) { 
+			var t = typeof(timeout);
+			if (t === 'boolean') {
+				return gs.setx(path, value, timeout);
+			}
+			if (!timeout || timeout < 10 || t !== 'number') {
+				return gs.setx(path, value, timeout);
+			}
+			setTimeout(function() {
+				gs.setx(path, value, reset);
+			}, timeout);
+			return W;
+		};
+
+	   /**
+	   * Sets a new value according to the path and performs CHANGE() for all components 
+	   * which are listening on the path.
+	   * @param  {String} path 
+	   * @param  {Object} value.
+	   * @param  {String/Number} type  Optional, value > 10 will be used as delay
+	   */
+		W.SET2 = function (path, value, type) { 
+			SET(path, value, type); 
+			CHANGE(path);
+			return W;
+		};
+
+	   /**
+	   * Sets a new value according to the path and resets the state. 
+	   * @param  {String} path 
+	   * @param  {Object} value.
+	   * @param  {String/Number} type  Optional, value > 10 will be used as delay
+	   */
+		W.SETR = function (path, value, type) {
+			gs.setx(path, value, type);
+			RESET(path); 
+			return W;
+		};
+
+		W.SKIP = function skip() { 
+			return gs.skip.apply(gv,arguments);
+		};
+
+	   /**
+	   * Performs toggle for the path. A value must be Boolean.
+	   * @param  {String} path 
+	   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
+	   * @param {Boolean} reset Optional  default: false
+	   */
+		W.TOGGLE = function toggle(path, timeout, reset) { 
+			var v = GET(path); 
+			SET(path, !v, timeout, reset); 
+			return W;
+		};
+
+	   /**
+	   * Performs toggle for the path and performs CHANGE() for all components which are listening on the path.
+	   * A value must be Boolean.
+	   * @param  {String} path 
+	   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
+	   */
+		W.TOGGLE2 = function (path, type) {
+			TOGGLE(path, type);
+			CHANGE(path);
+			return W;
+		};
+
+		W.UNWATCH  = function (path, fn) { 
+			return gs.unwatch(path, fn) ;
+		};
+
+		W.UPDATE = function (path, timeout, reset) {
+			var t = typeof(timeout); 
+			if (t === 'boolean') {
+				return gs.update(path, timeout);
+			}
+			if (!timeout || timeout < 10 || t !== 'number') {
+				return gs.update(path, reset, timeout);
+			}
+			setTimeout(function() {
+				gs.update(path, reset);
+			}, timeout);
+		};
+
+		W.UPDATE2 = function (path, type) {
+			UPDATE(path, type);
+			CHANGE(path); 
+			return W; 
+		};	
+
+		W.UPTODATE =function uptodate(period, url, callback, condition) {   
+
+			if (langx.isFunction(url)) {
+				condition = callback;
+				callback = url;
+				url = '';
+			}
+
+			var dt = new Date().add(period);
+			topic.on('knockknock', function() {
+				if (dt > langx.now()) //W.NOW)
+					return;
+				if (!condition || !condition())
+					return;
+				var id = setTimeout(function() {
+					var l = window.location;
+					if (url)
+						l.href = url.$env();
+					else
+						l.reload(true);
+				}, 5000);
+				callback && callback(id);
+			});
+		}
+
+
+		W.VBIND = binding.vbind;
+
+		W.VBINDARRAY = binding.vbindArray;
+
+		W.VALIDATE = function(path, except) {
+			return gm.validate(path,except);
+		};
+
+		W.VERSION = components.versions.set;
+
+		W.WATCH	= function (path, fn, init) { // 
+			return ge.watch(path, fn, init);
+		};
+
+		inited = true;
 		return W;
 	}
 
-	W.EVALUATE = function (path, expression, nopath) { 
-		return gs.evaluate(path, expression, nopath);
-	};
-
-
-	W.FIND = function (value, many, noCache, callback) {  
-		return gm.find(value, many, noCache, callback);
-	};
-
-	W.FREE = function(timeout) {
-		langx.setTimeout2('$clean', cleaner, timeout || 10);
-		return W;
-	};
-
-   /**
-   * Reads a value according to the path.
-   * @param  {String} path 
-   */
-	W.GET = function (path, scope) {
-		path = pathmaker(path);
-		if (scope === true) {
-			scope = null;
-			RESET(path, true);
-		}
-		return gs.get(path, scope); 
-	}
-
-   /**
-   * Reads value and resets all components according to the path.
-   * @param  {String} path 
-   */
-	W.GETR = function getr(path) { 
-		return GET(path, true);
-	}
-
-   /**
-   * Pushs a new item into the Array according to the path.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	W.INC = function (path, value, timeout, reset) {
-
-		if (value == null) {
-			value = 1;
-		}
-
-		var t = typeof(timeout);
-		if (t === 'boolean') {
-			return gs.inc(path, value, timeout);
-		}
-		if (!timeout || timeout < 10 || t !== 'number') {
-			return gs.inc(path, value, timeout);
-		}
-		setTimeout(function() {
-			gs.inc(path, value, reset);
-		}, timeout);
-		return W;
-	}
-
-  /**
-   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
-   * @param  {String} path 
-   * @param  {Object} value 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	W.INC2 = function (path, value, type) {
-		INC(path, value, type);
-		CHANGE(path);
-		return W;
-	};	
-
-	W.LASTMODIFICATION = W.USAGE = function (name, expire, path, callback) {
-		return gm.usage(name,expire,path,callback);
-	};
-
-	W.MAKE = function (obj, fn, update) {
-		return gs.make(obj,fn,update);
-	};
-
-	W.MODIFIED = function(path) {
-		return gs.modified(path);
-	};
-
-	W.NOTMODIFIED = function(path, value, fields) {
-
-	};	
-
-   /**
-   * Performs SET() and CHANGE() together.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	W.MODIFY =function (path, value, timeout) {
-		gs.modify(path,value,timeout);
-		return W;
-	};
-
-	W.NOTIFY = function() {
-		gm.notify.apply(gm,arguments);
-		return W;
-	};
-
-	W.OFF = function(name, path, fn) {
-		return ge.off(name,path,fn);
-	};	
-
-	W.ON = function(name, path, fn, init, context) {
-		return ge.on(name,path,fn,init,context);
-	};
-   /**
-    * creates an object with more readable properties.
-    * @param  {String} obj  
-    * @param  {Function} fn A maker
-    */
-	W.OPT = function(obj, fn) {
-		if (langx.isFunction(obj)) {
-			fn = obj;
-			obj = {};
-		}
-		fn.call(obj, function(path, value) {
-			return gs.set2(obj, path, value);
-		});
-		return obj;
-	};
-
-
-   /**
-   * Pushs a new item into the Array according to the path.
-   * @param  {String} path 
-   * @param  {Object|Array} value.
-   * @param  {String/Number} timeout  Optional, "value > 10" will be used as delay
-   * @param {Boolean} reset Optional
-   */
-	W.PUSH =  function (path, value, timeout, reset) {
-		var t = typeof(timeout);
-		if (t === 'boolean') {
-			return gs.push(path, value, timeout);
-		}
-		if (!timeout || timeout < 10 || t !== 'number') {
-			return gs.push(path, value, timeout);
-		}
-		setTimeout(function() {
-			gs.push(path, value, reset);
-		}, timeout);
-		return W;
-	};
-
-   /**
-   * Extends a path by adding/rewrite new fields with new values and performs CHANGE().
-   * @param  {String} path 
-   * @param  {Object} value 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	W.PUSH2 = function (path, value, type) {
-		PUSH(path, value, type);
-		CHANGE(path);
-		return W;
-	};
-
-
-	var $recompile;
-
-	W.RECOMPILE = function () { 
-		$recompile && clearTimeout($recompile);
-		$recompile = setTimeout(function() {
-			COMPILE();
-			$recompile = null;
-		}, 700);
-	};
-
-	W.REMOVECACHE = cache.remove;
-
-	W.RESET = function(path, timeout, onlyComponent) {
-		return gs.reset(path,timeout,onlyComponent);
-	};
-
-	W.REWRITE =	function (path, value, type) {
-		return gs.rewrite(path,value,type);
-	};
-
-   /**
-   * Sets a new value according to the path..
-   * @param  {String} path 
-   * @param  {Object} value.
-   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
-   * @param {Boolean} reset Optional  default: false
-   */
-	W.SET = function (path, value, timeout, reset) { 
-		var t = typeof(timeout);
-		if (t === 'boolean') {
-			return gs.setx(path, value, timeout);
-		}
-		if (!timeout || timeout < 10 || t !== 'number') {
-			return gs.setx(path, value, timeout);
-		}
-		setTimeout(function() {
-			gs.setx(path, value, reset);
-		}, timeout);
-		return W;
-	};
-
-   /**
-   * Sets a new value according to the path and performs CHANGE() for all components 
-   * which are listening on the path.
-   * @param  {String} path 
-   * @param  {Object} value.
-   * @param  {String/Number} type  Optional, value > 10 will be used as delay
-   */
-	W.SET2 = function (path, value, type) { 
-		SET(path, value, type); 
-		CHANGE(path);
-		return W;
-	};
-
-   /**
-   * Sets a new value according to the path and resets the state. 
-   * @param  {String} path 
-   * @param  {Object} value.
-   * @param  {String/Number} type  Optional, value > 10 will be used as delay
-   */
-	W.SETR = function (path, value, type) {
-		gs.setx(path, value, type);
-		RESET(path); 
-		return W;
-	};
-
-	W.SKIP = function skip() { 
-		return gs.skip.apply(gv,arguments);
-	};
-
-   /**
-   * Performs toggle for the path. A value must be Boolean.
-   * @param  {String} path 
-   * @param  {String/Number} timeout  Optional, value > 10 will be used as delay
-   * @param {Boolean} reset Optional  default: false
-   */
-	W.TOGGLE = function toggle(path, timeout, reset) { 
-		var v = GET(path); 
-		SET(path, !v, timeout, reset); 
-		return W;
-	};
-
-   /**
-   * Performs toggle for the path and performs CHANGE() for all components which are listening on the path.
-   * A value must be Boolean.
-   * @param  {String} path 
-   * @param {String|Number} type  Optional, "value > 10" will be used as timeout
-   */
-	W.TOGGLE2 = function (path, type) {
-		TOGGLE(path, type);
-		CHANGE(path);
-		return W;
-	};
-
-	W.UNWATCH  = function (path, fn) { 
-		return gs.unwatch(path, fn) ;
-	};
-
-	W.UPDATE = function (path, timeout, reset) {
-		var t = typeof(timeout); 
-		if (t === 'boolean') {
-			return gs.update(path, timeout);
-		}
-		if (!timeout || timeout < 10 || t !== 'number') {
-			return gs.update(path, reset, timeout);
-		}
-		setTimeout(function() {
-			gs.update(path, reset);
-		}, timeout);
-	};
-
-	W.UPDATE2 = function (path, type) {
-		UPDATE(path, type);
-		CHANGE(path); 
-		return W; 
-	};	
-
-	W.UPTODATE =function uptodate(period, url, callback, condition) {   
-
-		if (langx.isFunction(url)) {
-			condition = callback;
-			callback = url;
-			url = '';
-		}
-
-		var dt = new Date().add(period);
-		topic.on('knockknock', function() {
-			if (dt > langx.now()) //W.NOW)
-				return;
-			if (!condition || !condition())
-				return;
-			var id = setTimeout(function() {
-				var l = window.location;
-				if (url)
-					l.href = url.$env();
-				else
-					l.reload(true);
-			}, 5000);
-			callback && callback(id);
-		});
-	}
-
-	W.VBIND = binding.vbind,
-
-	W.VBINDARRAY = binding.vbindArray;
-
-	W.VALIDATE = function(path, except) {
-		return gm.validate(path,except);
-	};
-
-	W.VERSION = components.version;
-
-	W.WATCH	= function (path, fn, init) { // 
-		return ge.watch(path, fn, init);
-	};
-
-	return W;
+	return jc.globals = init;
 });
 define('skylark-totaljs-jcomponent/main',[
 	"./jc",

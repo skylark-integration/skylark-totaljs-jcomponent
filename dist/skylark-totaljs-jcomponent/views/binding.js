@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../utils/domx","../binding/parse"],function(r,e){return function(n){var i=[];return{parse:function(r,n,f){return e(r,n,f,{binders:i})},binder:function(r){return r.$jcbind},clean:function(){keys=Object.keys(i);for(var e=0;e<keys.length;e++){arr=i[keys[e]];for(var n=0;;){var f=arr[n++];if(!f)break;if(!r.inDOM(f.el[0])){var t=f.el;t[0].$br||(t.off(),t.find("*").off(),t[0].$br=1),n--,arr.splice(n,1)}}arr.length||delete i[keys[e]]}}}}});
+define(["../utils/domx","../binding/parse","../binding/pathmaker"],function(e,r,n){return function(i){var t,a=[],f=[];return{parse:function(e,n,i){return r(e,n,i,{binders:a,bindersnew:f})},pathmaker:n,binder:function(e){return e.$jcbind},rebindbinder:function(){t&&clearTimeout(t),t=setTimeout(function(){for(var e=f.splice(0),r=0;r<e.length;r++){var n=e[r];n.init||(n.com?n.exec(n.com.data(n.path),n.path):n.exec(getx(n.path),n.path))}},50)},clean:function(){keys=Object.keys(a);for(var r=0;r<keys.length;r++){arr=a[keys[r]];for(var n=0;;){var i=arr[n++];if(!i)break;if(!e.inDOM(i.el[0])){var t=i.el;t[0].$br||(t.off(),t.find("*").off(),t[0].$br=1),n--,arr.splice(n,1)}}arr.length||delete a[keys[r]]}}}}});
 //# sourceMappingURL=../sourcemaps/views/binding.js.map

@@ -63,7 +63,7 @@ define([
 		}
 
 		if (separator === undefined)
-			separator = MD.thousandsseparator;
+			separator = thousandsseparator; //MD.thousandsseparator
 
 		if (index !== -1) {
 			dec = num.substring(index + 1);

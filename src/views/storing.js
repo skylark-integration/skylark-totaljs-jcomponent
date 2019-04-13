@@ -11,6 +11,8 @@ define([
 	function storing (store,view) {
 		var cache = {}; // lwf
 
+		var skipproxy = '';
+
 
 		var data = store.data;
 
@@ -52,6 +54,7 @@ define([
 
 
 		var binders = {},
+
 			paths = {},
 			defaults = {},
 			$formatter = [],
@@ -59,6 +62,28 @@ define([
 			$parser = [],
 			nmCache = {},  // notmodified cache 
 			temp = {};
+
+
+		function bind(path) { // W.BIND = 
+			if (path instanceof Array) {
+				for (var i = 0; i < path.length; i++) {
+					bind(path[i]);
+				}
+				return this; // 
+			}
+			path = pathmaker(path);
+			if (!path) {
+				return this;
+			}
+			var is = path.charCodeAt(0) === 33; // !
+			if (is) {
+				path = path.substring(1);
+			}
+			path = path.replaceWildcard();
+			if(path){
+				set(path, get(path), true);	
+			} 
+		}
 
 		function binderbind(path, absolutePath, ticks) {
 			var arr = binders[path];
@@ -89,13 +114,13 @@ define([
 				callback = function(key) {
 
 					var p = path + (key ? '.' + key : '');
-					if (M.skipproxy === p) {
-						M.skipproxy = '';
+					if (skipproxy === p) {
+						skipproxy = '';
 						return;
 					}
 					setTimeout(function() {
-						if (M.skipproxy === p) {
-							M.skipproxy = '';
+						if (skipproxy === p) {
+							skipproxy = '';
 						} else {
 							notify(p);  // NOTIFY
 							reset(p);   // REEST
@@ -140,7 +165,7 @@ define([
 			var o = new Proxy(obj, handler);
 
 			if (is) {
-				M.skipproxy = path;
+				skipproxy = path;
 				getx(path) == null && setx(path, obj, true);  // GET SET
 				return proxy[path] = o;
 			} else
@@ -248,7 +273,7 @@ define([
 
 			var fn = (new Function('w', builder.join(';') + ';return w' + v));
 			paths[key] = fn;
-			return fn(scope || MD.scope);
+			return fn(scope || store.data);  // MD.scope
 		}
 
 		// set...
@@ -372,7 +397,7 @@ define([
 				type = 1;
 			}
 
-			M.skipproxy = path;
+			skipproxy = path;
 			set(path, value);
 
 			if (isUpdate) {
@@ -560,7 +585,7 @@ define([
 				type = 1; // manually
 			}
 
-			M.skipproxy = path;
+			skipproxy = path;
 
 			var all = view.components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
@@ -714,7 +739,7 @@ define([
 			}
 
 			var is = true;
-			M.skipproxy = path;
+			skipproxy = path;
 
 			if (value instanceof Array) {
 				if (value.length)
@@ -1111,7 +1136,7 @@ define([
 		function rewrite(path, value, type) { // W.REWRITE = 
 			path = pathmaker(path);
 			if (path) {
-				M.skipproxy = path;
+				skipproxy = path;
 				set(path, value);
 				emitwatch(path, value, type);
 			}
@@ -1205,7 +1230,7 @@ define([
 
 
 		return {
-		
+			"bind"  : bind,
 			"cache" : cache,
 			"can" : can,
 			"change" : change,

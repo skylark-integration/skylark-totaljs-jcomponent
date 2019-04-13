@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["skylark-utils-dom/query","../jc","../utils/cache","./_registry","./schedulers"],function(e,t,n,l,i){function r(e,t){/\W/.test(e)&&warn("Plugin name must contain A-Z chars only."),l[e]&&l[e].$remove(!0);var n=this;n.id="plug"+e,n.name=e,l[e]=n,t.call(n,n)}return r.prototype.$remove=function(){return!this.element||(i.clearAll(this.id),this.element=null,delete l[this.name],!0)},r});
+define(["skylark-utils-dom/query","../utils/cache","./_registry"],function(e,t,n){function i(e,t){/\W/.test(e)&&warn("Plugin name must contain A-Z chars only."),n[e]&&n[e].$remove(!0);var i=this;i.id="plug"+e,i.name=e,n[e]=i,t.call(i,i)}return i.prototype.$remove=function(){return!this.element||(this.element=null,delete n[this.name],!0)},i});
 //# sourceMappingURL=../sourcemaps/plugins/Plugin.js.map

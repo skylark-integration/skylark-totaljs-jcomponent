@@ -7,9 +7,5 @@ define([
 		return new VBinder(html);
 	};
 
-	$.fn.vbind = function() {
-		return domx.findinstance(this, '$vbind');
-	};
-
 	return vbind;
 });

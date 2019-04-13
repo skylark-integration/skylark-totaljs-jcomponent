@@ -10,15 +10,33 @@ define([
 			eventer = view.eventer,
 			compiler = view.compiler,
 			components = [],
+			lazycom = {},
 			caches = {
 				dirty : {},
 				valid : {},
-				find : {}
+				find : {},
+				clear : function(key1,key2,key3) {
+					for (var i = 1; i<arguments.length;i++) {
+						var key = arguments[i];
+						this[key] = {};
+					}
+				},
+
+				get : function(category,key) {
+					this[category][key];
+				},
+
+				set : function(category,key,value) {
+					this[category][key] = value;
+				}
+
 			},
 
 			defaults = {};
 
 		var knockknockcounter = 0;
+
+
 
 		setInterval(function() {
 			//W.DATETIME = W.NOW = new Date();
@@ -29,6 +47,19 @@ define([
 			eventer.emit('knockknock', knockknockcounter++);  // EMIT
 		}, 60000);
 
+		function checkLazy(name) {
+			var lo = lazycom[name];
+
+			if (!lo) {
+				var namea = name.substring(0, name.indexOf('@'));
+				if (namea && name !== namea) {
+					lo = lazycom[name] = lazycom[namea] = { state: 1 };
+				} else {
+					lo = lazycom[name] = { state: 1 };
+				}
+			}
+			return lo;			
+		}
 
 		function each(fn, path) {   // M.each
 			var wildcard = path ? path.lastIndexOf('*') !== -1 : false;
@@ -50,6 +81,33 @@ define([
 			return this;
 		}
 
+		function com_validate2(com) {
+
+			var valid = true;
+
+			if (com.disabled) {
+				return valid;
+			}
+
+			if (com.$valid_disabled) {
+				return valid;
+			}
+
+			var arr = [];
+			com.state && arr.push(com);
+			com.$validate = true;
+
+			if (com.validate) {
+				com.$valid = com.validate(get(com.path));
+				com.$interaction(102);
+				if (!com.$valid)
+					valid = false;
+			}
+
+			caches.clear('valid');
+			langx.state(arr, 1, 1);
+			return valid;
+		}
 
 		function com_dirty(path, value, onlyComponent, skipEmitState) {
 			var cache = caches.dirty;
@@ -129,8 +187,8 @@ define([
 					dirty = false;
 			}
 
-			cache = caches.dirty = {};  //clear('dirty');
-			cache[key] = dirty;
+			caches.clear('dirty');
+			caches.set('dirty',key,dirty);
 
 			// For double hitting component.state() --> look into COM.invalid()
 			!skipEmitState && state(arr, 1, 2);
@@ -138,7 +196,6 @@ define([
 		}
 
 		function com_valid(path, value, onlyComponent) {
-			var cache = caches.valid;
 
 			var isExcept = value instanceof Array;
 			var key =  path + (isExcept ? '>' + value.join('|') : ''); // 'valid' +
@@ -149,8 +206,10 @@ define([
 				value = undefined;
 			}
 
-			if (typeof(value) !== 'boolean' && cache[key] !== undefined) {
-				return cache[key];
+			var valid = caches.get("valid",key);
+
+			if (typeof(value) !== 'boolean' && valid !== undefined) {
+				return valid; //cache[key];
 			}
 
 			var flags = null;
@@ -170,7 +229,7 @@ define([
 				isExcept = except.length > 0;
 			}
 
-			var valid = true;
+			valid = true;
 			var arr = value !== undefined ? [] : null;
 
 			var index = path.lastIndexOf('.*');
@@ -218,8 +277,8 @@ define([
 				}
 			}
 
-			cache = caches.valid = {};  //clear('valid');
-			cache[key] = valid ;
+			caches.clear('valid');
+			caches.set('valid',key, valid) ;
 			langx.state(arr, 1, 1);
 			return valid;
 		}
@@ -313,7 +372,7 @@ define([
 				}
 			}
 
-			clear('valid');
+			caches.clear('valid');
 			state(arr, 1, 1);
 			return valid;
 		}
@@ -423,7 +482,7 @@ define([
 			}
 			storing.emit('@' + obj.name, obj); // EMIT
 			storing.emit(n, obj);  // EMIT
-			clear('find.');
+			caches.clear('find');
 			if (obj.$lazy) {
 				obj.$lazy.state = 3;
 				delete obj.$lazy;
@@ -497,7 +556,7 @@ define([
 
 			if (!noCache) {
 				key = value + '.' + (many ? 0 : 1);  // 'find.' + 
-				output = cache[key];
+				output = caches.get("find",key);//output = cache[key];
 				if (output) {
 					return output;
 				}
@@ -509,7 +568,7 @@ define([
 			}
 			output = r;
 			if (!noCache) {
-				cache[key] = output;
+				caches.set("find",key,output);//cache[key] = output;
 			}
 			return output;
 		}
@@ -715,8 +774,10 @@ define([
 
 
 		return {
+			"checkLazy" : checkLazy,
 			"clean" : clean,
 			"com_valid" : com_valid,
+			"com_validate2" : com_validate2,
 			"com_dirty" : com_dirty,
 			"each" : each,
 			"find"  : find,

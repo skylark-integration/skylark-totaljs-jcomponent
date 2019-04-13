@@ -1,7 +1,6 @@
 define([
-	"../jc",
 	"../langx"
-],function(jc,langx){
+],function(langx){
 	var schedulers = [];
 	var schedulercounter = 0;
 
@@ -64,7 +63,7 @@ define([
 	};
 
 
-	return jc.schedulers = {
+	return  {
 		clear,
 		clearAll,
 		schedule

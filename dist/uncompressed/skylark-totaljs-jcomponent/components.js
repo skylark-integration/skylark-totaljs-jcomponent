@@ -12,8 +12,8 @@ define([
 	"./components/registry",
 	"./components/register",
 	"./components/Usage",
-	"./components/version"
-],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,version){
+	"./components/versions"
+],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,versions){
 
 
 //	var components = {};
@@ -102,7 +102,7 @@ define([
 		"registry" : registry,
 		"register" : register,
 		"Usage" : Usage,
-		"version" : version
+		"versions" : versions
 
 	};
 

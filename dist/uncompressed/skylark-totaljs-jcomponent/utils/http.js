@@ -830,7 +830,7 @@ define([
 		ajaxCache,
 		ajaxCacheReview,
 		configure,
-		import2,
+		"import" : import2,
 		importCache,
 		makeParams,
 		ping,

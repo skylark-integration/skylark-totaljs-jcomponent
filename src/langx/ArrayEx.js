@@ -1,7 +1,8 @@
 define([
 	"skylark-langx/langx",
+	"./localCompare",
 	"./regexp"
-],function(slangx,regexp){
+],function(slangx,localCompare,regexp){
 
 	var AP = Array.prototype;
 	AP.wait = AP.waitFor = function(onItem, callback, thread, tmp) {
@@ -323,7 +324,7 @@ define([
 
 			// String
 			if (type === 1) {
-				return va && vb ? (asc ? LCOMPARER(va, vb) : LCOMPARER(vb, va)) : 0;
+				return va && vb ? (asc ? localCompare(va, vb) : localCompare(vb, va)) : 0;
 			} else if (type === 2) {
 				return va > vb ? (asc ? 1 : -1) : va < vb ? (asc ? -1 : 1) : 0;
 			} else if (type === 3) {

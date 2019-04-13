@@ -1,10 +1,8 @@
 define([
 	"skylark-utils-dom/query",
-	"../jc",
 	"../utils/cache",
-	"./_registry",
-	"./schedulers"
-],function($, jc, caches, registry,schedulers){
+	"./_registry"
+],function($, caches, registry){
 	
 	function Plugin(name, fn) {
 		if ((/\W/).test(name)) {
@@ -55,7 +53,7 @@ define([
 
 		// Remove schedulers
 		//schedulers = schedulers.remove('owner', self.id);
-		schedulers.clearAll(self.id);
+		//schedulers.clearAll(self.id);
 
 		// self.element.remove();
 		self.element = null;

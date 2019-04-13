@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../utils/domx","../utils/query","./VirtualBinder"],function(n,i,t){return i.fn.vbind=function(){return n.findinstance(this,"$vbind")},function(n){return new t(n)}});
+define(["../utils/domx","../utils/query","./VirtualBinder"],function(n,u,e){return function(n){return new e(n)}});
 //# sourceMappingURL=../sourcemaps/binding/vbind.js.map

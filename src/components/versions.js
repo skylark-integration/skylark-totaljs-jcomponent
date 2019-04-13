@@ -5,7 +5,7 @@ define([],function(){
    * sets a version for specific components.
    * ex : version('textbox@1', 'dropdown@1');
    */
-	function version() { // W.VERSION = 
+	function setVersion() { // W.VERSION = 
 		for (var j = 0; j < arguments.length; j++) {
 			var keys = arguments[j].split(',');
 			for (var i = 0; i < keys.length; i++) {
@@ -23,6 +23,13 @@ define([],function(){
 		}
 	}
 
-	return version;
+	function getVersion(name) {
+		return versions[name]
+	}
+
+	return {
+		"get" : getVersion,
+		"set" : setVersion
+	};
 	
 });

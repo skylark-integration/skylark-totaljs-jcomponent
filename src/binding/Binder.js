@@ -1,8 +1,8 @@
 define([
 	"../utils/query",
-	"../jc",
+	"../utils/http",
 	"../langx"
-],function($, jc,langx){
+],function($, langx){
 
 	var DEFMODEL = { value: null };
 	/*
@@ -136,11 +136,11 @@ define([
 			if (langx.isFunction(item.import)) {
 				if (value) {
 					!item.$ic && (item.$ic = {});
-					!item.$ic[value] && IMPORT('ONCE ' + value, el);
+					!item.$ic[value] && http.import('ONCE ' + value, el); //IMPORT
 					item.$ic[value] = 1;
 				}
 			} else {
-				IMPORT(item.import, el);
+				http.import(item.import, el); //IMPORT
 				delete item.import;
 			}
 		}

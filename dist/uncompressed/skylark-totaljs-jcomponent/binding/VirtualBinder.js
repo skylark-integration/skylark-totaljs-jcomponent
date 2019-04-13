@@ -13,10 +13,10 @@ define([
 			var dom = this;
 			var el = $(dom);
 			var b = el.attrd('bind') || el.attr('bind') || el.attrd('vbind');
-			dom.$jcbind = parsebinder(dom, b, langx.empties.array); //EMPTYARRAY);
-			if(dom.$jcbind) {
-			   t.binders.push(dom.$jcbind);
-			}
+			dom.$jcbind = parsebinder(dom, b, langx.empties.array,t.binders); //EMPTYARRAY);
+			//if(dom.$jcbind) {
+			//   t.binders.push(dom.$jcbind);
+			//}
 		};
 		e.filter(ATTRBIND).each(fn);
 		e.find(ATTRBIND).each(fn);
@@ -53,7 +53,7 @@ define([
 		for (var i = 0; i < t.binders.length; i++) {
 			var b = t.binders[i];
 			if (!path || path === b.path) {
-				var val = path || !b.path ? model : $get(b.path, model);
+				var val = path || !b.path ? model : langx.result(model,b.path); // get(b.path, model)
 				t.binders[i].exec(val, b.path);
 			}
 		}

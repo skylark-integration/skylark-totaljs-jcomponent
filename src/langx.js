@@ -1,6 +1,7 @@
 define([
 	"skylark-langx/langx",
 	"./jc",
+	"./langx/localCompare",
 	"./langx/regexp",
 	"./langx/now",
 	"./langx/statics",
@@ -8,7 +9,7 @@ define([
 	"./langx/DateEx",
 	"./langx/NumberEx",
 	"./langx/StringEx"
-],function(slangx,jc,regexp,now,statics){
+],function(slangx,jc,localCompare,regexp,now,statics){
 	var waits = {};
 
 	function async(arr, fn, done) {
@@ -39,7 +40,7 @@ define([
 		if (obj instanceof Date)
 			return new Date(obj.getTime());
 
-		return PARSE(JSON.stringify(obj));
+		return parse(JSON.stringify(obj));
 	}
 
 	function copy(a, b) {
@@ -83,7 +84,7 @@ define([
 		else if (s instanceof Date)
 			return s.getTime();
 		else if (type === TYPE_O)
-			s = STRINGIFY(s);
+			s = stringify(s);
 		var hash = 0, i, char;
 		if (!s.length)
 			return hash;
@@ -100,7 +101,7 @@ define([
 	 *  Parses JSON String to Object.
 	 *
 	 */
-	function parse(value, date) {
+	function parse(value, date) { // PARSE
 
 		// Is selector?
 		var c = value.substring(0, 1);
@@ -118,10 +119,6 @@ define([
 			return null;
 		}
 	}
-
-	var LCOMPARER = window.Intl ? window.Intl.Collator().compare : function(a, b) {
-		return a.localeCompare(b);
-	};
 
    /**
    * Wait for a feature
@@ -203,7 +200,7 @@ define([
 	 * @param 
 	 * @param {Array|Object} fields
 	 */
-	function stringify(obj, compress, fields) {
+	function stringify(obj, compress, fields) { //STRINGIFY
 		if(compress === undefined) {
 			compress = MD.jsoncompress;
 		} 
@@ -329,6 +326,7 @@ define([
 		isString : slangx.isString,
 		klass : slangx.klass,
 		mixin : slangx.mixin,
+		result : slangx.result,
 		topic : slangx.topic,
 
 		async:async,
@@ -339,6 +337,7 @@ define([
 		Evented : slangx.Evented,
 		guid:guid,
 		hashCode:hashCode,
+		localCompare : localCompare,
 		now:now,
 		parse:parse,
 		regexp:regexp,

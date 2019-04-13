@@ -1,19 +1,42 @@
 define([
 	"../utils/domx",
-	"../binding/parse"
-],function(domx, parsebinder){
+	"../binding/parse",
+	"../binding/pathmaker"
+],function(domx, parsebinder,pathmaker){
 	function binding(view) {
 		var binders = [];
+		var bindersnew = [];
+
  		//function parsebinder(el, b, scopes,
 
 		function parse(el,b,scopes) {
 			return parsebinder(el,b,scopes,{
-				"binders" : binders
+				"binders" : binders,
+				"bindersnew" : bindersnew
 			});
 		}
 
 		function binder(el) {
 			return el.$jcbind; 
+		}
+
+		var $rebinder;
+
+		function rebindbinder() {
+			$rebinder && clearTimeout($rebinder);
+			$rebinder = setTimeout(function() {
+				var arr = bindersnew.splice(0);
+				for (var i = 0; i < arr.length; i++) {
+					var item = arr[i];
+					if (!item.init) {
+						if (item.com) {
+							item.exec(item.com.data(item.path), item.path);
+						} else {
+							item.exec(getx(item.path), item.path);  // GET
+						}
+					}
+				}
+			}, 50);
 		}
 
 		function clean() {
@@ -46,7 +69,9 @@ define([
 
 		return {
 			"parse" : parse,
+			"pathmaker" : pathmaker,
 			"binder" : binder,
+			"rebindbinder" : rebindbinder,
 			"clean" : clean
 		}
 

@@ -10,25 +10,6 @@ define([
 	"./storing",
 ],function(langx, domx, binding, componenter, eventer,compiler, helper,scoper,storing){
 
-	var $rebinder;
-
-	function rebindbinder() {
-		$rebinder && clearTimeout($rebinder);
-		$rebinder = setTimeout(function() {
-			var arr = bindersnew.splice(0);
-			for (var i = 0; i < arr.length; i++) {
-				var item = arr[i];
-				if (!item.init) {
-					if (item.com) {
-						item.exec(item.com.data(item.path), item.path);
-					} else {
-						item.exec(getx(item.path), item.path);  // GET
-					}
-				}
-			}
-		}, 50);
-	}
-
 	function keypressdelay(self) {
 		var com = self.$com;
 		// Reset timeout
@@ -64,6 +45,7 @@ define([
 	    },
 
 		_construct : function(elm,options) {
+			domx.Plugin.prototype._construct.apply(this,arguments);
 
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
@@ -105,7 +87,7 @@ define([
 						return -1;
 					var al = a.path.length;
 					var bl = b.path.length;
-					return al > bl ? - 1 : al === bl ? LCOMPARER(a.path, b.path) : 1;
+					return al > bl ? - 1 : al === bl ? langx.localCompare(a.path, b.path) : 1;
 				});
 			}, 200);
 		},
@@ -230,7 +212,6 @@ define([
 				});
 
 				setTimeout(compile, 2);
-				$domready = true;
 			});
 
 		},

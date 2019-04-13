@@ -34,17 +34,22 @@
 	</div>
 
 	<script>
+		var $ = skylarkjs.dom.query;
+		$(function() {
+			skylarkjs.totaljs.jc.globals();
+			var form = {};
 
-		var form = {};
+			COMPONENT('newtask', function(self, config) {
+				self.make = function() {
+				};
 
-		COMPONENT('newtask', function(self, config) {
-			self.make = function() {
-			};
-
-			self.watch(function(path, value) {
-				console.log(path, value);
+				self.watch(function(path, value) {
+					console.log(path, value);
+				});
 			});
+			COMPILE();
 		});
+
 	</script>
 
 </body>

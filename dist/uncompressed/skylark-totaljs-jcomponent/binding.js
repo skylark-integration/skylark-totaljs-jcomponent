@@ -4,7 +4,6 @@ define([
 	"./langx",
 	"./plugins",
 	"./binding/Binder",
-	"./binding/bind",
 	"./binding/findFormat",
 	"./binding/func",
 	"./binding/parse",
@@ -12,7 +11,7 @@ define([
 	"./binding/VirtualBinder",
 	"./binding/vbind",
 	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,bind,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
+],function($, jc,langx,plugins,Binder,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
 
 	var REGCOMMA = /,/g;
 
@@ -43,7 +42,6 @@ define([
 		"parse" : parse,
 
 		"Binder" : Binder,
-		"bind" : bind,
 		"VirtualBinder" : VirtualBinder,
 		"vbind" : vbind,
 		"vbindArray" : vbindArray

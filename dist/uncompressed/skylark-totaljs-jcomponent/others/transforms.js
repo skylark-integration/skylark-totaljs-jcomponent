@@ -1,6 +1,5 @@
 define([
-	"./jc"
-],function(jc){
+],function(){
 	var registry = { //M.transforms
 
 	};
@@ -61,7 +60,7 @@ define([
 		return this;
 	};
 
-	return jc.transforms = {
+	return  {
 		register,
 		transform
 	}

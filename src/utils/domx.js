@@ -528,6 +528,10 @@ define([
 		$(window).on('orientationchange', mediaquery);
 	//}, 100);
 
+	$(function(){
+		$domready = true;
+	});
+
 	return {
 		"devices" : $devices,
 		"findInstance" : findInstance,

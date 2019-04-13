@@ -1,7 +1,8 @@
 define([
+	"skylark-langx/langx",
 	"./regexp",
 	"./now"
-],function(regexp,now){
+],function(slangx,regexp,now){
 	var REGWILDCARD = /\.\*/;
 
 	var REGEMPTY = /\s/g;
@@ -28,10 +29,11 @@ define([
 		var replace = function(t) {
 			return t.substring(0, 1) + '/';
 		};
-		if (r)
-			url = typeof(r) === TYPE_FN ? r(url) : ext.test(url) ? url : (r + url);
-		else if (!noBase && b)
-			url = typeof(b) === TYPE_FN ? b(url) : ext.test(url) ? url : (b + url);
+		if (r) {
+			url = slangx.isFunction(r) ? r(url) : ext.test(url) ? url : (r + url);
+		} else if (!noBase && b) {
+			url = slangx.isFunction(b)  ? b(url) : ext.test(url) ? url : (b + url);
+		}
 		return url.replace(/[^:]\/{2,}/, replace);
 	};
 
@@ -44,14 +46,14 @@ define([
 		var output;
 
 		switch (typeof(def)) {
-			case TYPE_FN:
+			case 'function':
 				callback = def;
 				output = {};
 				break;
-			case TYPE_S:
+			case 'string':
 				output = def.parseConfig();
 				break;
-			case TYPE_O:
+			case 'object':
 				if (def != null)
 					output = def;
 				else

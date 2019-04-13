@@ -4,14 +4,16 @@ define([
 	"../utils/domx",
 	"../utils/http",
 	"../components/registry",
+	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, registry,plugins){
+],function(langx, $, domx, http, registry,versions,plugins){
 	var statics = langx.statics;
 
 	var MD = {
 		fallback : 'https://cdn.componentator.com/j-{0}.html',
 		fallbackcache : '',
-		version : 'v16'
+		importcache : 'session',
+		version : ''
 	};
 
 	var fallback = { $: 0 }; // $ === count of new items in fallback
@@ -77,6 +79,7 @@ define([
 			eventer = view.eventer,
 			storing = view.storing,
 			scoper = view.scoper,
+			binding = view.binding,
 			componentater = view.componentater;
     
 		var is = false;
@@ -87,7 +90,6 @@ define([
 			imports = {},
 			toggles = [],
 			ready = [],
-			lazycom = {},
 			caches = {
 				current : {}
 			};
@@ -102,12 +104,12 @@ define([
 
 		var fallbackPending = [];
 
-		function download(view) {
+		function download() {
 
 			var arr = [];
 			var count = 0;
 
-			helper.findUrl(view._elm).each(function() {
+			helper.findUrl(view.elm()).each(function() {
 
 				var t = this;
 				var el = $(t);
@@ -194,7 +196,7 @@ define([
 				importing--;
 				componenter.clean(); // clear('valid', 'dirty', 'find');
 				if (count && canCompile){
-					view.compile();
+					compile();
 				}
 			});
 		}
@@ -221,7 +223,7 @@ define([
 			var next = pending.shift();
 			if (next) {
 				next();
-			} else if ($domready) {
+			} else { //if ($domready) {
 				if (ready) {
 					is = false;
 				}
@@ -356,8 +358,9 @@ define([
 				}
 
 				if (!is && name.lastIndexOf('@') === -1) {
-					if (versions[name]) {
-						name += '@' + versions[name];
+					var version = versions.get(name); 
+					if (version) {
+						name += '@' + version;
 					} else if (MD.version) {
 						name += '@' + MD.version;
 					}
@@ -367,16 +370,8 @@ define([
 				var lo = null;
 
 				if (lazy && name) {
-					var namea = name.substring(0, name.indexOf('@'));
-					lo = lazycom[name];
-					if (!lo) {
-						if (namea && name !== namea) {
-							lazycom[name] = lazycom[namea] = { state: 1 };
-						} else {
-							lazycom[name] = { state: 1 };
-						}
-						continue;
-					}
+					lo = componenter.checkLazy(name);;
+
 					if (lo.state === 1) {
 						continue;
 					}
@@ -407,7 +402,7 @@ define([
 					imports[x] = 1;
 					importing++;
 
-					http.import2(x, function() {
+					http.import(x, function() {
 						importing--;
 						imports[x] = 2;
 					});
@@ -452,7 +447,7 @@ define([
 					obj.$noscope = true;
 				}
 
-				obj.setPath(pathmaker(p, true), 1);
+				obj.setPath(binding.pathmaker(p, true), 1);
 				obj.config = {};
 
 				// Default config
@@ -632,13 +627,10 @@ define([
 
 		}
 		function crawler(container, onComponent, level, paths) {
-			var helper = view.helper,
-				binding = view.binding;
-
 			if (container) {
 				container = $(container)[0];
 			} else {
-				container = document.body;
+				container = view.elm();//document.body;
 			}
 
 			if (!container) {
@@ -658,7 +650,7 @@ define([
 
 			if (level == null || level === 0) {
 				paths = [];
-				if (container !== document.body) {
+				if (container !== view.elm()) { // document.body) {
 					/*
 					var scope = $(container).closest('[' + ATTRSCOPE + ']'); //ATTRCOPE
 					if (scope && scope.length) {
@@ -775,7 +767,6 @@ define([
 				}
 			}
 		}
-
 	
 		function compile(container,immediate) {
 			var self = this;
@@ -824,90 +815,90 @@ define([
 			crawler(container, onComponent);
 
 			// perform binder
-			rebindbinder();
+			binding.rebindbinder();
 
 			if (!has || !pending.length) {
 				is = false;
 			}
 
 			if (container !== undefined || !toggles.length) {
-				return nextpending();
+				return nextPending();
 			}
 
 			langx.async(toggles, function(item, next) {
 				for (var i = 0, length = item.toggle.length; i < length; i++)
 					item.element.tclass(item.toggle[i]);
 				next();
-			}, nextpending);
+			}, nextPending);
 		}		
 
-	function request() {
+		function request() {
 
-		langx.setTimeout2('$ready', function() {
+			langx.setTimeout2('$ready', function() {
 
-			mediaquery();
-			view.refresh(); // TODO
+				mediaquery();
+				view.refresh(); // TODO
 
-			function initialize() {
-				var item = initing.pop();
-				if (item === undefined)
-					!ready && compile();
-				else {
-					!item.$removed && prepare(item);
-					initialize();
+				function initialize() {
+					var item = initing.pop();
+					if (item === undefined)
+						!ready && compile();
+					else {
+						!item.$removed && prepare(item);
+						initialize();
+					}
 				}
-			}
 
-			initialize();
+				initialize();
 
-			var count = components.length; // M.components
-			$(document).trigger('components', [count]);
+				var count = componenter.components.length; // M.components
+				$(document).trigger('components', [count]);
 
-			if (!$loaded) {
-				$loaded = true;
-				caches.clear('valid', 'dirty', 'find');
-				topic.emit('init');
-				topic.emit('ready');
-			}
+				if (!$loaded) {
+					$loaded = true;
+					caches.clear('valid', 'dirty', 'find');
+					topic.emit('init');
+					topic.emit('ready');
+				}
 
-			langx.setTimeout2('$initcleaner', function() {
-				components.cleaner();
-				var arr = autofill.splice(0);
-				for (var i = 0; i < arr.length; i++) {
-					var com = arr[i];
-					!com.$default && findcontrol(com.element[0], function(el) {
-						var val = $(el).val();
-						if (val) {
-							var tmp = com.parser(val);
-							if (tmp && com.get() !== tmp) {
-								com.dirty(false, true);
-								com.set(tmp, 0);
+				langx.setTimeout2('$initcleaner', function() {
+					components.cleaner();
+					var arr = autofill.splice(0);
+					for (var i = 0; i < arr.length; i++) {
+						var com = arr[i];
+						!com.$default && helper.findControl(com.element[0], function(el) {
+							var val = $(el).val();
+							if (val) {
+								var tmp = com.parser(val);
+								if (tmp && com.get() !== tmp) {
+									com.dirty(false, true);
+									com.set(tmp, 0);
+								}
 							}
-						}
-						return true;
-					});
+							return true;
+						});
+					}
+				}, 1000);
+
+				is = false;
+
+				if (recompile) {
+					recompile = false;
+					compile();
 				}
-			}, 1000);
 
-			is = false;
-
-			if (recompile) {
-				recompile = false;
-				compile();
-			}
-
-			if (ready) {
-				var arr = ready;
-				for (var i = 0, length = arr.length; i < length; i++)
-					arr[i](count);
-				ready = undefined;
-				compile();
-				setTimeout(compile, 3000);
-				setTimeout(compile, 6000);
-				setTimeout(compile, 9000);
-			}
-		}, 100);
-	}
+				if (ready) {
+					var arr = ready;
+					for (var i = 0, length = arr.length; i < length; i++)
+						arr[i](count);
+					ready = undefined;
+					compile();
+					setTimeout(compile, 3000);
+					setTimeout(compile, 6000);
+					setTimeout(compile, 9000);
+				}
+			}, 100);
+		}
 
 		return {
 

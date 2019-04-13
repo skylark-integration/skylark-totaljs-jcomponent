@@ -7,33 +7,6 @@ define([
 
 	var counter = 0;
 
-	function com_validate2(com) {
-
-		var valid = true;
-
-		if (com.disabled) {
-			return valid;
-		}
-
-		if (com.$valid_disabled) {
-			return valid;
-		}
-
-		var arr = [];
-		com.state && arr.push(com);
-		com.$validate = true;
-
-		if (com.validate) {
-			com.$valid = com.validate(get(com.path));
-			com.$interaction(102);
-			if (!com.$valid)
-				valid = false;
-		}
-
-		clear('valid');
-		langx.state(arr, 1, 1);
-		return valid;
-	}
 
 	// ===============================================================
 	// COMPONENT DECLARATION
@@ -61,7 +34,7 @@ define([
 
 			self.view = view;
 			self.storing = view.storing;
-			
+
 			self.name = name;
 			self.$name = version === -1 ? name : name.substring(0, version);
 			self.version = version === -1 ? '' : name.substring(version + 1);
@@ -92,13 +65,13 @@ define([
 
 				// Binds a value
 				if (nobind) {
-					com_validate2(self);
+					self.view.componenter.com_validate2(self);
 				} else if (value !== self.get()) {
 					self.set(value, 2);
 				} else if (realtime === 3) {
 					// A validation for same values, "realtime=3" is in "blur" event
 					// Because we need to validate the input if the user leaves from the control
-					com_validate2(self);
+					self.view.componenter.com_validate2(self);
 				}
 			};
 

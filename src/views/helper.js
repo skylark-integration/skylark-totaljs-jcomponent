@@ -1,7 +1,8 @@
 define([
 	"../langx",	
+	"../utils/query",	
 	"../components/Component"
-],function(langx, Component){
+],function(langx, $,Component){
 
 
 	function helper(view) {
@@ -10,10 +11,11 @@ define([
 			ATTRDATA = 'jc',
 			ATTRDEL = 'data-jc-removed',
 			ATTRREL = 'data-jc-released',
-			ATTRSCOPE = 'data-jc-scope';
+			ATTRSCOPE = 'data-jc-scope',
+			ATTRCOMPILE = 'data-jc-comile';
 
 
-		var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind):|COMPONENT\(/;
+		var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind)=|COMPONENT\(/;
 
 		function findControl2(com, input) {
 
@@ -186,7 +188,7 @@ define([
 		}
 
 		function scope(el) {
-			var results = $(el).closest('[' + this.option("elmAttrNames.scope") + ']');
+			var results = $(el).closest('[' + ATTRCOMPILE + ']');
 			if (results && results.length) {
 				return reesults[0];
 			}
@@ -194,30 +196,30 @@ define([
 
 		function nocompile(el,value) {
 			if (value === undefined) {
-				var value = $(el).attr(view.option("elmAttrNames.compile")) ;
-				if (value === '0' || comp === 'false') {
+				var value = $(el).attr(ATTRCOMPILE) ;
+				if (value === '0' || value === 'false') {
 					// no compile
 					return true;
 				} else {
 					return false;
 				}
 			} else {
-				$(el).attr(view.option("elmAttrNames.compile"),value);
+				$(el).attr(ATTRCOMPILE,value);
 				return this; 
 			}
 		}
 
 		function released(el,value) {
 			if (value === undefined) {
-				var value = $(el).attr(view.option("elmAttrNames.released")) ;
-				if (value === '0' || comp === 'false') {
+				var value = $(el).attr(ATTRREL) ;
+				if (value === '0' || value === 'false') {
 					// no compile
 					return true;
 				} else {
 					return false;
 				}
 			} else {
-				$(el).attr(view.option("elmAttrNames.released"),value);
+				$(el).attr(ATTRREL,value);
 				return this; 
 			}
 		}		
@@ -227,8 +229,8 @@ define([
 			return REGCOM.test(html);
 		}
 
-		function findUrl(container,callback) {
-			return $(ATTRURL);
+		function findUrl(container) {
+			return $(ATTRURL,container);
 		}
 
 		function makeurl(url, make) {
@@ -258,18 +260,21 @@ define([
 		}
 
 		return {
+			"attrcom" 		: attrcom,
+			"attrbind"      : attrbind,
+			"attrscope"     : attrscope,
+			"canCompile"    : canCompile,
 			"Component"     : Component,
 			"findComponent" : findComponent,
 			"findControl" 	: findControl,
 			"findControl2" 	: findControl2,
-			"attrcom" 		: attrcom,
-			"attrbind"      : attrbind,
-			"attrscope"     : attrscope,
+			"findUrl"       : findUrl,
 			"kill"          : kill,
 			"makeurl"		: makeurl,
-			"scope" 		: scope,
+			"nested"        : nested,
 			"nocompile" 	: nocompile,
-			"released" 		: released
+			"released" 		: released,
+			"scope" 		: scope
 		};
 
 	}

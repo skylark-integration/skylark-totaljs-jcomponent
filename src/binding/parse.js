@@ -8,8 +8,7 @@ define([
 ],function(langx, $,func,pathmaker,findFormat,jBinder){
 	
 
-	var bindersnew = [];
-	
+
 	function parsebinderskip(str) {
 		var a = arguments;
 		for (var i = 1; i < a.length; i++) {
@@ -25,7 +24,8 @@ define([
 	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
 	 */
 	function parsebinder(el, b, scopes, options,r) {
-		var binders = options.binders;
+		var binders = options.binders,
+			bindersnew = options.bindersnew;
 		
 		var meta = b.split(/_{2,}/);
 		if (meta.indexOf('|') !== -1) {
