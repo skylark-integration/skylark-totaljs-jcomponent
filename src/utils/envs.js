@@ -1,7 +1,6 @@
 define([
-	"../langx",
-	"../jc",
-],function(langx, jc){
+	"../langx"
+],function(langx){
 	var topic = langx.topic;
 
 	var KEY_ENV = 'skylark.vmm.env',
@@ -21,7 +20,7 @@ define([
 	//var environment = MD.environment = {};
 	var vars = {};
 
-	function env (name, value) { // W.ENV
+	function variant(name, value) { // W.ENV
 
 		if (langx.isObject(name)) {
 			name && Object.keys(name).forEach(function(key) {
@@ -56,5 +55,25 @@ define([
 	};
 	*/
 
-	return jc.env = env;
+	function replace(str) {
+		return str.replace(REGENV, function(val) {
+			return vars[val.substring(1, val.length - 1)] || val;
+		});		
+	}
+
+
+	String.prototype.env = function() {
+		return replace(this);
+	};
+
+	String.prototype.$env = function() {
+		var self = this;
+		var index = this.indexOf('?');
+		return index === -1 ? self.env() : self.substring(0, index).env() + self.substring(index);
+	};
+
+	return {
+		"variant" : variant,
+		"replace" : replace 
+	}
 });

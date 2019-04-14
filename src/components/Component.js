@@ -7,6 +7,11 @@ define([
 
 	var counter = 0;
 
+	var MD = {
+		delay : 555,
+		delaywatcher : 555,
+		delaybinder : 200		
+	};
 
 	// ===============================================================
 	// COMPONENT DECLARATION
@@ -92,12 +97,17 @@ define([
 				var cache = self.$bindcache;
 				if (arguments.length) {
 
+					/*
 					if (skips[self.path]) {
 						var s = --skips[self.path];
 						if (s <= 0) {
 							delete skips[self.path];
 							return;
 						}
+					}
+					*/
+					if (self.view.storing.skipDec(self.path) == false) {
+						return;
 					}
 
 					if (self.$format) {
@@ -171,7 +181,7 @@ define([
 				var a = 'select-one';
 				value = self.formatter(value);
 
-				findControl(self.element[0], function(t) {
+				self.view.helper.findControl(self.element[0], function(t) {
 
 					if (t.$com !== self)
 						t.$com = self;
@@ -190,8 +200,9 @@ define([
 					if (value == null)
 						value = '';
 
-					if (!type && t.type !== a && t.type !== 'range' && !self.$default && !value)
-						autofill.push(t.$com);
+					if (!type && t.type !== a && t.type !== 'range' && !self.$default && !value) {
+						self.view.componenter.autofill.push(t.$com);
+					}
 
 					if (t.type === a || t.type === 'select') {
 						var el = $(t);
@@ -1234,7 +1245,7 @@ define([
 	 */
 	PPC.unwatch = function(path, fn) {
 		var self = this;
-		self.pathing.off('com' + self._id + '#watch', path, fn);  // OFF
+		self.view.eventer.off('com' + self._id + '#watch', path, fn);  // OFF
 		return self;
 	};
 
@@ -1280,7 +1291,7 @@ define([
 		self.$validate = false;
 		self.$interaction(102);
 		
-		self.storing.clear('valid');
+		self.view.componenter.cache.clear('valid');
 		
 		if (!noEmit && self.state) {
 			self.stateX(1, 1);
@@ -1329,7 +1340,7 @@ define([
 
 		self.$dirty = value;
 		self.$interaction(101);
-		self.storing.clear('dirty');
+		self.view.componenter.cache.clear('dirty');
 		if (!noEmit && self.state) {
 			self.stateX(2, 2);
 		}
@@ -1377,12 +1388,16 @@ define([
 
 		self.$removed = 1;
 		self.removed = true;
-		self.pathing.off('com' + self._id + '#'); // OFF
+		self.view.eventer.off('com' + self._id + '#'); // OFF
 		
 		if(!noClear) {
 			langx.setTimeout2('$cleaner', cleaner2, 100);
 		}
 		return true;
+	};
+
+	PPC.isRemoved = function() {
+
 	};
 
 	PPC.on = function(name, path, fn, init) {
@@ -1401,7 +1416,7 @@ define([
 			name = name.substring(1);
 		}
 
-		self.pathing.on(push + 'com' + self._id + '#' + name, path, fn, init, self); // ON
+		self.view.eventer.on(push + 'com' + self._id + '#' + name, path, fn, init, self); // ON
 		return self;
 	};
 
@@ -1436,7 +1451,7 @@ define([
 			}
 		}*/
 
-		value = self.storing.format(self.path,value,self.type); // TODO
+		value = self.storing.format(value,self.path,self.type); // TODO
 
 		return value;
 	};
@@ -1476,7 +1491,7 @@ define([
 		//		value = a[i].call(self, self.path, value, self.type);
 		//	}
 		//}
-		value = self.storing.parser(self.path,value,self.type);
+		value = self.storing.parser(value,self.path,self.type);
 
 		return value;
 	};
@@ -1485,7 +1500,7 @@ define([
 	 * Emits an event within jComponent. Is alias for EMIT() method.
 	 */
 	PPC.emit = function() {
-		self.pathing.emit.apply(self.pathing, arguments); // W>EMIT
+		self.view.eventer.emit.apply(self.view.eventer, arguments); // W>EMIT
 		return this;
 	};
 

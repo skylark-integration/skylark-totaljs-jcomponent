@@ -5,16 +5,18 @@ define([
 	var	SELINPUT = 'input,textarea,select';
 	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
 	
-	var MULTIPLE = ' + ';
-
-		
-	function storing (store,view) {
+	var REGISARR = /\[\d+\]$/;
+	
+	function storing (view) {
 		var cache = {}; // lwf
 
 		var skipproxy = '';
 
+		var eventer = view.eventer;
 
-		var data = store.data;
+		var store = view.option("store");
+
+
 
 		function parsepath(path) {
 			var arr = path.split('.');
@@ -51,7 +53,6 @@ define([
 
 			return builder;
 		}
-
 
 		var binders = {},
 
@@ -91,7 +92,7 @@ define([
 				var item = arr[i];
 				if (item.ticks !== ticks) {
 					item.ticks = ticks;
-					item.exec(getx(item.path), absolutePath);  //GET no pathmake
+					item.exec(get(item.path), absolutePath);  //GET no pathmake
 				}
 			}
 		}
@@ -133,7 +134,7 @@ define([
 			}
 
 			var blocked = false;
-			var obj = path ? (get2(path) || {}) : {};
+			var obj = path ? (get(path) || {}) : {}; // GET
 			var handler = {
 				get: function(target, property, receiver) {
 					try {
@@ -166,7 +167,7 @@ define([
 
 			if (is) {
 				skipproxy = path;
-				getx(path) == null && setx(path, obj, true);  // GET SET
+				get(path) == null && setx(path, obj, true);  // GET SET
 				return proxy[path] = o;
 			} else
 				return o;
@@ -218,7 +219,7 @@ define([
 					$formatter.push(value);
 				}
 
-				return M;
+				return this;  //M
 			}
 
 			var a = $formatter;
@@ -248,7 +249,7 @@ define([
 
 			var key = '=' + path;
 			if (paths[key]) {
-				return paths[key](scope || stores.root);
+				return paths[key](scope || store.data);
 			}
 
 			if (path.indexOf('?') !== -1) {
@@ -368,13 +369,13 @@ define([
 			if (path instanceof Array) {
 				for (var i = 0; i < path.length; i++) 
 					setx(path[i], value, type);
-				return M;
+				return this; // M
 			}
 
 			path = pathmaker(path);
 
 			if (!path) {
-				return M;
+				return this; // M
 			}
 
 			var is = path.charCodeAt(0) === 33; // !
@@ -388,7 +389,7 @@ define([
 			}
 
 			if (!path) {
-				return M;
+				return this; // M
 			}
 
 			var isUpdate = (typeof(value) === 'object' && !(value instanceof Array) && value != null);
@@ -411,7 +412,7 @@ define([
 				type = 1;
 			}
 
-			var all = view.components;//M.components;
+			var all = view.componenter.components;//M.components;
 
 			for (var i = 0, length = all.length; i < length; i++) {
 				var com = all[i];
@@ -466,8 +467,8 @@ define([
 				state[i].stateX(type, 5);
 			}
 
-			emitwatch(path, result, type);
-			return M;
+			eventer.emitwatch(path, result, type);
+			return this; // M;
 		}
 
 		function defaultValue(path, timeout, onlyComponent, reset) { //M.default = 
@@ -501,7 +502,7 @@ define([
 			}
 
 			var arr = [];
-			var all = view.components;//M.components;
+			var all = view.componenter.components;//M.components;
 
 			for (var i = 0, length = all.length; i < length; i++) {
 				var com = all[i];
@@ -587,7 +588,7 @@ define([
 
 			skipproxy = path;
 
-			var all = view.components;//M.components;
+			var all = view.componenter.components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
 				var com = all[i];
 
@@ -640,7 +641,7 @@ define([
 				state[i].stateX(1, 4);
 			}
 
-			emitwatch(path, get(path), type);
+			eventer.emitwatch(path, get(path), type);
 
 			return this; // M
 		}
@@ -991,7 +992,7 @@ define([
 			path = pathmaker(path).replaceWildcard();
 
 			var arr = [];
-			var all = view.components;//M.components;
+			var all = view.componenter.components;//M.components;
 
 			for (var i = 0, length = all.length; i < length; i++) {
 				var com = all[i];
@@ -1001,7 +1002,7 @@ define([
 
 				com.state && arr.push(com);
 
-				if (onlyComponent && onlyComponent._id !== com._id) {
+				if (onlyComponent && onlyComponent._id !== com._id) {	
 					continue;
 				}
 
@@ -1138,7 +1139,7 @@ define([
 			if (path) {
 				skipproxy = path;
 				set(path, value);
-				emitwatch(path, value, type);
+				eventer.emitwatch(path, value, type);
 			}
 			return this; // W
 		}
@@ -1214,7 +1215,7 @@ define([
 	   * @param  {String} pathB Absolute path according to the component "data-jc-path"  
 	   * @param  {String} pathN Absolute path according to the component "data-jc-path"  
 	   */
-		function skip() { // W.SKIP = 
+		function skipInc() { // W.SKIP = 
 			for (var j = 0; j < arguments.length; j++) {
 				var arr = arguments[j].split(',');
 				for (var i = 0, length = arr.length; i < length; i++) {
@@ -1228,6 +1229,16 @@ define([
 			}
 		}
 
+		function skipDec(p) { // 
+			if (skips[p]) {
+				var s = --skips[p];
+				if (s <= 0) {
+					delete skips[p];
+					return false;
+				}
+			}
+			return true
+		}
 
 		return {
 			"bind"  : bind,
@@ -1257,7 +1268,8 @@ define([
 			"set"  : set,
 			"set2" : set2,
  			"setx" : setx,
- 			"skip" : skip,
+ 			"skipInc" : skipInc,
+ 			"skipDec" : skipDec,
  			"update" : update,
  			"used" : used
 		};

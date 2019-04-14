@@ -12,6 +12,10 @@ define([
 ],function(slangx,jc,localCompare,regexp,now,statics){
 	var waits = {};
 
+	var MD = {
+		jsoncompress : false
+	};
+
 	function async(arr, fn, done) {
 		var item = arr.shift();
 		if (item == null) {

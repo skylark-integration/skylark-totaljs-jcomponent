@@ -16676,10 +16676,9 @@ define('skylark-totaljs-jcomponent/utils/cookies',[
 
 
 });
-define('skylark-totaljs-jcomponent/utils/env',[
-	"../langx",
-	"../jc",
-],function(langx, jc){
+define('skylark-totaljs-jcomponent/utils/envs',[
+	"../langx"
+],function(langx){
 	var topic = langx.topic;
 
 	var KEY_ENV = 'skylark.vmm.env',
@@ -16699,7 +16698,7 @@ define('skylark-totaljs-jcomponent/utils/env',[
 	//var environment = MD.environment = {};
 	var vars = {};
 
-	function env (name, value) { // W.ENV
+	function variant(name, value) { // W.ENV
 
 		if (langx.isObject(name)) {
 			name && Object.keys(name).forEach(function(key) {
@@ -16734,7 +16733,27 @@ define('skylark-totaljs-jcomponent/utils/env',[
 	};
 	*/
 
-	return jc.env = env;
+	function replace(str) {
+		return str.replace(REGENV, function(val) {
+			return vars[val.substring(1, val.length - 1)] || val;
+		});		
+	}
+
+
+	String.prototype.env = function() {
+		return replace(this);
+	};
+
+	String.prototype.$env = function() {
+		var self = this;
+		var index = this.indexOf('?');
+		return index === -1 ? self.env() : self.substring(0, index).env() + self.substring(index);
+	};
+
+	return {
+		"variant" : variant,
+		"replace" : replace 
+	}
 });
 define('skylark-totaljs-jcomponent/utils/logs',[
 	"../langx"
@@ -16758,19 +16777,19 @@ define('skylark-totaljs-jcomponent/utils',[
 	"./utils/cache",
 	"./utils/cookies",
 	"./utils/domx",
-	"./utils/env",
+	"./utils/envs",
 	"./utils/http",
 	"./utils/localStorage",
 	"./utils/logs",
 	"./utils/query"
-],function(jc,blocks,cache,cookies,domx,env,http,localStorage,logs,query){
+],function(jc,blocks,cache,cookies,domx,envs,http,localStorage,logs,query){
 	
 	return jc.utils = {
 		blocks : blocks,
 		cache : cache,
 		cookies : cookies,
 		domx : domx,
-		env : env,
+		envs : envs,
 		http : http,
 		localStorage : localStorage,
 		logs : logs,
@@ -20805,126 +20824,124 @@ define('skylark-totaljs-jcomponent/views/View',[
 		},
 
 		start : function() {
-			var $el = $(this.elm);
-			$(document).ready(function() {
+			var $el = $(this._elm);
 
-				if ($ready) {
-					clearTimeout($ready);
-					load();
+			//if ($ready) {
+			//	clearTimeout($ready);
+			//	load();
+			//}
+
+			$el.on('input', 'input[data-jc-bind],textarea[data-jc-bind]', function() {
+
+				// realtime binding
+				var self = this;
+				var com = self.$com;
+
+				if (!com || com.$removed || !com.getter || self.$jckeypress === false) {
+					return;
 				}
 
-				$el.on('input', 'input[data-jc-bind],textarea[data-jc-bind]', function() {
+				self.$jcevent = 2;
 
-					// realtime binding
-					var self = this;
-					var com = self.$com;
-
-					if (!com || com.$removed || !com.getter || self.$jckeypress === false) {
+				if (self.$jckeypress === undefined) {
+					var tmp = attrcom(self, 'keypress');
+					if (tmp)
+						self.$jckeypress = tmp === 'true';
+					else if (com.config.$realtime != null)
+						self.$jckeypress = com.config.$realtime === true;
+					else if (com.config.$binding)
+						self.$jckeypress = com.config.$binding === 1;
+					else
+						self.$jckeypress = MD.keypress;
+					if (self.$jckeypress === false)
 						return;
+				}
+
+				if (self.$jcdelay === undefined) {
+					self.$jcdelay = +(attrcom(self, 'keypress-delay') || com.config.$delay || MD.delay);
+				}
+
+				if (self.$jconly === undefined) {
+					self.$jconly = attrcom(self, 'keypress-only') === 'true' || com.config.$keypress === true || com.config.$binding === 2;
+				}
+
+				if (self.$jctimeout) {
+					clearTimeout(self.$jctimeout);	
+				} 
+				self.$jctimeout = setTimeout(keypressdelay, self.$jcdelay, self);
+			});
+
+			$el.on('focus blur', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function(e) {
+
+				var self = this;
+				var com = self.$com;
+
+				if (!com || com.$removed || !com.getter)
+					return;
+
+				if (e.type === 'focusin')
+					self.$jcevent = 1;
+				else if (self.$jcevent === 1) {
+					com.dirty(false, true);
+					com.getter(self.value, 3);
+				} else if (self.$jcskip) {
+					self.$jcskip = false;
+				} else {
+					// formatter
+					var tmp = com.$skip;
+					if (tmp)
+						com.$skip = false;
+					com.setter(com.get(), com.path, 2);
+					if (tmp) {
+						com.$skip = tmp;
 					}
+				}
+			});
 
-					self.$jcevent = 2;
+			$el.on('change', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function() {
 
-					if (self.$jckeypress === undefined) {
-						var tmp = attrcom(self, 'keypress');
-						if (tmp)
-							self.$jckeypress = tmp === 'true';
-						else if (com.config.$realtime != null)
-							self.$jckeypress = com.config.$realtime === true;
-						else if (com.config.$binding)
-							self.$jckeypress = com.config.$binding === 1;
-						else
-							self.$jckeypress = MD.keypress;
-						if (self.$jckeypress === false)
-							return;
-					}
+				var self = this;
+				var com = self.$com;
 
-					if (self.$jcdelay === undefined) {
-						self.$jcdelay = +(attrcom(self, 'keypress-delay') || com.config.$delay || MD.delay);
-					}
+				if (self.$jconly || !com || com.$removed || !com.getter)
+					return;
 
-					if (self.$jconly === undefined) {
-						self.$jconly = attrcom(self, 'keypress-only') === 'true' || com.config.$keypress === true || com.config.$binding === 2;
-					}
+				if (self.$jckeypress === false) {
+					// bind + validate
+					self.$jcskip = true;
+					com.getter(self.value, false);
+					return;
+				}
 
-					if (self.$jctimeout) {
-						clearTimeout(self.$jctimeout);	
-					} 
-					self.$jctimeout = setTimeout(keypressdelay, self.$jcdelay, self);
-				});
-
-				$el.on('focus blur', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function(e) {
-
-					var self = this;
-					var com = self.$com;
-
-					if (!com || com.$removed || !com.getter)
-						return;
-
-					if (e.type === 'focusin')
-						self.$jcevent = 1;
-					else if (self.$jcevent === 1) {
+				switch (self.tagName) {
+					case 'SELECT':
+						var sel = self[self.selectedIndex];
+						self.$jcevent = 2;
 						com.dirty(false, true);
-						com.getter(self.value, 3);
-					} else if (self.$jcskip) {
-						self.$jcskip = false;
-					} else {
-						// formatter
-						var tmp = com.$skip;
-						if (tmp)
-							com.$skip = false;
-						com.setter(com.get(), com.path, 2);
-						if (tmp) {
-							com.$skip = tmp;
-						}
-					}
-				});
-
-				$el.on('change', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function() {
-
-					var self = this;
-					var com = self.$com;
-
-					if (self.$jconly || !com || com.$removed || !com.getter)
+						com.getter(sel.value, false);
 						return;
-
-					if (self.$jckeypress === false) {
-						// bind + validate
-						self.$jcskip = true;
-						com.getter(self.value, false);
-						return;
-					}
-
-					switch (self.tagName) {
-						case 'SELECT':
-							var sel = self[self.selectedIndex];
+					case 'INPUT':
+						if (self.type === 'checkbox' || self.type === 'radio') {
 							self.$jcevent = 2;
 							com.dirty(false, true);
-							com.getter(sel.value, false);
+							com.getter(self.checked, false);
 							return;
-						case 'INPUT':
-							if (self.type === 'checkbox' || self.type === 'radio') {
-								self.$jcevent = 2;
-								com.dirty(false, true);
-								com.getter(self.checked, false);
-								return;
-							}
-							break;
-					}
+						}
+						break;
+				}
 
-					if (self.$jctimeout) {
-						com.dirty(false, true);
-						com.getter(self.value, true);
-						clearTimeout(self.$jctimeout);
-						self.$jctimeout = 0;
-					} else {
-						self.$jcskip = true;
-						com.setter && com.setterX(com.get(), self.path, 2);
-					}
-				});
-
-				setTimeout(compile, 2);
+				if (self.$jctimeout) {
+					com.dirty(false, true);
+					com.getter(self.value, true);
+					clearTimeout(self.$jctimeout);
+					self.$jctimeout = 0;
+				} else {
+					self.$jcskip = true;
+					com.setter && com.setterX(com.get(), self.path, 2);
+				}
 			});
+
+			//setTimeout(compile, 2);
 
 		},
 
@@ -21119,7 +21136,7 @@ define('skylark-totaljs-jcomponent/globals',[
 		cache = utils.cache,
 		cookies = utils.cookies,
 		domx = utils.domx;
-		env = utils.env,
+		envs = utils.envs,
 		http = utils.http,
 		localStorage = utils.localStorage,
 		logs = utils.logs;
@@ -21171,6 +21188,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			gl = gv.compiler,
 			ge = gv.eventer;
 
+		gv.start();
 		$.components = gv.components;
 
 		langx.mixin(W, {
@@ -21210,6 +21228,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			CLEARCACHE : cache.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
+			ENV: envs.variant,
 			COOKIES : cookies,
 			COPY : langx.copy,
 			CSS : domx.style,

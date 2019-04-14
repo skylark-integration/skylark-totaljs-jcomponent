@@ -1,17 +1,21 @@
 define([
 	"../langx",
+	"../utils/domx",
+	"../utils/logs",
 	"../components/extensions",
 	"../components/registry"
-],function(langx, extensions, registry){
-	
-	function componentor(view) {
+],function(langx, domx, logs,extensions, registry){
+	var warn = logs.warn;
+
+	function componenter(view) {
 		var helper = view.helper,
-			storing = view.storing,
 			eventer = view.eventer,
+			storing = view.storing,
 			compiler = view.compiler,
 			components = [],
 			lazycom = {},
-			caches = {
+			autofill = [],
+			cache = {
 				dirty : {},
 				valid : {},
 				find : {},
@@ -104,13 +108,12 @@ define([
 					valid = false;
 			}
 
-			caches.clear('valid');
+			cache.clear('valid');
 			langx.state(arr, 1, 1);
 			return valid;
 		}
 
 		function com_dirty(path, value, onlyComponent, skipEmitState) {
-			var cache = caches.dirty;
 			var isExcept = value instanceof Array;
 			var key = path + (isExcept ? '>' + value.join('|') : '');  // 'dirty' + 
 			var except = null;
@@ -120,11 +123,12 @@ define([
 				value = undefined;
 			}
 
-			if (typeof(value) !== 'boolean' && cache[key] !== undefined) {
-				return cache[key];
+			var dirty = cache.get("dirty",key);
+			if (typeof(value) !== 'boolean' && dirty !== undefined) {
+				return dirty;
 			}
 
-			var dirty = true;
+			dirty = true;
 			var arr = value !== undefined ? [] : null;
 			var flags = null;
 
@@ -187,8 +191,8 @@ define([
 					dirty = false;
 			}
 
-			caches.clear('dirty');
-			caches.set('dirty',key,dirty);
+			cache.clear('dirty');
+			cache.set('dirty',key,dirty);
 
 			// For double hitting component.state() --> look into COM.invalid()
 			!skipEmitState && state(arr, 1, 2);
@@ -206,7 +210,7 @@ define([
 				value = undefined;
 			}
 
-			var valid = caches.get("valid",key);
+			var valid = cache.get("valid",key);
 
 			if (typeof(value) !== 'boolean' && valid !== undefined) {
 				return valid; //cache[key];
@@ -277,8 +281,8 @@ define([
 				}
 			}
 
-			caches.clear('valid');
-			caches.set('valid',key, valid) ;
+			cache.clear('valid');
+			cache.set('valid',key, valid) ;
 			langx.state(arr, 1, 1);
 			return valid;
 		}
@@ -290,7 +294,7 @@ define([
 		function notify() { // W.NOTIFY
 
 			var arg = arguments;
-			var all = view.components;//M.components;
+			var all = components;//M.components;
 
 			var $ticks = Math.random().toString().substring(2, 8);
 			for (var j = 0; j < arg.length; j++) {
@@ -320,7 +324,7 @@ define([
 			}
 
 			for (var j = 0; j < arg.length; j++) {
-				emitwatch(arg[j], getx(arg[j]), 1);  // GET
+				eventer.emitwatch(arg[j], getx(arg[j]), 1);  // GET
 			}
 
 			return this;  // W
@@ -349,7 +353,7 @@ define([
 				!except.length && (except = null);
 			}
 
-			var all = M.components.all;//M.components;
+			var all = components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
 				var com = all[i];
 				if (!com || com.$removed || com.disabled || !com.$loaded || !com.path || !com.$compare(path))
@@ -372,7 +376,7 @@ define([
 				}
 			}
 
-			caches.clear('valid');
+			cache.clear('valid');
 			state(arr, 1, 1);
 			return valid;
 		}
@@ -419,8 +423,8 @@ define([
 						obj.$default = defaults[tmp];
 						if (value === undefined) {
 							value = obj.$default();
-							storing.set(obj.path, value);
-							storing.emitwatch(obj.path, value, 0);
+							view.storing.set(obj.path, value);
+							eventer.emitwatch(obj.path, value, 0);
 						}
 					}
 
@@ -478,15 +482,15 @@ define([
 			})(cls);
 
 			if (obj.id) {
-				storing.emit('#' + obj.id, obj);  // EMIT
+				eventer.emit('#' + obj.id, obj);  // EMIT
 			}
-			storing.emit('@' + obj.name, obj); // EMIT
-			storing.emit(n, obj);  // EMIT
-			caches.clear('find');
+			eventer.emit('@' + obj.name, obj); // EMIT
+			eventer.emit(n, obj);  // EMIT
+			cache.clear('find');
 			if (obj.$lazy) {
 				obj.$lazy.state = 3;
 				delete obj.$lazy;
-				storing.emit('lazy', obj.$name, false); // EMIT
+				eventer.emit('lazy', obj.$name, false); // EMIT
 			}
 		}
 
@@ -505,7 +509,6 @@ define([
          * returns {Component} or {Array Component}
 		 */
 		function find(value, many, noCache, callback) { //W.FIND
-			var cache = caches.find;
 
 			var isWaiting = false;
 
@@ -556,7 +559,7 @@ define([
 
 			if (!noCache) {
 				key = value + '.' + (many ? 0 : 1);  // 'find.' + 
-				output = caches.get("find",key);//output = cache[key];
+				output = cache.get("find",key);//output = cache[key];
 				if (output) {
 					return output;
 				}
@@ -568,7 +571,7 @@ define([
 			}
 			output = r;
 			if (!noCache) {
-				caches.set("find",key,output);//cache[key] = output;
+				cache.set("find",key,output);//cache[key] = output;
 			}
 			return output;
 		}
@@ -609,7 +612,7 @@ define([
 
 					if (lazycom[selector].state === 1) {
 						lazycom[selector].state = 2;
-						storing.emit('lazy', selector, true); // EMIT
+						eventer.emit('lazy', selector, true); // EMIT
 						warn('Lazy load: ' + selector);
 						compiler.compile();
 					}
@@ -639,7 +642,7 @@ define([
 
 					if (lazycom[selector].state === 1) {
 						lazycom[selector].state = 2;
-						storing.emit('lazy', selector, true);  // EMIT
+						eventer.emit('lazy', selector, true);  // EMIT
 						warn('Lazy load: ' + selector);
 						compiler.compile();
 					}
@@ -725,14 +728,14 @@ define([
 				}
 
 				var c = component.element;
-				if (!component.$removed && c && inDOM(c[0])) {
-					if (!component.attr(ATTRDEL)) {
+				if (!component.$removed && c && domx.inDOM(c[0])) {
+					//if (!component.attr(ATTRDEL)) {  // TODO
 						if (component.$parser && !component.$parser.length)
 							component.$parser = undefined;
 						if (component.$formatter && !component.$formatter.length)
 							component.$formatter = undefined;
 						continue;
-					}
+					//}
 				}
 
 				eventer.emit('destroy', component.name, component);
@@ -765,17 +768,16 @@ define([
 				is = true;
 			}
 
-			caches = {
-				dirty : {},
-				valid : {},
-				find : {}
-			};			
+			cache.clear("dirty","valid","find");
 		}
 
 
 		return {
+			"autofill"  : autofill,
+			"cache" : cache,
 			"checkLazy" : checkLazy,
 			"clean" : clean,
+			"components" : components,
 			"com_valid" : com_valid,
 			"com_validate2" : com_validate2,
 			"com_dirty" : com_dirty,
@@ -791,5 +793,5 @@ define([
 	}
 	
 
-	return componentor;
+	return componenter;
 });

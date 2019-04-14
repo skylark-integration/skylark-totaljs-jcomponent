@@ -16,7 +16,7 @@ define([
 		cache = utils.cache,
 		cookies = utils.cookies,
 		domx = utils.domx;
-		env = utils.env,
+		envs = utils.envs,
 		http = utils.http,
 		localStorage = utils.localStorage,
 		logs = utils.logs;
@@ -68,6 +68,7 @@ define([
 			gl = gv.compiler,
 			ge = gv.eventer;
 
+		gv.start();
 		$.components = gv.components;
 
 		langx.mixin(W, {
@@ -107,6 +108,7 @@ define([
 			CLEARCACHE : cache.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
+			ENV: envs.variant,
 			COOKIES : cookies,
 			COPY : langx.copy,
 			CSS : domx.style,

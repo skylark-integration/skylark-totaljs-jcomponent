@@ -1,6 +1,5 @@
 define([
 	"./jc",
-	"./defaults",
 	"./langx",
 	"./utils",
 	"./plugins",
@@ -10,13 +9,13 @@ define([
 	"./views",
 	"./others/schedulers",
 	"./others/transforms"
-],function(jc, defaults, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
+],function(jc, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
 	var $ = utils.query,
 	    blocks = utils.blocks,
 		cache = utils.cache,
 		cookies = utils.cookies,
 		domx = utils.domx;
-		env = utils.env,
+		envs = utils.envs,
 		http = utils.http,
 		localStorage = utils.localStorage,
 		logs = utils.logs;
@@ -68,6 +67,7 @@ define([
 			gl = gv.compiler,
 			ge = gv.eventer;
 
+		gv.start();
 		$.components = gv.components;
 
 		langx.mixin(W, {
@@ -107,6 +107,7 @@ define([
 			CLEARCACHE : cache.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
+			ENV: envs.variant,
 			COOKIES : cookies,
 			COPY : langx.copy,
 			CSS : domx.style,
@@ -495,8 +496,8 @@ define([
 			return W;
 		};
 
-		W.SKIP = function skip() { 
-			return gs.skip.apply(gv,arguments);
+		W.SKIP = function () { 
+			return gs.skipInc.apply(gs,arguments);
 		};
 
 	   /**

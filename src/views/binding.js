@@ -32,7 +32,7 @@ define([
 						if (item.com) {
 							item.exec(item.com.data(item.path), item.path);
 						} else {
-							item.exec(getx(item.path), item.path);  // GET
+							item.exec(view.storing.get(item.path), item.path);  // GET
 						}
 					}
 				}

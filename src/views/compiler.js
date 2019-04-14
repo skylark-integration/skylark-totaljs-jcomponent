@@ -4,9 +4,10 @@ define([
 	"../utils/domx",
 	"../utils/http",
 	"../components/registry",
+	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, registry,versions,plugins){
+],function(langx, $, domx, http, registry,configs,versions,plugins){
 	var statics = langx.statics;
 
 	var MD = {
@@ -80,7 +81,7 @@ define([
 			storing = view.storing,
 			scoper = view.scoper,
 			binding = view.binding,
-			componentater = view.componentater;
+			componenter = view.componenter;
     
 		var is = false;
 			recompile = false,
@@ -90,7 +91,7 @@ define([
 			imports = {},
 			toggles = [],
 			ready = [],
-			caches = {
+			cache = {
 				current : {}
 			};
 
@@ -161,7 +162,7 @@ define([
 
 					key = '$import' + key;
 
-					caches.current.element = item.element[0];
+					cache.current.element = item.element[0];
 
 					if (statics[key]) {
 						response = domx.removescripts(response);
@@ -186,7 +187,7 @@ define([
 						}
 					}
 
-					caches.current.element = null;
+					cache.current.element = null;
 					count++;
 					next();
 
@@ -480,9 +481,9 @@ define([
 					con.fn(obj) && obj.reconfigure(con.config, NOOP);
 				}
 
-				caches.current.com = obj;
+				cache.current.com = obj;
 				com.declaration.call(obj, obj, obj.config);
-				caches.current.com = null;
+				cache.current.com = null;
 
 				meta[3] && el.attrd('jc-value', meta[3]);
 
@@ -536,10 +537,10 @@ define([
 						}
 						dependencies(com, function(obj, el) {
 							if (langx.isFunction(obj.make)) {
-								var parent = caches.current.com;
-								caches.current.com = obj;
+								var parent = cache.current.com;
+								cache.current.com = obj;
 								obj.make(data);
-								caches.current.com = parent;
+								cache.current.com = parent;
 							}
 							init(el, obj);
 						}, obj, el);
@@ -595,10 +596,10 @@ define([
 					dependencies(com, function(obj, el) {
 
 						if (obj.make) {
-							var parent = caches.current.com;
-							caches.current.com = obj;
+							var parent = cache.current.com;
+							cache.current.com = obj;
 							obj.make();
-							caches.current.com = parent;
+							cache.current.com = parent;
 						}
 
 						init(el, obj);
@@ -609,10 +610,10 @@ define([
 					setTimeout(function(init, el, obj) {
 
 						if (obj.make) {
-							var parent = caches.current.com;
-							caches.current.com = obj;
+							var parent = cache.current.com;
+							cache.current.com = obj;
 							obj.make();
-							caches.current.com = parent;
+							cache.current.com = parent;
 						}
 
 						init(el, obj);
@@ -763,7 +764,7 @@ define([
 			if (binders) {
 				for (var i = 0; i < binders.length; i++) {
 					var a = binders[i];
-					a.el.$jcbind = parsebinder(a.el, a.b, paths);
+					a.el.$jcbind = binding.parse(a.el, a.b, paths); //parsebinder
 				}
 			}
 		}
@@ -836,7 +837,7 @@ define([
 
 			langx.setTimeout2('$ready', function() {
 
-				mediaquery();
+				//mediaquery(); // TODO
 				view.refresh(); // TODO
 
 				function initialize() {
@@ -844,7 +845,9 @@ define([
 					if (item === undefined)
 						!ready && compile();
 					else {
-						!item.$removed && prepare(item);
+						if (!item.$removed) {
+							componenter.prepare(item);
+						}
 						initialize();
 					}
 				}
@@ -856,14 +859,14 @@ define([
 
 				if (!$loaded) {
 					$loaded = true;
-					caches.clear('valid', 'dirty', 'find');
-					topic.emit('init');
-					topic.emit('ready');
+					componenter.clean(); //caches.clear('valid', 'dirty', 'find');
+					eventer.emit('init');
+					eventer.emit('ready');
 				}
 
 				langx.setTimeout2('$initcleaner', function() {
-					components.cleaner();
-					var arr = autofill.splice(0);
+					componenter.clean();
+					var arr = componenter.autofill.splice(0);
 					for (var i = 0; i < arr.length; i++) {
 						var com = arr[i];
 						!com.$default && helper.findControl(com.element[0], function(el) {
