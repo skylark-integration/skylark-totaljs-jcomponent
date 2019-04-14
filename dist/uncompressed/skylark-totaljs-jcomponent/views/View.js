@@ -1,6 +1,7 @@
 define([
 	"../langx",
 	"../utils/domx",
+	"../utils/query",
 	"./binding",
 	"./componenter",
 	"./eventer",
@@ -8,17 +9,8 @@ define([
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, binding, componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, componenter, eventer,compiler, helper,scoper,storing){
 
-	function keypressdelay(self) {
-		var com = self.$com;
-		// Reset timeout
-		self.$jctimeout = 0;
-		// It's not dirty
-		com.dirty(false, true);
-		// Binds a value
-		com.getter(self.value, true);
-	}
 
 
 	// data-scope    
@@ -47,12 +39,12 @@ define([
 		_construct : function(elm,options) {
 			domx.Plugin.prototype._construct.apply(this,arguments);
 
+			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
-			this.storing = storing(this);
-			this.helper = helper(this);
-			this.componenter = componenter(this);
 			this.binding = binding(this);
+			this.storing = storing(this);
+			this.componenter = componenter(this);
 			this.compiler = compiler(this);
 		},
 
@@ -79,8 +71,9 @@ define([
 		},
 
 		refresh : function () {
+			var self = this;
 			setTimeout2('$refresh', function() {
-				componenter.components.sort(function(a, b) {  // M.components.sort
+				self.componenter.components.sort(function(a, b) {  // M.components.sort
 					if (a.$removed || !a.path)
 						return 1;
 					if (b.$removed || !b.path)
@@ -93,125 +86,7 @@ define([
 		},
 
 		start : function() {
-			var $el = $(this._elm);
-
-			//if ($ready) {
-			//	clearTimeout($ready);
-			//	load();
-			//}
-
-			$el.on('input', 'input[data-jc-bind],textarea[data-jc-bind]', function() {
-
-				// realtime binding
-				var self = this;
-				var com = self.$com;
-
-				if (!com || com.$removed || !com.getter || self.$jckeypress === false) {
-					return;
-				}
-
-				self.$jcevent = 2;
-
-				if (self.$jckeypress === undefined) {
-					var tmp = attrcom(self, 'keypress');
-					if (tmp)
-						self.$jckeypress = tmp === 'true';
-					else if (com.config.$realtime != null)
-						self.$jckeypress = com.config.$realtime === true;
-					else if (com.config.$binding)
-						self.$jckeypress = com.config.$binding === 1;
-					else
-						self.$jckeypress = MD.keypress;
-					if (self.$jckeypress === false)
-						return;
-				}
-
-				if (self.$jcdelay === undefined) {
-					self.$jcdelay = +(attrcom(self, 'keypress-delay') || com.config.$delay || MD.delay);
-				}
-
-				if (self.$jconly === undefined) {
-					self.$jconly = attrcom(self, 'keypress-only') === 'true' || com.config.$keypress === true || com.config.$binding === 2;
-				}
-
-				if (self.$jctimeout) {
-					clearTimeout(self.$jctimeout);	
-				} 
-				self.$jctimeout = setTimeout(keypressdelay, self.$jcdelay, self);
-			});
-
-			$el.on('focus blur', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function(e) {
-
-				var self = this;
-				var com = self.$com;
-
-				if (!com || com.$removed || !com.getter)
-					return;
-
-				if (e.type === 'focusin')
-					self.$jcevent = 1;
-				else if (self.$jcevent === 1) {
-					com.dirty(false, true);
-					com.getter(self.value, 3);
-				} else if (self.$jcskip) {
-					self.$jcskip = false;
-				} else {
-					// formatter
-					var tmp = com.$skip;
-					if (tmp)
-						com.$skip = false;
-					com.setter(com.get(), com.path, 2);
-					if (tmp) {
-						com.$skip = tmp;
-					}
-				}
-			});
-
-			$el.on('change', 'input[data-jc-bind],textarea[data-jc-bind],select[data-jc-bind]', function() {
-
-				var self = this;
-				var com = self.$com;
-
-				if (self.$jconly || !com || com.$removed || !com.getter)
-					return;
-
-				if (self.$jckeypress === false) {
-					// bind + validate
-					self.$jcskip = true;
-					com.getter(self.value, false);
-					return;
-				}
-
-				switch (self.tagName) {
-					case 'SELECT':
-						var sel = self[self.selectedIndex];
-						self.$jcevent = 2;
-						com.dirty(false, true);
-						com.getter(sel.value, false);
-						return;
-					case 'INPUT':
-						if (self.type === 'checkbox' || self.type === 'radio') {
-							self.$jcevent = 2;
-							com.dirty(false, true);
-							com.getter(self.checked, false);
-							return;
-						}
-						break;
-				}
-
-				if (self.$jctimeout) {
-					com.dirty(false, true);
-					com.getter(self.value, true);
-					clearTimeout(self.$jctimeout);
-					self.$jctimeout = 0;
-				} else {
-					self.$jcskip = true;
-					com.setter && com.setterX(com.get(), self.path, 2);
-				}
-			});
-
-			//setTimeout(compile, 2);
-
+			this.helper.startView();
 		},
 
 		end : function() {

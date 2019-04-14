@@ -4,8 +4,9 @@ define([
 	"../binding/pathmaker"
 ],function(domx, parsebinder,pathmaker){
 	function binding(view) {
-		var binders = [];
-		var bindersnew = [];
+		var binders = {},
+			bindersnew = [];
+
 
  		//function parsebinder(el, b, scopes,
 
@@ -21,6 +22,17 @@ define([
 		}
 
 		var $rebinder;
+
+		function binderbind(path, absolutePath, ticks) {
+			var arr = binders[path];
+			for (var i = 0; i < arr.length; i++) {
+				var item = arr[i];
+				if (item.ticks !== ticks) {
+					item.ticks = ticks;
+					item.exec(view.storing.get(item.path), absolutePath);  //GET no pathmake
+				}
+			}
+		}
 
 		function rebindbinder() {
 			$rebinder && clearTimeout($rebinder);
@@ -71,6 +83,8 @@ define([
 			"parse" : parse,
 			"pathmaker" : pathmaker,
 			"binder" : binder,
+			"binders" : binders,
+			"binderbind" : binderbind,
 			"rebindbinder" : rebindbinder,
 			"clean" : clean
 		}

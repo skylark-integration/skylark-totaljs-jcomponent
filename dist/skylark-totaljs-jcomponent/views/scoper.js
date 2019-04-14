@@ -5,5 +5,5 @@
  * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../components/Scope"],function(n){return function(n){n.helper}});
+define(["../components/Scope"],function(e){return function(e){e.helper,e.eventer}});
 //# sourceMappingURL=../sourcemaps/views/scoper.js.map

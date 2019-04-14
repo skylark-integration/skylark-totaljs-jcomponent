@@ -26,7 +26,7 @@ define([
 	Plugin.prototype.$remove = function() {
 
 		var self = this;
-		if (!self.element) {
+		if (!self.element) {	
 			return true;
 		}
 

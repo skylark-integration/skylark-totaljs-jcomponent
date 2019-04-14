@@ -12,7 +12,8 @@ define([
 
 		var skipproxy = '';
 
-		var eventer = view.eventer;
+		var eventer = view.eventer,
+			binding = view.binding;
 
 		var store = view.option("store");
 
@@ -54,9 +55,7 @@ define([
 			return builder;
 		}
 
-		var binders = {},
-
-			paths = {},
+		var paths = {},
 			defaults = {},
 			$formatter = [],
 			skips = {};
@@ -84,17 +83,6 @@ define([
 			if(path){
 				set(path, get(path), true);	
 			} 
-		}
-
-		function binderbind(path, absolutePath, ticks) {
-			var arr = binders[path];
-			for (var i = 0; i < arr.length; i++) {
-				var item = arr[i];
-				if (item.ticks !== ticks) {
-					item.ticks = ticks;
-					item.exec(get(item.path), absolutePath);  //GET no pathmake
-				}
-			}
 		}
 
 
@@ -287,7 +275,7 @@ define([
 			var key = '+' + path;
 
 			if (paths[key]) {
-				return paths[key](store.data, value, path, binders, binderbind, is); // MD.scope
+				return paths[key](store.data, value, path, binding.binders, binding.binderbind, is); // MD.scope
 			}
 
 			if (path.indexOf('?') !== -1) {
@@ -321,7 +309,7 @@ define([
 
 			var fn = (new Function('w', 'a', 'b', 'binders', 'binderbind', 'nobind', 'var $ticks=Math.random().toString().substring(2,8);if(!nobind){' + builder.join(';') + ';var v=typeof(a)==\'function\'?a(MAIN.compiler.get(b)):a;w' + v + '=v}' + binder.join(';') + ';return a'));
 			paths[key] = fn;
-			fn(store.data, value, path, binders, binderbind, is); // MD.scope
+			fn(store.data, value, path, binding.binders, binding.binderbind, is); // MD.scope
 
 			return this; //C
 		}

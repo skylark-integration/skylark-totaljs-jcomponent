@@ -1,6 +1,5 @@
 define([
 	"./jc",
-	"./defaults",
 	"./langx",
 	"./utils",
 	"./plugins",
@@ -10,7 +9,7 @@ define([
 	"./views",
 	"./others/schedulers",
 	"./others/transforms"
-],function(jc, defaults, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
+],function(jc, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
 	var $ = utils.query,
 	    blocks = utils.blocks,
 		cache = utils.cache,
@@ -497,8 +496,8 @@ define([
 			return W;
 		};
 
-		W.SKIP = function skip() { 
-			return gs.skip.apply(gv,arguments);
+		W.SKIP = function () { 
+			return gs.skipInc.apply(gs,arguments);
 		};
 
 	   /**

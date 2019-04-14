@@ -1,4 +1,9 @@
-define([],function(){
+define([
+	"../langx",
+	"../binding/findFormat"
+],function(langx,findFormat){
+	var MULTIPLE = ' + ';
+
 	function eventer(view) {
 		var events = {};
 
@@ -16,7 +21,7 @@ define([],function(){
 				} else {
 					for (var j = 0, jl = self.$path.length; j < jl; j++) {
 						if (self.$path[j] === path) {
-							var val = get(self.path); // get2
+							var val = view.storing.get(self.path); // get2
 							self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
 							break;
 						}

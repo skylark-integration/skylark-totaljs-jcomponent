@@ -3,6 +3,10 @@ define([
 	"./regexp",
 	"./now"
 ],function(slangx,regexp,now){
+	var MD = {
+		root : ''  // String or Function
+
+	}
 	var REGWILDCARD = /\.\*/;
 
 	var REGEMPTY = /\s/g;

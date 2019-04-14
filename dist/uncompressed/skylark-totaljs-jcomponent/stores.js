@@ -15,7 +15,6 @@ define([
 	// PRIVATE FUNCTIONS
 	// ===============================================================
 
-	var REGISARR = /\[\d+\]$/;
 
 
 	Array.prototype.findValue = function(cb, value, path, def, cache) {

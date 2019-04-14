@@ -2,7 +2,8 @@ define([
 	"../components/Scope"
 ],function(Scope){
 	function scoper(view) {
-		var helper = view.helper;
+		var helper = view.helper,
+			eventer = view.eventer;
 
 		function initscopes(scopes) {
 
@@ -75,7 +76,7 @@ define([
 					defaults['#' + HASH(p)] = fn; // paths by path (DEFAULT() --> can reset scope object)
 					tmp = fn();
 					set(p, tmp);
-					emitwatch(p, tmp, 1);
+					eventer.emitwatch(p, tmp, 1);
 				}
 
 				// Applies classes
