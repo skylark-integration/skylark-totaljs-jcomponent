@@ -128,7 +128,7 @@ define([
 				} else {
 					events[name] = [obj];
 				}
-				(!C.ready && (name === 'ready' || name === 'init')) && fn();
+				//(!C.ready && (name === 'ready' || name === 'init')) && fn(); // TODO: lwf
 			}
 			return this; //W;
 		}

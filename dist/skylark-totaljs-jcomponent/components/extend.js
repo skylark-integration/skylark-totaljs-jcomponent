@@ -2,8 +2,8 @@
  * skylark-totaljs-jcomponent - A version of totaljs jcomponent that ported to running on skylarkjs
  * @author Hudaokeji, Inc.
  * @version v0.9.0
- * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
+ * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../langx","./extensions"],function(n,e){var f=n.topic;return function(n,i,o){if(typeof i===TYPE_FN){var t=o;o=i,i=t}e[n]?e[n].push({config:i,fn:o}):e[n]=[{config:i,fn:o}],f.publish("skylark.vvm.component.extend",n)}});
+define(["../langx","./extensions"],function(n,i){var o=n.topic;return function(e,f,t){if(n.isFunction(f)){var c=t;t=f,f=c}i[e]?i[e].push({config:f,fn:t}):i[e]=[{config:f,fn:t}],o.publish("skylark.vvm.component.extend",e)}});
 //# sourceMappingURL=../sourcemaps/components/extend.js.map

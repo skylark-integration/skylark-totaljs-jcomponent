@@ -63,7 +63,7 @@ define([
 			}),
 			gs = gv.storing,
 			gh = gv.helper,
-			gm = gv.composer,
+			gm = gv.componenter,
 			gl = gv.compiler,
 			ge = gv.eventer;
 
@@ -103,7 +103,7 @@ define([
 			AJAXCACHEREVIEW: http.ajaxCacheReview,
 
 			clearTimeout2: langx.clearTimeout2,
-			CACHE : cache.put,
+			CACHE : cache,
 			CLEARCACHE : cache.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
@@ -494,6 +494,11 @@ define([
 			gs.setx(path, value, type);
 			RESET(path); 
 			return W;
+		};
+
+
+		W.SETTER = function () {  
+			return gm.setter.apply(gm,arguments);
 		};
 
 		W.SKIP = function () { 

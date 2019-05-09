@@ -21,7 +21,7 @@ define([
 		}
 
 		var cb = function() {
-			if (typeof(callback) === TYPE_S) {
+			if (typeof(callback) === 'string') {
 				SET(callback, value);
 			} else {
 				callback(value);

@@ -3,12 +3,14 @@ define([
 	"../utils/query",
 	"../utils/domx",
 	"../utils/http",
+	"../utils/logs",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
 	var statics = langx.statics;
+	var warn = logs.warn;
 
 	var MD = {
 		fallback : 'https://cdn.componentator.com/j-{0}.html',
@@ -21,7 +23,7 @@ define([
 
 	setInterval(function() {
 		temp = {};
-		paths = {};
+//		paths = {};
 //		cleaner();
 	}, (1000 * 60) * 5);	
 
@@ -83,8 +85,7 @@ define([
 			binding = view.binding,
 			componenter = view.componenter;
     
-		var is = false;
-			recompile = false,
+		var 
 			importing = 0,
 			pending = [],
 			initing = [],
@@ -93,7 +94,11 @@ define([
 			ready = [],
 			cache = {
 				current : {}
-			};
+			},
+			compiles = {
+				is : false,
+				recompile : false
+			}
 
 		//C.get = get; // paths
 
@@ -226,7 +231,7 @@ define([
 				next();
 			} else { //if ($domready) {
 				if (ready) {
-					is = false;
+					compiles.is = false;
 				}
 
 				if (MD.fallback && fallback.$ && !importing) {
@@ -772,8 +777,8 @@ define([
 		function compile(container,immediate) {
 			var self = this;
 
-			if (is) {
-				recompile = true;
+			if (compiles.is) {
+				compiles.recompile = true;
 				return;
 			}
 
@@ -799,7 +804,7 @@ define([
 				}
 			}
 
-			is = true;
+			compiles.is = true;
 			download(self);
 
 			if (pending.length) {
@@ -819,7 +824,7 @@ define([
 			binding.rebindbinder();
 
 			if (!has || !pending.length) {
-				is = false;
+				compiles.is = false;
 			}
 
 			if (container !== undefined || !toggles.length) {
@@ -883,10 +888,10 @@ define([
 					}
 				}, 1000);
 
-				is = false;
+				compiles.is = false;
 
-				if (recompile) {
-					recompile = false;
+				if (compiles.recompile) {
+					compiles.recompile = false;
 					compile();
 				}
 
@@ -903,12 +908,12 @@ define([
 			}, 100);
 		}
 
-		return {
+		return langx.mixin(compiles, {
 
 			"compile" : compile,
 			"request" : request
 
-		}
+		});
 	}
 
 	return compiler;

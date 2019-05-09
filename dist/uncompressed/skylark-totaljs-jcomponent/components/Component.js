@@ -1,9 +1,12 @@
 define([
 	"../langx",
 	"../binding/findFormat",
+	"../utils/domx",
 	"./Usage"
-],function(langx, findFormat, Usage){
-	var temp = {};
+],function(langx, findFormat, domx,Usage){
+	var temp = {},
+		statics = {},
+		$ =domx.$;
 
 	var counter = 0;
 
@@ -541,8 +544,8 @@ define([
 	PPC.replace = function(el, remove) {
 		var self = this;
 
-		if (C.is) {
-			C.recompile = true;
+		if (this.view.compiler.is) {
+			this.view.compiler.recompile = true;
 		}
 
 		var n = 'jc-scope';

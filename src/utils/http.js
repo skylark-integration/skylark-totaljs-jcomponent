@@ -66,7 +66,7 @@ define([
 
 		var l = location;
 
-		if (typeof(url) === TYPE_O) {
+		if (langx.isObject(url)) {
 			type = values;
 			values = url;
 			url = l.pathname + l.search;
@@ -120,13 +120,13 @@ define([
 		if (tmp) {
 			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
 			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
+			if (langx.isObject(tmp))
 				headers = tmp;
 		}
 
 		url = url.substring(index).trim().$env();
 
-		if (typeof(callback) === TYPE_N) {
+		if (langx.isNumber(callback)) {
 			timeout = callback;
 			callback = undefined;
 		}
@@ -186,10 +186,10 @@ define([
 					r = output.response = self.status + ': ' + self.statusText;
 
 				if (!output.error || defaults.ajaxerrors) {
-					typeof(callback) === TYPE_S ? remap(callback.env(), r) : (callback && callback(r, null, output));
+					langx.isString(callback)  ? remap(callback.env(), r) : (callback && callback(r, null, output));
 				} else {
 					topic.emit('error', output);
-					output.process && typeof(callback) === TYPE_FN && callback({}, r, output);
+					output.process && langx.isFunction(callback)  && callback({}, r, output);
 				}
 
 			}, false);
@@ -252,7 +252,7 @@ define([
 			if (langx.isFunction(callback)) {
 				preparator = callback;
 				insert = true;
-			} else if (typeof(insert) === TYPE_FN) {
+			} else if (langx.isFunction(insert) ) {
 				preparator = insert;
 				insert = true;
 			}
@@ -563,7 +563,7 @@ define([
 
 	function ajax(url, data, callback, timeout) { // W.AJAX = 
 
-		if (typeof(url) === TYPE_FN) {
+		if (langx.isFunction(url) ) {
 			timeout = callback;
 			callback = data;
 			data = url;
@@ -574,7 +574,7 @@ define([
 		var arg = EMPTYARRAY;
 		var tmp;
 
-		if (!callback && (td === TYPE_FN || td === TYPE_S)) {
+		if (!callback && (td === 'function' || td === 'string')) {
 			timeout = callback;
 			callback = data;
 			data = undefined;
@@ -605,7 +605,7 @@ define([
 		if (tmp) {
 			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
 			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
+			if (langx.isObject(tmp) )
 				headers = tmp;
 		}
 
@@ -614,7 +614,7 @@ define([
 		setTimeout(function() {
 
 			if (method === 'GET' && data) {
-				var qs = (typeof(data) === TYPE_S ? data : jQuery.param(data, true));
+				var qs = (langx.isString(data)  ? data : jQuery.param(data, true));
 				if (qs)
 					url += '?' + qs;
 			}
@@ -624,7 +624,7 @@ define([
 			options.converters = defaults.jsonconverter;
 
 			if (method !== 'GET') {
-				if (typeof(data) === TYPE_S) {
+				if (langx.isString(data) ) {
 					options.data = data;
 				} else {
 					options.contentType = 'application/json; charset=utf-8';

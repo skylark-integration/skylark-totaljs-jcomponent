@@ -630,7 +630,7 @@ define([
 				find(selector, true, function(arr) {
 					for (var i = 0, length = arr.length; i < length; i++) {
 						var o = arr[i];
-						if (typeof(o[name]) === TYPE_FN)
+						if (langx.isFunction(o[name]))
 							o[name].apply(o, arg);
 						else
 							o[name] = arg[0];
@@ -654,10 +654,10 @@ define([
 					return SETTER;
 				}
 
-				var arr = helper.find(selector, true);
+				var arr = find(selector, true);
 				for (var i = 0, length = arr.length; i < length; i++) {
 					var o = arr[i];
-					if (typeof(o[name]) === TYPE_FN)
+					if (langx.isFunction(o[name]) )
 						o[name].apply(o, arg);
 					else
 						o[name] = arg[0];

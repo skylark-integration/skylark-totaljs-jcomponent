@@ -31,10 +31,10 @@ define([
 
 		var type = typeof(obj);
 		switch (type) {
-			case TYPE_N:
+			case 'number':
 			case 'boolean':
 				return obj;
-			case TYPE_S:
+			case 'string':
 				return path ? obj : clone(get(obj), true);
 		}
 
@@ -81,13 +81,13 @@ define([
 		if (!s)
 			return 0;
 		var type = typeof(s);
-		if (type === TYPE_N)
+		if (type === 'number')
 			return s;
 		else if (type === 'boolean')
 			return s ? 1 : 0;
 		else if (s instanceof Date)
 			return s.getTime();
-		else if (type === TYPE_O)
+		else if (type === 'object')
 			s = stringify(s);
 		var hash = 0, i, char;
 		if (!s.length)
@@ -136,13 +136,13 @@ define([
 		var key = ((Math.random() * 10000) >> 0).toString(16);
 		var tkey = timeout > 0 ? key + '_timeout' : 0;
 
-		if (typeof(callback) === TYPE_N) {
+		if (typeof(callback) === 'number') {
 			var tmp = interval;
 			interval = callback;
 			callback = tmp;
 		}
 
-		var is = typeof(fn) === TYPE_S;
+		var is = typeof(fn) === 'string';
 		var run = false;
 
 		if (is) {
@@ -220,7 +220,7 @@ define([
 					if (fields.indexOf(key) === -1) {
 						return undefined;
 					}
-				} else if (tf === TYPE_FN) {
+				} else if (langx.isFunction(tf)) {
 					if (!fields(key, value)){
 						return undefined;
 					}
@@ -229,8 +229,8 @@ define([
 			}
 
 			if (compress === true) {
-				var t = typeof(value);
-				if (t === TYPE_S) {
+				//var t = typeof(value);
+				if (langx.isString(value)) {
 					value = value.trim();
 					return value ? value : undefined;
 				} else if (value === false || value == null)
@@ -327,6 +327,7 @@ define([
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
 		isObject : slangx.isObject,
+		isPlainObject: slangx.isPlainObject,
 		isString : slangx.isString,
 		klass : slangx.klass,
 		mixin : slangx.mixin,

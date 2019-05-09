@@ -417,7 +417,7 @@ define([
 
 			var self = this;
 			var arr = (self.attr('class') || '').split(' ');
-			var isReg = typeof(a) === TYPE_O;
+			var isReg = typeof(a) === 'object';
 
 			for (var i = 0, length = arr.length; i < length; i++) {
 				var cls = arr[i];
@@ -546,7 +546,8 @@ define([
 		"removescripts" : removescripts,
 		"scrollbarWidth" : scrollbarWidth,
 		"style" : style,
-		"watchMedia" : watchMedia
+		"watchMedia" : watchMedia,
+		"$" : $,
 	}
 
 });

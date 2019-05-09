@@ -2,7 +2,7 @@
  * skylark-totaljs-jcomponent - A version of totaljs jcomponent that ported to running on skylarkjs
  * @author Hudaokeji, Inc.
  * @version v0.9.0
- * @link https://github.com/skylarkui/skylark-totaljs-jcomponent/
+ * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
 (function(factory,globals) {
@@ -735,7 +735,7 @@ define('skylark-totaljs-jcomponent/langx/DateEx',[
 			value = parseInt(arr[0]);
 		}
 
-		if (typeof(value) === TYPE_S)
+		if (langx.isString(value) )
 			value = value.env();
 
 		var self = this;
@@ -1496,10 +1496,10 @@ define('skylark-totaljs-jcomponent/langx',[
 
 		var type = typeof(obj);
 		switch (type) {
-			case TYPE_N:
+			case 'number':
 			case 'boolean':
 				return obj;
-			case TYPE_S:
+			case 'string':
 				return path ? obj : clone(get(obj), true);
 		}
 
@@ -1546,13 +1546,13 @@ define('skylark-totaljs-jcomponent/langx',[
 		if (!s)
 			return 0;
 		var type = typeof(s);
-		if (type === TYPE_N)
+		if (type === 'number')
 			return s;
 		else if (type === 'boolean')
 			return s ? 1 : 0;
 		else if (s instanceof Date)
 			return s.getTime();
-		else if (type === TYPE_O)
+		else if (type === 'object')
 			s = stringify(s);
 		var hash = 0, i, char;
 		if (!s.length)
@@ -1601,13 +1601,13 @@ define('skylark-totaljs-jcomponent/langx',[
 		var key = ((Math.random() * 10000) >> 0).toString(16);
 		var tkey = timeout > 0 ? key + '_timeout' : 0;
 
-		if (typeof(callback) === TYPE_N) {
+		if (typeof(callback) === 'number') {
 			var tmp = interval;
 			interval = callback;
 			callback = tmp;
 		}
 
-		var is = typeof(fn) === TYPE_S;
+		var is = typeof(fn) === 'string';
 		var run = false;
 
 		if (is) {
@@ -1685,7 +1685,7 @@ define('skylark-totaljs-jcomponent/langx',[
 					if (fields.indexOf(key) === -1) {
 						return undefined;
 					}
-				} else if (tf === TYPE_FN) {
+				} else if (langx.isFunction(tf)) {
 					if (!fields(key, value)){
 						return undefined;
 					}
@@ -1694,8 +1694,8 @@ define('skylark-totaljs-jcomponent/langx',[
 			}
 
 			if (compress === true) {
-				var t = typeof(value);
-				if (t === TYPE_S) {
+				//var t = typeof(value);
+				if (langx.isString(value)) {
 					value = value.trim();
 					return value ? value : undefined;
 				} else if (value === false || value == null)
@@ -1792,6 +1792,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
 		isObject : slangx.isObject,
+		isPlainObject: slangx.isPlainObject,
 		isString : slangx.isString,
 		klass : slangx.klass,
 		mixin : slangx.mixin,
@@ -2300,7 +2301,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 
 		var l = location;
 
-		if (typeof(url) === TYPE_O) {
+		if (langx.isObject(url)) {
 			type = values;
 			values = url;
 			url = l.pathname + l.search;
@@ -2354,13 +2355,13 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		if (tmp) {
 			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
 			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
+			if (langx.isObject(tmp))
 				headers = tmp;
 		}
 
 		url = url.substring(index).trim().$env();
 
-		if (typeof(callback) === TYPE_N) {
+		if (langx.isNumber(callback)) {
 			timeout = callback;
 			callback = undefined;
 		}
@@ -2420,10 +2421,10 @@ define('skylark-totaljs-jcomponent/utils/http',[
 					r = output.response = self.status + ': ' + self.statusText;
 
 				if (!output.error || defaults.ajaxerrors) {
-					typeof(callback) === TYPE_S ? remap(callback.env(), r) : (callback && callback(r, null, output));
+					langx.isString(callback)  ? remap(callback.env(), r) : (callback && callback(r, null, output));
 				} else {
 					topic.emit('error', output);
-					output.process && typeof(callback) === TYPE_FN && callback({}, r, output);
+					output.process && langx.isFunction(callback)  && callback({}, r, output);
 				}
 
 			}, false);
@@ -2486,7 +2487,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 			if (langx.isFunction(callback)) {
 				preparator = callback;
 				insert = true;
-			} else if (typeof(insert) === TYPE_FN) {
+			} else if (langx.isFunction(insert) ) {
 				preparator = insert;
 				insert = true;
 			}
@@ -2797,7 +2798,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 
 	function ajax(url, data, callback, timeout) { // W.AJAX = 
 
-		if (typeof(url) === TYPE_FN) {
+		if (langx.isFunction(url) ) {
 			timeout = callback;
 			callback = data;
 			data = url;
@@ -2808,7 +2809,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		var arg = EMPTYARRAY;
 		var tmp;
 
-		if (!callback && (td === TYPE_FN || td === TYPE_S)) {
+		if (!callback && (td === 'function' || td === 'string')) {
 			timeout = callback;
 			callback = data;
 			data = undefined;
@@ -2839,7 +2840,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		if (tmp) {
 			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
 			tmp = (new Function('return ' + tmp))();
-			if (typeof(tmp) === TYPE_O)
+			if (langx.isObject(tmp) )
 				headers = tmp;
 		}
 
@@ -2848,7 +2849,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		setTimeout(function() {
 
 			if (method === 'GET' && data) {
-				var qs = (typeof(data) === TYPE_S ? data : jQuery.param(data, true));
+				var qs = (langx.isString(data)  ? data : jQuery.param(data, true));
 				if (qs)
 					url += '?' + qs;
 			}
@@ -2858,7 +2859,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 			options.converters = defaults.jsonconverter;
 
 			if (method !== 'GET') {
-				if (typeof(data) === TYPE_S) {
+				if (langx.isString(data) ) {
 					options.data = data;
 				} else {
 					options.contentType = 'application/json; charset=utf-8';
@@ -4416,7 +4417,7 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 
 			var self = this;
 			var arr = (self.attr('class') || '').split(' ');
-			var isReg = typeof(a) === TYPE_O;
+			var isReg = typeof(a) === 'object';
 
 			for (var i = 0, length = arr.length; i < length; i++) {
 				var cls = arr[i];
@@ -4545,7 +4546,8 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 		"removescripts" : removescripts,
 		"scrollbarWidth" : scrollbarWidth,
 		"style" : style,
-		"watchMedia" : watchMedia
+		"watchMedia" : watchMedia,
+		"$" : $,
 	}
 
 });
@@ -4786,9 +4788,12 @@ define('skylark-totaljs-jcomponent/components/Usage',[
 define('skylark-totaljs-jcomponent/components/Component',[
 	"../langx",
 	"../binding/findFormat",
+	"../utils/domx",
 	"./Usage"
-],function(langx, findFormat, Usage){
-	var temp = {};
+],function(langx, findFormat, domx,Usage){
+	var temp = {},
+		statics = {},
+		$ =domx.$;
 
 	var counter = 0;
 
@@ -5326,8 +5331,8 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	PPC.replace = function(el, remove) {
 		var self = this;
 
-		if (C.is) {
-			C.recompile = true;
+		if (this.view.compiler.is) {
+			this.view.compiler.recompile = true;
 		}
 
 		var n = 'jc-scope';
@@ -6456,7 +6461,7 @@ define('skylark-totaljs-jcomponent/components/extend',[
    */
     function extend(name, config, declaration) { //W.COMPONENT_EXTEND = 
 
-        if (typeof(config) === TYPE_FN) {
+        if (langx.isFunction(config)) {
             var tmp = declaration;
             declaration = config;
             config = tmp;
@@ -7693,7 +7698,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				find(selector, true, function(arr) {
 					for (var i = 0, length = arr.length; i < length; i++) {
 						var o = arr[i];
-						if (typeof(o[name]) === TYPE_FN)
+						if (langx.isFunction(o[name]))
 							o[name].apply(o, arg);
 						else
 							o[name] = arg[0];
@@ -7717,10 +7722,10 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 					return SETTER;
 				}
 
-				var arr = helper.find(selector, true);
+				var arr = find(selector, true);
 				for (var i = 0, length = arr.length; i < length; i++) {
 					var o = arr[i];
-					if (typeof(o[name]) === TYPE_FN)
+					if (langx.isFunction(o[name]) )
 						o[name].apply(o, arg);
 					else
 						o[name] = arg[0];
@@ -7988,7 +7993,7 @@ define('skylark-totaljs-jcomponent/views/eventer',[
 				} else {
 					events[name] = [obj];
 				}
-				(!C.ready && (name === 'ready' || name === 'init')) && fn();
+				//(!C.ready && (name === 'ready' || name === 'init')) && fn(); // TODO: lwf
 			}
 			return this; //W;
 		}
@@ -8235,12 +8240,14 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../utils/query",
 	"../utils/domx",
 	"../utils/http",
+	"../utils/logs",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
 	var statics = langx.statics;
+	var warn = logs.warn;
 
 	var MD = {
 		fallback : 'https://cdn.componentator.com/j-{0}.html',
@@ -8253,7 +8260,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 	setInterval(function() {
 		temp = {};
-		paths = {};
+//		paths = {};
 //		cleaner();
 	}, (1000 * 60) * 5);	
 
@@ -8315,8 +8322,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			binding = view.binding,
 			componenter = view.componenter;
     
-		var is = false;
-			recompile = false,
+		var 
 			importing = 0,
 			pending = [],
 			initing = [],
@@ -8325,7 +8331,11 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			ready = [],
 			cache = {
 				current : {}
-			};
+			},
+			compiles = {
+				is : false,
+				recompile : false
+			}
 
 		//C.get = get; // paths
 
@@ -8458,7 +8468,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				next();
 			} else { //if ($domready) {
 				if (ready) {
-					is = false;
+					compiles.is = false;
 				}
 
 				if (MD.fallback && fallback.$ && !importing) {
@@ -9004,8 +9014,8 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 		function compile(container,immediate) {
 			var self = this;
 
-			if (is) {
-				recompile = true;
+			if (compiles.is) {
+				compiles.recompile = true;
 				return;
 			}
 
@@ -9031,7 +9041,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				}
 			}
 
-			is = true;
+			compiles.is = true;
 			download(self);
 
 			if (pending.length) {
@@ -9051,7 +9061,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			binding.rebindbinder();
 
 			if (!has || !pending.length) {
-				is = false;
+				compiles.is = false;
 			}
 
 			if (container !== undefined || !toggles.length) {
@@ -9115,10 +9125,10 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					}
 				}, 1000);
 
-				is = false;
+				compiles.is = false;
 
-				if (recompile) {
-					recompile = false;
+				if (compiles.recompile) {
+					compiles.recompile = false;
 					compile();
 				}
 
@@ -9135,12 +9145,12 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			}, 100);
 		}
 
-		return {
+		return langx.mixin(compiles, {
 
 			"compile" : compile,
 			"request" : request
 
-		}
+		});
 	}
 
 	return compiler;
@@ -9245,7 +9255,7 @@ define('skylark-totaljs-jcomponent/views/helper',[
 		}
 
 		function findComponent(container, selector, callback) {
-			var components = view.components;
+			var components = view.componenter.components;
 
 			var s = (selector ? selector.split(' ') : []);
 			var path = '';
@@ -10695,7 +10705,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				p = path.substring(0, index);
 				var ctrl = plugins.find(p); //W.PLUGINS[p];
 				var fn = path.substring(index + 1);
-				if (ctrl && typeof(ctrl[fn]) === TYPE_FN) {
+				if (ctrl && langx.isFunction(ctrl[fn])) {
 					ctrl[fn].apply(ctx === W ? ctrl : ctx, arg);
 					ok = 1;
 				}
@@ -11027,6 +11037,12 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			return true
 		}
 
+
+		function clean() {
+			temp = {};
+			paths = {};
+		}
+
 		return {
 			"bind"  : bind,
 			"cache" : cache,
@@ -11049,6 +11065,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			"modify" : modify,
 			"modified" : modified,
 			"parser" : parser,
+			"paths" : paths,
 			"push" : push,
 			"reset" : reset,
 			"rewrite" : rewrite,
@@ -11265,7 +11282,7 @@ define('skylark-totaljs-jcomponent/others/transforms',[
 		}
 
 		var cb = function() {
-			if (typeof(callback) === TYPE_S) {
+			if (typeof(callback) === 'string') {
 				SET(callback, value);
 			} else {
 				callback(value);
@@ -11374,7 +11391,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			}),
 			gs = gv.storing,
 			gh = gv.helper,
-			gm = gv.composer,
+			gm = gv.componenter,
 			gl = gv.compiler,
 			ge = gv.eventer;
 
@@ -11414,7 +11431,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			AJAXCACHEREVIEW: http.ajaxCacheReview,
 
 			clearTimeout2: langx.clearTimeout2,
-			CACHE : cache.put,
+			CACHE : cache,
 			CLEARCACHE : cache.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
@@ -11805,6 +11822,11 @@ define('skylark-totaljs-jcomponent/globals',[
 			gs.setx(path, value, type);
 			RESET(path); 
 			return W;
+		};
+
+
+		W.SETTER = function () {  
+			return gm.setter.apply(gm,arguments);
 		};
 
 		W.SKIP = function () { 

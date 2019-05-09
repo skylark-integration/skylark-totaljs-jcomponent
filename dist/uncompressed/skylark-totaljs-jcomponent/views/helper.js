@@ -97,7 +97,7 @@ define([
 		}
 
 		function findComponent(container, selector, callback) {
-			var components = view.components;
+			var components = view.componenter.components;
 
 			var s = (selector ? selector.split(' ') : []);
 			var path = '';

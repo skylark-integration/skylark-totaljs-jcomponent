@@ -896,7 +896,7 @@ define([
 				p = path.substring(0, index);
 				var ctrl = plugins.find(p); //W.PLUGINS[p];
 				var fn = path.substring(index + 1);
-				if (ctrl && typeof(ctrl[fn]) === TYPE_FN) {
+				if (ctrl && langx.isFunction(ctrl[fn])) {
 					ctrl[fn].apply(ctx === W ? ctrl : ctx, arg);
 					ok = 1;
 				}
@@ -1228,6 +1228,12 @@ define([
 			return true
 		}
 
+
+		function clean() {
+			temp = {};
+			paths = {};
+		}
+
 		return {
 			"bind"  : bind,
 			"cache" : cache,
@@ -1250,6 +1256,7 @@ define([
 			"modify" : modify,
 			"modified" : modified,
 			"parser" : parser,
+			"paths" : paths,
 			"push" : push,
 			"reset" : reset,
 			"rewrite" : rewrite,

@@ -33,7 +33,7 @@ define([
 			value = parseInt(arr[0]);
 		}
 
-		if (typeof(value) === TYPE_S)
+		if (langx.isString(value) )
 			value = value.env();
 
 		var self = this;

@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<script src="../../.original/skylark-jquery/skylark-jquery.js"></script>
+	<script src="../../.original/skylark-jquery/jc.js"></script>
+	<style>
+		.newtask { height: 40px; padding: 0; border: 1px solid #E0E0E0; border-radius: 3px; }
+		.newtask-input { margin-right: 100px; }
+		.newtask-input input { background-color: transparent; border: 0; font-size: 16px; width: 100%; outline: 0; padding: 10px 10px 0; }
+		.newtask-button { float: right; width: 100px; font-size: 14px; font-weight: bold; }
+		.newtask-button .fa { margin-right: 5px; }
+		.newtask-button button { width: 100%; background-color: red; outline: 0; height: 38px; border: 0; border-radius: 0 3px 3px 0; color: white; }
+		.newtask-button button:hover { opacity: 0.8; }
+		.newtask-button button:disabled { color: gray; background-color: #F0F0F0; opacity: 1 !important; }
+	</style>
+</head>
+<body style="font-family:Arial">
+
+<div data-jc="audio__volume"></div>
+
+
+	<script>
+    COMPONENT('audio', function(self) {
+
+      var can = false;
+      var volume = 0.5;
+
+      self.items = [];
+      self.readonly();
+      self.singleton();
+
+      self.make = function() {
+        var audio = document.createElement('audio');
+        if (audio.canPlayType && audio.canPlayType('audio/mpeg').replace(/no/, ''))
+          can = true;
+      };
+
+      self.play = function(url) {
+
+        if (!can)
+          return;
+
+        var audio = new window.Audio();
+
+        audio.src = url;
+        audio.volume = volume;
+        audio.play();
+
+        audio.onended = function() {
+          audio.$destroy = true;
+          self.cleaner();
+        };
+
+        audio.onerror = function() {
+          audio.$destroy = true;
+          self.cleaner();
+        };
+
+        audio.onabort = function() {
+          audio.$destroy = true;
+          self.cleaner();
+        };
+
+        self.items.push(audio);
+        return self;
+      };
+
+      self.cleaner = function() {
+        var index = 0;
+        while (true) {
+          var item = self.items[index++];
+          if (item === undefined)
+            return self;
+          if (!item.$destroy)
+            continue;
+          item.pause();
+          item.onended = null;
+          item.onerror = null;
+          item.onsuspend = null;
+          item.onabort = null;
+          item = null;
+          index--;
+          self.items.splice(index, 1);
+        }
+      };
+
+      self.stop = function(url) {
+
+        if (!url) {
+          self.items.forEach(function(item) {
+            item.$destroy = true;
+          });
+          return self.cleaner();
+        }
+
+        var index = self.items.findIndex('src', url);
+        if (index === -1)
+          return self;
+        self.items[index].$destroy = true;
+        return self.cleaner();
+      };
+
+      self.setter = function(value) {
+
+        if (value === undefined)
+          value = 0.5;
+        else
+          value = (value / 100);
+
+        if (value > 1)
+          value = 1;
+        else if (value < 0)
+          value = 0;
+
+        volume = value ? +value : 0;
+        for (var i = 0, length = self.items.length; i < length; i++) {
+          var a = self.items[i];
+          if (!a.$destroy)
+            a.volume = value;
+        }
+      };
+    });
+      
+     var volume = 50; // 50%
+      SETTER(true, 'audio', 'play', 'http://www.tonycuffe.com/mp3/cairnomount.mp3');
+
+
+	</script>
+
+</body>
+</html>

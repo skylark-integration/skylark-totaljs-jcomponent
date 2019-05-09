@@ -11,7 +11,7 @@ define([
    */
     function extend(name, config, declaration) { //W.COMPONENT_EXTEND = 
 
-        if (typeof(config) === TYPE_FN) {
+        if (langx.isFunction(config)) {
             var tmp = declaration;
             declaration = config;
             config = tmp;
