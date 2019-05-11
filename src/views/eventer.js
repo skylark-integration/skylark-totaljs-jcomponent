@@ -68,7 +68,14 @@ define([
 				path = path.replace('.*', '');
 			}
 
-			var obj = { name: name, fn: fn, owner: owner || current_owner, context: context || (current_com == null ? undefined : current_com) };
+			var obj = { 
+				name: name, 
+				fn: fn, 
+				owner: owner , 
+				context: context 
+//				owner: owner || current_owner, 
+//				context: context || (current_com == null ? undefined : current_com) 
+			};
 
 			if (name === 'watch') {
 				var arr = [];

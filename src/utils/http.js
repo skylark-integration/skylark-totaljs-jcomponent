@@ -36,6 +36,29 @@ define([
 	};
 	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
 
+	function request(url,options) {
+		options.url = url;
+        function ajaxSuccess() {
+            if (options.success) {
+                options.success.apply(this,arguments);
+            }
+        }
+
+        function ajaxError() {
+            if (options.error) {
+                options.error.apply(this,arguments);
+            }
+        }
+
+        var p = langx.Xhr.request(options.url,options);
+        p = p.then(ajaxSuccess,ajaxError);
+        p.success = p.done;
+        p.error = p.fail;
+        p.complete = p.always;
+        
+        return p;		
+	}
+
 	function parseHeaders(val) {
 		var h = {};
 		val.split('\n').forEach(function(line) {
@@ -87,8 +110,34 @@ define([
 			query[key] = values[key];
 		}
 
-		var val = $.param(query, type == null || type === true);
+		var val = langx.Xhr.param(query, type == null || type === true);
 		return url + (val ? '?' + val : '');
+	}
+
+	function makeurl(url, make) {
+
+		// TODO
+		//defaults.makeurl && (url = defaults.makeurl(url));
+		//
+		//if (make)
+		//	return url;
+
+		var builder = [];
+		var en = encodeURIComponent;
+
+		//M.$version && builder.push('version=' + en(M.$version));
+		//M.$language && builder.push('language=' + en(M.$language));
+
+		if (!builder.length)
+			return url;
+
+		var index = url.indexOf('?');
+		if (index == -1)
+			url += '?';
+		else
+			url += '&';
+
+		return url + builder.join('&');
 	}
 
 	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
@@ -497,7 +546,7 @@ define([
 		}
 
 		var options = {};
-		var data = $.param(defaults.pingdata);
+		var data = $langx.Xhr.param(defaults.pingdata);
 
 		if (data) {
 			index = url.lastIndexOf('?');
@@ -518,10 +567,10 @@ define([
 			}
 		};
 
-		execute && $.ajax(makeurl(url), options);
+		execute && request(makeurl(url), options);
 
 		return setInterval(function() {
-			$.ajax(makeurl(url), options);
+			request(makeurl(url), options);
 		}, timeout || 30000);
 	}
 
@@ -632,7 +681,7 @@ define([
 				}
 			}
 
-			options.headers = $.extend(headers, defaults.headers);
+			options.headers = langx.extend(headers, defaults.headers);
 
 			if (url.match(/http:\/\/|https:\/\//i)) {
 				options.crossDomain = true;
@@ -738,7 +787,7 @@ define([
 				}
 			};
 
-			$.ajax(makeurl(output.url), options);
+			request(makeurl(output.url), options);
 
 		}, timeout || 0);
 
@@ -833,6 +882,7 @@ define([
 		"import" : import2,
 		importCache,
 		makeParams,
+		makeurl,
 		ping,
 		parseQuery,
 		upload

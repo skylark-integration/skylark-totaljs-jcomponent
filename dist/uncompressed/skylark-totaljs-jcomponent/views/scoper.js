@@ -2,6 +2,8 @@ define([
 	"../components/Scope"
 ],function(Scope){
 	function scoper(view) {
+		var current_owner = null;
+		
 		var helper = view.helper,
 			eventer = view.eventer;
 

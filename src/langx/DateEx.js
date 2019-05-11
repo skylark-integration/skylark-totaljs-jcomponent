@@ -1,7 +1,8 @@
 define([
+	"skylark-langx/langx",
 	"./regexp",
 	"./statics"
-],function(regexp,statics){
+],function(langx,regexp,statics){
 
 	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
 	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');

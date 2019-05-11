@@ -26,6 +26,28 @@ define([
 		if (inited) {
 			return W;
 		}
+		W.W = window; 
+	    W.FUNC = {};	
+
+		Object.defineProperty(W,"WH",{
+			get : function() {
+				return $(W).height();
+			}
+		});
+
+		Object.defineProperty(W,"WW",{
+			get : function() {
+				return $(W).width();
+			}
+
+		});
+
+		Object.defineProperty(W,"NOW",{
+			get : function() {
+				return langx.now();
+			}
+
+		});
 
 		$.fn.scope = function() {
 
@@ -65,7 +87,8 @@ define([
 			gh = gv.helper,
 			gm = gv.componenter,
 			gl = gv.compiler,
-			ge = gv.eventer;
+			ge = gv.eventer,
+			gb = gv.binding;
 
 		gv.start();
 		$.components = gv.components;
@@ -285,7 +308,7 @@ define([
 	   * @param  {String} path 
 	   */
 		W.GET = function (path, scope) {
-			path = pathmaker(path);
+			path = gb.pathmaker(path);
 			if (scope === true) {
 				scope = null;
 				RESET(path, true);

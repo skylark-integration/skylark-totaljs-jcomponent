@@ -1,5 +1,5 @@
 define([],function(){
-	var _n = null
+	var _n = new Date();
 
 	return function(n) {
 		if (n !== undefined) {

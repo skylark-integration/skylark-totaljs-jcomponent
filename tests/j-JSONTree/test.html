@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<style>
+.jsontree-tree { background-color: #f8f8f8; border-radius: 2px; padding: 12px; color: #000; height: 400px; overflow-y: scroll; }
+.jsontree-tree .spacer { width: 25px; height: 25px; float: left; }
+.jsontree-tree .treeitem { width: 100%; height: 25px; }
+.jsontree-tree .treeitem > div > img { margin-left: 10px; }
+.jsontree-tree .treeitem span { padding: 6px; }
+.jsontree-tree .treeitem span:hover { background-color: lightblue; cursor: pointer; }
+.jsontree-tree .treeitem img { height: 25px; width: 25px; }
+.jsontree-textarea { height: 400px; }
+.jsontree-label { padding-bottom: 10px; }
+.jsontree-label > button { float:right; background: red; color: white; cursor: pointer; padding: 2px 5px; outline: 0; font-size: 11px; border: 0; border-radius: 3px; }
+
+	</style>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js" data-main="./main.js"></script>
+</head>
+<body style="font-family:Arial">
+<div data-jc="jsontree__json__click:jsontree_click">Sample JSON data</div>
+<script>
+
+	//setTimeout(function() {
+	//}, 2000);
+
+	function jsontree_click(path) {
+		console.log('Path:', path);
+	};
+</script>
+
+
+</body>
+</html>

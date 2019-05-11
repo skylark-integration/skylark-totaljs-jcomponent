@@ -795,7 +795,7 @@ define([
 	   * @return {Boolean} 
 	   */
 		function changed(path) {
-			return !com_dirty(path);
+			return !view.componenter.com_dirty(path);
 		};
 
 
@@ -809,7 +809,7 @@ define([
 			if (value == null) {
 				value = true;
 			}
-			return !com_dirty(path, !value);
+			return !view.componenter.com_dirty(path, !value);
 		};
 
 
@@ -932,7 +932,7 @@ define([
 	   */
 		function can(path, except) { // W.CAN = 
 			path = pathmaker(path);
-			return !com_dirty(path, except) && com_valid(path, except);
+			return !view.componenter.com_dirty(path, except) && view.componenter.com_valid(path, except);
 		}
 
 	   /**
@@ -945,7 +945,7 @@ define([
 	   */
 		function disabled(path, except) { // W.DISABLED = 
 			path = pathmaker(path);
-			return com_dirty(path, except) || !com_valid(path, except);
+			return view.componenter.com_dirty(path, except) || !view.componenter.com_valid(path, except);
 		}
 
 	   /**
@@ -957,8 +957,8 @@ define([
 		function invalid(path, onlyComponent) {  // W.INVALID = 
 			path = pathmaker(path);
 			if (path) {
-				com_dirty(path, false, onlyComponent, true);
-				com_valid(path, false, onlyComponent);
+				view.componenter.com_dirty(path, false, onlyComponent, true);
+				view.componenter.com_valid(path, false, onlyComponent);
 			}
 			return W;
 		};

@@ -54,7 +54,7 @@ define([
 		return this.replace(REGPARAMS, function(text) {
 			// Is double?
 			var l = text.charCodeAt(1) === 123 ? 2 : 1;
-			var val = get(text.substring(l, text.length - l).trim(), obj);
+			var val = langx.result(obj,text.substring(l, text.length - l).trim()); // get(text.substring(l, text.length - l).trim(), obj);
 			return val == null ? text : val;
 		});
 	};

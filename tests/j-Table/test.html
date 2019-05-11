@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<style>
+.ui-table-border > table { border: 1px solid #E0E0E0; }
+.ui-table-border .ui-table-thead > tr > th, .ui-table-border .ui-table-tbody > tr > td { border-left: 1px solid #E0E0E0; border-right: 1px solid #E0E0E0; }
+.ui-table > table { width: 100%; margin: 0; padding: 0; font-size: 13px; table-layout: fixed; }
+.ui-table-thead { margin-bottom: 10px; }
+.ui-table-thead th { padding: 8px 4px; border-bottom: 2px solid #E0E0E0; }
+.ui-table-nohead, .ui-table-nohead tr, .ui-table-nohead th { height: 0 !important; overflow: hidden !important; padding: 0 !important; margin: 0 !important; border-bottom: 0; }
+.ui-table-tbody > tr { border-bottom: 1px solid #E0E0E0; }
+.ui-table-tbody > tr > td { padding: 5px 4px; }
+.ui-table-selectable .ui-table-tbody tr { cursor: pointer; }
+.ui-table-selectable .ui-table-tbody tr:hover { background-color: rgba(100,100,100,.05); }
+.ui-table-selected { background-color: rgba(253,255,191,.41) !important; }
+.ui-table-detailed .ui-table-selected { border-bottom-color: transparent; }
+.ui-table-detail { background-color: transparent !important; cursor: inherit !important; }
+.ui-table-detail td { padding: 20px 4px !important; }
+.ui-table-empty { font-size: 12px; color: gray; padding: 15px 0; border-top: 1px solid #E0E0E0; border-bottom: 1px solid #E0E0E0; text-align: center; }
+.ui-table-empty i { margin-right: 5px; }
+
+.ui-dark .ui-table-border > table { border: 1px solid #404040; }
+.ui-dark .ui-table-border .ui-table-thead > tr > th, .ui-table-border .ui-table-tbody > tr > td { border-left: 1px solid #404040; border-right: 1px solid #404040; }
+.ui-dark .ui-table-thead th { padding: 8px 4px; border-bottom: 2px solid #404040; }
+.ui-dark .ui-table-tbody > tr { border-bottom: 1px solid #404040; }
+.ui-dark .ui-table-selectable .ui-table-tbody tr:hover { background-color: rgba(100,100,100,.2); }
+.ui-dark .ui-table-selected { background-color: rgba(100,100,100,.3) !important; }
+.ui-dark .ui-table-empty { border-top-color: #404040; border-bottom-color: #404040; }
+	</style>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js" data-main="./main.js"></script>
+</head>
+<body style="font-family:Arial">
+
+<style>
+	body{padding:50px;margin:0;font-family:Arial;height:100%;}
+	html{height:100%;}
+</style>
+
+<div data-jc="table__items__detail:true">
+
+	<!-- WITHOUT HEADERS -->
+
+	<script type="text/html" data-size="0,120px,120px" data-head="Name,Price,Date" data-align="0,2,1">
+		<tr>
+			<td>{{ name }}</td>
+			<td class="right">{{ price | format(2) }} &euro;</td>
+			<td class="center">{{ created | format('yyyy-MM-dd') }}</td>
+		</tr>
+	</script>
+
+	<script type="text/html" data-type="detail">
+		<div>Name: {{ name }}</div>
+		<div>Description: {{ description }}</div>
+	</script>
+
+	<script type="text/html" data-type="empty">
+		No data
+	</script>
+
+</div>
+
+<br />
+
+<div data-jc="table__items">
+
+	<!-- WITHOUT HEADERS -->
+	<script type="text/html" data-size="0,120px,120px">
+		<tr>
+			<td>{{ name }}</td>
+			<td class="right">{{ price | format(2) }} &euro;</td>
+			<td class="center">{{ created | format('yyyy-MM-dd') }}</td>
+		</tr>
+	</script>
+
+	<script type="text/html" data-type="empty">
+		No data
+	</script>
+
+</div>
+
+<script>
+</body>
+</html>

@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define([],function(){var n=null;return function(e){return void 0!==e&&(n="boolean"==typeof e?new Date:e),n}});
+define([],function(){var e=new Date;return function(n){return void 0!==n&&(e="boolean"==typeof n?new Date:n),e}});
 //# sourceMappingURL=../sourcemaps/langx/now.js.map

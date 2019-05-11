@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<style>
+.hidden { display: none; }
+
+.ui-contentslider { overflow: hidden; width: 100%; position: relative; display: block; }
+.ui-contentslider-item { position: absolute; opacity: 0; transition: all 0.5s; transform: scale(0.8) rotateX(90deg); width: 100%; }
+.ui-contentslider-item-visible { opacity: 1 !important; transform: scale(1) rotateX(0deg) !important; }
+.ui-contentslider-pagination { text-align: center; }
+.ui-contentslider-pagination .fa { margin: 2px 3px; color: #A0A0A0; cursor: pointer; font-size: 9px; }
+.ui-contentslider-pagination-selected { color: black !important; }.hidden { display: none; }
+
+.ui-contentslider { overflow: hidden; width: 100%; position: relative; display: block; }
+.ui-contentslider-item { position: absolute; opacity: 0; transition: all 0.5s; transform: scale(0.8) rotateX(90deg); width: 100%; }
+.ui-contentslider-item-visible { opacity: 1 !important; transform: scale(1) rotateX(0deg) !important; }
+.ui-contentslider-pagination { text-align: center; }
+.ui-contentslider-pagination .fa { margin: 2px 3px; color: #A0A0A0; cursor: pointer; font-size: 9px; }
+.ui-contentslider-pagination-selected { color: black !important; }
+	</style>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js" data-main="./main.js"></script>
+</head>
+<body style="font-family:Arial">
+
+<div class="row">
+	<div class="col-md-4 col-md-offset-4">
+		<div data-jc="contentslider__null__cache:id-for-caching-latest-state" class="hidden">
+			<a href="javascript:void(0)" style="background-color:red;height:50px;display:block;color:white">A</a>
+			<a href="javascript:void(0)" style="background-color:blue;height:50px;display:block;color:white">B</a>
+			<a href="javascript:void(0)" style="background-color:green;height:50px;display:block;color:white">C</a>
+			<a href="javascript:void(0)" style="background-color:gray;height:50px;display:block;color:white">D</a>
+			<a href="javascript:void(0)" style="background-color:black;height:50px;display:block;color:white">E</a>
+		</div>
+	</div>
+</div>
+</body>
+</html>

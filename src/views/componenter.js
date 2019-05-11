@@ -153,7 +153,7 @@ define([
 				path = path.substring(0, index);
 			}
 
-			path = pathmaker(path);
+			path = view.binding.pathmaker(path);
 
 			var all = components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
@@ -242,7 +242,7 @@ define([
 				path = path.substring(0, index);
 			}
 
-			path = pathmaker(path);
+			path = view.binding.pathmaker(path);
 
 			var all = components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
@@ -330,12 +330,28 @@ define([
 			return this;  // W
 		}
 
+		// what:
+		// 1. valid
+		// 2. dirty
+		// 3. reset
+		// 4. update
+		// 5. set
+		function state(arr, type, what) {
+			if (arr && arr.length) {
+				setTimeout(function() {
+					for (var i = 0, length = arr.length; i < length; i++) {
+						arr[i].stateX(type, what);
+					}
+				}, 2, arr);
+			}
+		}
+
 		function validate(path, except) { //W.VALIDATE =
 
 			var arr = [];
 			var valid = true;
 
-			path = pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
+			path = view.binding.pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
 
 			var flags = null;
 			if (except) {
@@ -787,6 +803,7 @@ define([
 			"prepare" : prepare,
 			"reconfigure" : reconfigure,
 			"setter" : setter,
+			"state" : state,
 			"usage" : usage,
 			"validate" : validate
 		}

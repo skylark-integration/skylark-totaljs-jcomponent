@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<link rel="stylesheet" href="../vendor/fontawesome/css/font-awesome.css" />
+	<style>
+
+	</style>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js" data-main="./main.js"></script>
+</head>
+<body style="font-family:Arial">
+<div data-jc="repeater__datasource__filter:filter_data">
+	<script type="text/html">
+		 <div>
+			<div>index: $index</div>
+			<div>path: $path</div>
+			<div>{{ name }}</div>
+			<div>{{ amount | format(2) }}</div>
+			<div>{{ created | format('yyyy-MM-dd') }}</div>
+			<br />
+		 </div>
+	</script>
+</div>
+<script>
+	var datasource = [];
+	datasource.push({ name: 'Row 1', amount: 1000, created: new Date() });
+	datasource.push({ name: 'Row 2', amount: 10000, created: new Date() });
+	datasource.push({ name: 'Row 3', amount: 100000, created: new Date() });
+
+	// filter is optional
+	function filter_data(item) {
+		return item.amount > 0;
+	}
+</script>
+
+</body>
+</html>

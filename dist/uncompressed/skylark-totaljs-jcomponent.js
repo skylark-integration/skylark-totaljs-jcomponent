@@ -212,7 +212,7 @@ define('skylark-totaljs-jcomponent/langx/regexp',[],function(){
 });
 
 define('skylark-totaljs-jcomponent/langx/now',[],function(){
-	var _n = null
+	var _n = new Date();
 
 	return function(n) {
 		if (n !== undefined) {
@@ -701,9 +701,10 @@ define('skylark-totaljs-jcomponent/langx/ArrayEx',[
 	
 });
 define('skylark-totaljs-jcomponent/langx/DateEx',[
+	"skylark-langx/langx",
 	"./regexp",
 	"./statics"
-],function(regexp,statics){
+],function(langx,regexp,statics){
 
 	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
 	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
@@ -1478,7 +1479,8 @@ define('skylark-totaljs-jcomponent/langx',[
 	var waits = {};
 
 	var MD = {
-		jsoncompress : false
+		jsoncompress : false,
+		jsondate : true
 	};
 
 	function async(arr, fn, done) {
@@ -1582,7 +1584,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		} 
 		try {
 			return JSON.parse(value, function(key, value) {
-				return typeof(value) === TYPE_S && date && value.isJSONDate() ? new Date(value) : value;
+				return slangx.isString(value)  && date && value.isJSONDate() ? new Date(value) : value;
 			});
 		} catch (e) {
 			return null;
@@ -1769,25 +1771,11 @@ define('skylark-totaljs-jcomponent/langx',[
 	}
 
 
-	// what:
-	// 1. valid
-	// 2. dirty
-	// 3. reset
-	// 4. update
-	// 5. set
-	function state(arr, type, what) {
-		if (arr && arr.length) {
-			setTimeout(function() {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					arr[i].stateX(type, what);
-				}
-			}, 2, arr);
-		}
-	}
 
 	return jc.langx = {
 
 		Evented : slangx.Evented,
+		extend : slangx.extend,
 		hoster  : slangx.hoster,
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
@@ -1798,6 +1786,7 @@ define('skylark-totaljs-jcomponent/langx',[
 		mixin : slangx.mixin,
 		result : slangx.result,
 		topic : slangx.topic,
+		Xhr : slangx.Xhr,
 
 		async:async,
 		clearTimeout2:clearTimeout2,
@@ -1811,9 +1800,9 @@ define('skylark-totaljs-jcomponent/langx',[
 		now:now,
 		parse:parse,
 		regexp:regexp,
+		result: slangx.result,
 		setTimeout2:setTimeout2,
 		singleton:singleton,
-		state:state,
 		stringify:stringify,
 		statics : statics,
 		wait:wait
@@ -1915,7 +1904,7 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 
 		if (value === undefined && checkStorage) {
 			var item = storage[key];
-			if (item && item.expire > now) {
+			if (item && item.expire > langx.now()) {
 				value = item.value;
 			}
 		}
@@ -2271,6 +2260,29 @@ define('skylark-totaljs-jcomponent/utils/http',[
 	};
 	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
 
+	function request(url,options) {
+		options.url = url;
+        function ajaxSuccess() {
+            if (options.success) {
+                options.success.apply(this,arguments);
+            }
+        }
+
+        function ajaxError() {
+            if (options.error) {
+                options.error.apply(this,arguments);
+            }
+        }
+
+        var p = langx.Xhr.request(options.url,options);
+        p = p.then(ajaxSuccess,ajaxError);
+        p.success = p.done;
+        p.error = p.fail;
+        p.complete = p.always;
+        
+        return p;		
+	}
+
 	function parseHeaders(val) {
 		var h = {};
 		val.split('\n').forEach(function(line) {
@@ -2322,8 +2334,34 @@ define('skylark-totaljs-jcomponent/utils/http',[
 			query[key] = values[key];
 		}
 
-		var val = $.param(query, type == null || type === true);
+		var val = langx.Xhr.param(query, type == null || type === true);
 		return url + (val ? '?' + val : '');
+	}
+
+	function makeurl(url, make) {
+
+		// TODO
+		//defaults.makeurl && (url = defaults.makeurl(url));
+		//
+		//if (make)
+		//	return url;
+
+		var builder = [];
+		var en = encodeURIComponent;
+
+		//M.$version && builder.push('version=' + en(M.$version));
+		//M.$language && builder.push('language=' + en(M.$language));
+
+		if (!builder.length)
+			return url;
+
+		var index = url.indexOf('?');
+		if (index == -1)
+			url += '?';
+		else
+			url += '&';
+
+		return url + builder.join('&');
 	}
 
 	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
@@ -2732,7 +2770,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		}
 
 		var options = {};
-		var data = $.param(defaults.pingdata);
+		var data = $langx.Xhr.param(defaults.pingdata);
 
 		if (data) {
 			index = url.lastIndexOf('?');
@@ -2753,10 +2791,10 @@ define('skylark-totaljs-jcomponent/utils/http',[
 			}
 		};
 
-		execute && $.ajax(makeurl(url), options);
+		execute && request(makeurl(url), options);
 
 		return setInterval(function() {
-			$.ajax(makeurl(url), options);
+			request(makeurl(url), options);
 		}, timeout || 30000);
 	}
 
@@ -2867,7 +2905,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 				}
 			}
 
-			options.headers = $.extend(headers, defaults.headers);
+			options.headers = langx.extend(headers, defaults.headers);
 
 			if (url.match(/http:\/\/|https:\/\//i)) {
 				options.crossDomain = true;
@@ -2973,7 +3011,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 				}
 			};
 
-			$.ajax(makeurl(output.url), options);
+			request(makeurl(output.url), options);
 
 		}, timeout || 0);
 
@@ -3068,6 +3106,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 		"import" : import2,
 		importCache,
 		makeParams,
+		makeurl,
 		ping,
 		parseQuery,
 		upload
@@ -4248,7 +4287,7 @@ define('skylark-totaljs-jcomponent/utils/domx',[
    */
 	function mediaWidth(el) { //W.WIDTH = 
 		if (!el) {
-			el = $(Window);
+			el = $(window);
 		}
 		var w = el.width();
 		var d = $devices;
@@ -4693,8 +4732,7 @@ define('skylark-totaljs-jcomponent/binding',[
 
 	// temporary
 	//W.jctmp = {}; // not used
-	//W.W = window; 
-	//W.FUNC = {};
+
 
 
 
@@ -6737,7 +6775,7 @@ define('skylark-totaljs-jcomponent/stores',[
 		return this.replace(REGPARAMS, function(text) {
 			// Is double?
 			var l = text.charCodeAt(1) === 123 ? 2 : 1;
-			var val = get(text.substring(l, text.length - l).trim(), obj);
+			var val = langx.result(obj,text.substring(l, text.length - l).trim()); // get(text.substring(l, text.length - l).trim(), obj);
 			return val == null ? text : val;
 		});
 	};
@@ -7221,7 +7259,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				path = path.substring(0, index);
 			}
 
-			path = pathmaker(path);
+			path = view.binding.pathmaker(path);
 
 			var all = components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
@@ -7310,7 +7348,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				path = path.substring(0, index);
 			}
 
-			path = pathmaker(path);
+			path = view.binding.pathmaker(path);
 
 			var all = components;//M.components;
 			for (var i = 0, length = all.length; i < length; i++) {
@@ -7398,12 +7436,28 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			return this;  // W
 		}
 
+		// what:
+		// 1. valid
+		// 2. dirty
+		// 3. reset
+		// 4. update
+		// 5. set
+		function state(arr, type, what) {
+			if (arr && arr.length) {
+				setTimeout(function() {
+					for (var i = 0, length = arr.length; i < length; i++) {
+						arr[i].stateX(type, what);
+					}
+				}, 2, arr);
+			}
+		}
+
 		function validate(path, except) { //W.VALIDATE =
 
 			var arr = [];
 			var valid = true;
 
-			path = pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
+			path = view.binding.pathmaker(path.replaceWildcard()); //pathmaker(path.replace(REGWILDCARD, ''));
 
 			var flags = null;
 			if (except) {
@@ -7855,6 +7909,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			"prepare" : prepare,
 			"reconfigure" : reconfigure,
 			"setter" : setter,
+			"state" : state,
 			"usage" : usage,
 			"validate" : validate
 		}
@@ -7933,7 +7988,14 @@ define('skylark-totaljs-jcomponent/views/eventer',[
 				path = path.replace('.*', '');
 			}
 
-			var obj = { name: name, fn: fn, owner: owner || current_owner, context: context || (current_com == null ? undefined : current_com) };
+			var obj = { 
+				name: name, 
+				fn: fn, 
+				owner: owner , 
+				context: context 
+//				owner: owner || current_owner, 
+//				context: context || (current_com == null ? undefined : current_com) 
+			};
 
 			if (name === 'watch') {
 				var arr = [];
@@ -9397,31 +9459,6 @@ define('skylark-totaljs-jcomponent/views/helper',[
 			return $(ATTRURL,container);
 		}
 
-		function makeurl(url, make) {
-
-			// TODO
-			//defaults.makeurl && (url = defaults.makeurl(url));
-			//
-			//if (make)
-			//	return url;
-
-			var builder = [];
-			var en = encodeURIComponent;
-
-			//M.$version && builder.push('version=' + en(M.$version));
-			//M.$language && builder.push('language=' + en(M.$language));
-
-			if (!builder.length)
-				return url;
-
-			var index = url.indexOf('?');
-			if (index == -1)
-				url += '?';
-			else
-				url += '&';
-
-			return url + builder.join('&');
-		}
 
 		function startView() {
 			var $el = $(view.elm());
@@ -9567,7 +9604,6 @@ define('skylark-totaljs-jcomponent/views/helper',[
 			"findControl2" 	: findControl2,
 			"findUrl"       : findUrl,
 			"kill"          : kill,
-			"makeurl"		: makeurl,
 			"nested"        : nested,
 			"nocompile" 	: nocompile,
 			"released" 		: released,
@@ -9696,6 +9732,8 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 	"../components/Scope"
 ],function(Scope){
 	function scoper(view) {
+		var current_owner = null;
+		
 		var helper = view.helper,
 			eventer = view.eventer;
 
@@ -10604,7 +10642,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 	   * @return {Boolean} 
 	   */
 		function changed(path) {
-			return !com_dirty(path);
+			return !view.componenter.com_dirty(path);
 		};
 
 
@@ -10618,7 +10656,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			if (value == null) {
 				value = true;
 			}
-			return !com_dirty(path, !value);
+			return !view.componenter.com_dirty(path, !value);
 		};
 
 
@@ -10741,7 +10779,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 	   */
 		function can(path, except) { // W.CAN = 
 			path = pathmaker(path);
-			return !com_dirty(path, except) && com_valid(path, except);
+			return !view.componenter.com_dirty(path, except) && view.componenter.com_valid(path, except);
 		}
 
 	   /**
@@ -10754,7 +10792,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 	   */
 		function disabled(path, except) { // W.DISABLED = 
 			path = pathmaker(path);
-			return com_dirty(path, except) || !com_valid(path, except);
+			return view.componenter.com_dirty(path, except) || !view.componenter.com_valid(path, except);
 		}
 
 	   /**
@@ -10766,8 +10804,8 @@ define('skylark-totaljs-jcomponent/views/storing',[
 		function invalid(path, onlyComponent) {  // W.INVALID = 
 			path = pathmaker(path);
 			if (path) {
-				com_dirty(path, false, onlyComponent, true);
-				com_valid(path, false, onlyComponent);
+				view.componenter.com_dirty(path, false, onlyComponent, true);
+				view.componenter.com_valid(path, false, onlyComponent);
 			}
 			return W;
 		};
@@ -11354,6 +11392,28 @@ define('skylark-totaljs-jcomponent/globals',[
 		if (inited) {
 			return W;
 		}
+		W.W = window; 
+	    W.FUNC = {};	
+
+		Object.defineProperty(W,"WH",{
+			get : function() {
+				return $(W).height();
+			}
+		});
+
+		Object.defineProperty(W,"WW",{
+			get : function() {
+				return $(W).width();
+			}
+
+		});
+
+		Object.defineProperty(W,"NOW",{
+			get : function() {
+				return langx.now();
+			}
+
+		});
 
 		$.fn.scope = function() {
 
@@ -11393,7 +11453,8 @@ define('skylark-totaljs-jcomponent/globals',[
 			gh = gv.helper,
 			gm = gv.componenter,
 			gl = gv.compiler,
-			ge = gv.eventer;
+			ge = gv.eventer,
+			gb = gv.binding;
 
 		gv.start();
 		$.components = gv.components;
@@ -11613,7 +11674,7 @@ define('skylark-totaljs-jcomponent/globals',[
 	   * @param  {String} path 
 	   */
 		W.GET = function (path, scope) {
-			path = pathmaker(path);
+			path = gb.pathmaker(path);
 			if (scope === true) {
 				scope = null;
 				RESET(path, true);

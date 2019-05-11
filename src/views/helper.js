@@ -239,31 +239,6 @@ define([
 			return $(ATTRURL,container);
 		}
 
-		function makeurl(url, make) {
-
-			// TODO
-			//defaults.makeurl && (url = defaults.makeurl(url));
-			//
-			//if (make)
-			//	return url;
-
-			var builder = [];
-			var en = encodeURIComponent;
-
-			//M.$version && builder.push('version=' + en(M.$version));
-			//M.$language && builder.push('language=' + en(M.$language));
-
-			if (!builder.length)
-				return url;
-
-			var index = url.indexOf('?');
-			if (index == -1)
-				url += '?';
-			else
-				url += '&';
-
-			return url + builder.join('&');
-		}
 
 		function startView() {
 			var $el = $(view.elm());
@@ -409,7 +384,6 @@ define([
 			"findControl2" 	: findControl2,
 			"findUrl"       : findUrl,
 			"kill"          : kill,
-			"makeurl"		: makeurl,
 			"nested"        : nested,
 			"nocompile" 	: nocompile,
 			"released" 		: released,

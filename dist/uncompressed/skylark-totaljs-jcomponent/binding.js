@@ -21,8 +21,7 @@ define([
 
 	// temporary
 	//W.jctmp = {}; // not used
-	//W.W = window; 
-	//W.FUNC = {};
+
 
 
 

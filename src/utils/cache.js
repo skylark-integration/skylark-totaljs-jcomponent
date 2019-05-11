@@ -44,7 +44,7 @@ define([
 
 		if (value === undefined && checkStorage) {
 			var item = storage[key];
-			if (item && item.expire > now) {
+			if (item && item.expire > langx.now()) {
 				value = item.value;
 			}
 		}

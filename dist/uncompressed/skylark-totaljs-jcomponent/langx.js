@@ -13,7 +13,8 @@ define([
 	var waits = {};
 
 	var MD = {
-		jsoncompress : false
+		jsoncompress : false,
+		jsondate : true
 	};
 
 	function async(arr, fn, done) {
@@ -117,7 +118,7 @@ define([
 		} 
 		try {
 			return JSON.parse(value, function(key, value) {
-				return typeof(value) === TYPE_S && date && value.isJSONDate() ? new Date(value) : value;
+				return slangx.isString(value)  && date && value.isJSONDate() ? new Date(value) : value;
 			});
 		} catch (e) {
 			return null;
@@ -304,25 +305,11 @@ define([
 	}
 
 
-	// what:
-	// 1. valid
-	// 2. dirty
-	// 3. reset
-	// 4. update
-	// 5. set
-	function state(arr, type, what) {
-		if (arr && arr.length) {
-			setTimeout(function() {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					arr[i].stateX(type, what);
-				}
-			}, 2, arr);
-		}
-	}
 
 	return jc.langx = {
 
 		Evented : slangx.Evented,
+		extend : slangx.extend,
 		hoster  : slangx.hoster,
 		isFunction : slangx.isFunction,
 		isNumber : slangx.isNumber,
@@ -333,6 +320,7 @@ define([
 		mixin : slangx.mixin,
 		result : slangx.result,
 		topic : slangx.topic,
+		Xhr : slangx.Xhr,
 
 		async:async,
 		clearTimeout2:clearTimeout2,
@@ -346,9 +334,9 @@ define([
 		now:now,
 		parse:parse,
 		regexp:regexp,
+		result: slangx.result,
 		setTimeout2:setTimeout2,
 		singleton:singleton,
-		state:state,
 		stringify:stringify,
 		statics : statics,
 		wait:wait

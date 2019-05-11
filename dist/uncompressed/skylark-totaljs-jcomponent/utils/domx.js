@@ -248,7 +248,7 @@ define([
    */
 	function mediaWidth(el) { //W.WIDTH = 
 		if (!el) {
-			el = $(Window);
+			el = $(window);
 		}
 		var w = el.width();
 		var d = $devices;
