@@ -102,21 +102,21 @@ define([
 		}); // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 		//jc
-		/*
+		
 		langx.each({
 			"MONTHS" : "months",
 			"DAYS" : "days"
 		},function(name1,name2){
 			Object.defineProperty(W, name1, {
 			    get() {
-			      return jc[name2];
+			      return Date[name2];
 			    },
 			    set(value) {
-			    	jc[name2] = value;
+			    	Date[name2] = value;
 			    }
 			});	
 		});
-		*/
+		
 
 		// langx
 		langx.mixin(W,{

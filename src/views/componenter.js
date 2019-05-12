@@ -11,7 +11,6 @@ define([
 		var helper = view.helper,
 			eventer = view.eventer,
 			storing = view.storing,
-			compiler = view.compiler,
 			components = [],
 			lazycom = {},
 			autofill = [],
@@ -549,7 +548,7 @@ define([
 						lazycom[value].state = 2;
 						eventer.emit('lazy', value, true); // EMIT
 						warn('Lazy load: ' + value);
-						compiler.compile();
+						view.compiler.compile();
 					}
 					return val instanceof Array ? val.length > 0 : !!val;
 				}, function(err) {
@@ -630,7 +629,7 @@ define([
 						lazycom[selector].state = 2;
 						eventer.emit('lazy', selector, true); // EMIT
 						warn('Lazy load: ' + selector);
-						compiler.compile();
+						view.compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -660,7 +659,7 @@ define([
 						lazycom[selector].state = 2;
 						eventer.emit('lazy', selector, true);  // EMIT
 						warn('Lazy load: ' + selector);
-						compiler.compile();
+						view.compiler.compile();
 					}
 
 					setTimeout(function(arg) {

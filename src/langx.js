@@ -307,7 +307,7 @@ define([
 
 
 	return jc.langx = {
-
+		each    : slangx.each,
 		Evented : slangx.Evented,
 		extend : slangx.extend,
 		hoster  : slangx.hoster,

@@ -3,23 +3,24 @@ require.config({
   ,map: {
     '*': {
       'jquery': 'skylark-jquery/core'
-  	}
+    }
   }
   , shim: {
   }
   ,packages : [
      { name: "skylark-langx", location: "../../node_modules/skylark-langx/dist/uncompressed/skylark-langx" },
      { name: "skylark-utils-dom", location: "../../node_modules/skylark-utils-dom/dist/uncompressed/skylark-utils-dom"},
+     { name: "skylark-tangular", location: "../../../skylark-tangular/src"},
      { name: "skylark-totaljs-jcomponent", location: "../../src" }
   ],
 });
  
-var form = {};
 
 // require(["module/name", ...], function(params){ ... });
 require([
   "skylark-utils-dom/query",
-  "skylark-totaljs-jcomponent/globals"], function ($,globals) {
+  "skylark-tangular",
+  "skylark-totaljs-jcomponent/globals"], function ($,Tangular,globals) {
     $(function() {
       globals();
 

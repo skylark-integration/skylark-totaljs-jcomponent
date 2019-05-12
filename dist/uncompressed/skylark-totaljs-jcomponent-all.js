@@ -9965,8 +9965,8 @@ define('skylark-totaljs-jcomponent/langx/DateEx',[
 	"./statics"
 ],function(langx,regexp,statics){
 
-	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
-	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
+	Date.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
+	Date.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
 
 	var MD = {
 		dateformat : null
@@ -11032,7 +11032,7 @@ define('skylark-totaljs-jcomponent/langx',[
 
 
 	return jc.langx = {
-
+		each    : slangx.each,
 		Evented : slangx.Evented,
 		extend : slangx.extend,
 		hoster  : slangx.hoster,
@@ -16973,7 +16973,6 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 		var helper = view.helper,
 			eventer = view.eventer,
 			storing = view.storing,
-			compiler = view.compiler,
 			components = [],
 			lazycom = {},
 			autofill = [],
@@ -17511,7 +17510,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 						lazycom[value].state = 2;
 						eventer.emit('lazy', value, true); // EMIT
 						warn('Lazy load: ' + value);
-						compiler.compile();
+						view.compiler.compile();
 					}
 					return val instanceof Array ? val.length > 0 : !!val;
 				}, function(err) {
@@ -17592,7 +17591,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 						lazycom[selector].state = 2;
 						eventer.emit('lazy', selector, true); // EMIT
 						warn('Lazy load: ' + selector);
-						compiler.compile();
+						view.compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -17622,7 +17621,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 						lazycom[selector].state = 2;
 						eventer.emit('lazy', selector, true);  // EMIT
 						warn('Lazy load: ' + selector);
-						compiler.compile();
+						view.compiler.compile();
 					}
 
 					setTimeout(function(arg) {
@@ -21324,21 +21323,21 @@ define('skylark-totaljs-jcomponent/globals',[
 		}); // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 		//jc
-		/*
+		
 		langx.each({
 			"MONTHS" : "months",
 			"DAYS" : "days"
 		},function(name1,name2){
 			Object.defineProperty(W, name1, {
 			    get() {
-			      return jc[name2];
+			      return Date[name2];
 			    },
 			    set(value) {
-			    	jc[name2] = value;
+			    	Date[name2] = value;
 			    }
 			});	
 		});
-		*/
+		
 
 		// langx
 		langx.mixin(W,{

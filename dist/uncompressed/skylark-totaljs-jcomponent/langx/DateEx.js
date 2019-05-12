@@ -4,8 +4,8 @@ define([
 	"./statics"
 ],function(langx,regexp,statics){
 
-	//M.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
-	//M.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
+	Date.months = 'January,February,March,April,May,June,July,August,September,October,November,December'.split(',');
+	Date.days = 'Sunday,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'.split(',');
 
 	var MD = {
 		dateformat : null

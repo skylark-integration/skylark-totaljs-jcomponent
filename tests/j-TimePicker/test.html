@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<style>
+.ui-timepicker { position: absolute; background-color: white; border-radius: 3px; height: 70px; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); transition: all 0.25s; transform: scale(0.5); transform-origin: left top; border: 1px solid #E0E0E0; z-index: 100; }
+.ui-timepicker-visible { transform: scale(1); }
+.ui-timepicker-0 { width: 82px; }
+.ui-timepicker-1 { width: 122px; }
+.ui-timepicker-2 { width: 162px; }
+.ui-timepicker i { display: block; text-align: center; cursor: pointer; height: 20px; }
+.ui-timepicker i:hover { color: gray; }
+.ui-timepicker > div { float: left; width: 40px; }
+.ui-timepicker > div .fa-chevron-up { padding-top: 5px; }
+.ui-timepicker-hours { border-right: 1px solid #F0F0F0; }
+.ui-timepicker-seconds { border-left: 1px solid #F0F0F0; }
+.ui-timepicker-ampm { border-left: 1px solid #F0F0F0; }
+.ui-timepicker-ampm span { height: 30px; display: block; line-height: 30px; text-align: center; }
+.ui-timepicker input { display: block; width: 100%; border: 0; background-color: white; text-align: center; outline: 0; height: 30px; color: black; }
+
+.ui-dark .ui-timepicker { background-color: #303030; border-color: #353535; color: #A0A0A0; box-shadow: 1px 5px 10px rgba(0,0,0,0.2); }
+.ui-dark .ui-timepicker input { background-color: #303030; color: white; }
+.ui-dark .ui-timepicker-hours { border-right-color: #353535; }
+.ui-dark .ui-timepicker-seconds { border-left-color: #353535; }
+.ui-dark .ui-timepicker i { color: #A0A0A0; }
+.ui-dark .ui-timepicker i:hover { color: white; }
+	</style>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js" data-main="./main.js"></script>
+</head>
+<body style="font-family:Arial">
+
+<a href="#timepicker">SHOW TIMEPICKER <span data-bind="form.date__html:value.format('HH\:mm\:ss')"></span></a>
+<div data-jc="timepicker"></div>
+
+<script>
+	var form = {};
+	form.date = new Date();
+
+</script>
+</body>
+</html>
