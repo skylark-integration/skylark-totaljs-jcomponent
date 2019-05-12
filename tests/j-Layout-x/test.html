@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>PAGE TITLE</title>
+	<meta name="description" content="PAGE DESCRIPTION" />
+	<meta name="keywords" content="PAGE KEYWORDS" />
+	<meta charset="utf-8" />
+	<meta http-equiv="X-UA-Compatible" content="IE=11" />
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<meta name="robots" content="all,follow" />
+	<link rel="stylesheet" href="http://cdn.componentator.com/spa.min@15.css" />
+	<style>
+.ui-layout { border: 0; position: absolute; }
+.ui-layout > section { position: absolute; overflow: hidden; }
+.ui-layout > div { position: absolute; }
+.ui-layout-resize-top { height: 2px; cursor: row-resize; }
+.ui-layout-resize-bottom { height: 2px; cursor: row-resize; }
+.ui-layout-resize-left { width: 2px; cursor: col-resize; }
+.ui-layout-resize-right { width: 2px; cursor: col-resize; }
+.ui-layout-resize { z-index: 2; user-select: none; }
+.ui-layout-resize:hover { background-color: #C0C0C0; }
+.ui-layout-drag { background-color: #C0C0C0; }
+.ui-layout-section { background-color: #F0F0F0; }
+.ui-layout-lock { background-color: rgba(222,222,222,0.8); z-index: 100; }
+
+.ui-dark .ui-layout-section { background-color: #282828; }
+.ui-dark .ui-layout-resize:hover { background-color: #505050; }
+.ui-dark .ui-layout-lock { background-color: rgba(34,34,34,0.8); }
+	</style>
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.3/require.min.js" data-main="./main.js"></script>
+</head>
+<body style="font-family:Arial">
+
+<style>
+	.ui-layout-section { font-size: 11px; }
+</style>
+
+<div style="width:500px;height:300px">
+	<div data-jc="layout__mylayout__parent:parent" class="invisible">
+
+		<!-- META DATA OF THE LAYOUT -->
+		<!-- VERY IMPORTANT -->
+		<script type="text/plain">
+			{
+				top: { height: 80, resize: true },
+				bottom: { height: 100 },
+				left: { width: 100, resize: true },
+				right: { width: 100 },
+				main: {},
+				detail: {
+					left: { show: false },
+					right: { show: true, width: '100%' },
+					bottom: { show: false },
+					main: { show: false }
+				}
+			}
+		</script>
+
+		<!-- PANEL IN LAYOUT -->
+		<section data-type="top">
+			TOP
+		</section>
+
+		<!-- PANEL IN LAYOUT -->
+		<section data-type="main">
+			MAIN
+		</section>
+
+		<!-- PANEL IN LAYOUT -->
+		<section data-type="right">
+			RIGHT
+		</section>
+
+		<!-- PANEL IN LAYOUT -->
+		<section data-type="left">
+			LEFT
+		</section>
+
+		<!-- PANEL IN LAYOUT -->
+		<section data-type="bottom">
+			BOTTOM
+		</section>
+
+	</div>
+</div>
+
+<br />
+
+<div style="width:500px;height:300px">
+	<div data-jc="layout__null__parent:parent" class="invisible">
+		<script type="text/plain">
+			{
+				top: { height: 80, resize: 1 },
+				bottom: { height: 100 },
+				left: { width: 100 },
+				right: { width: 100 },
+				main: {}
+			}
+		</script>
+
+		<section data-type="top2">
+			TOP2
+		</section>
+
+		<section data-type="main">
+			MAIN
+		</section>
+
+		<section data-type="right">
+			RIGHT
+		</section>
+
+		<section data-type="left">
+			LEFT
+		</section>
+
+		<section data-type="bottom2">
+			BOTTOM2
+		</section>
+
+	</div>
+</div>
+
+<script>
+
+	var mylayout = '';
+
+	setInterval(function() {
+		SET('mylayout', mylayout === 'detail' ? '' : 'detail');
+	}, 5000);
+
+	setInterval(function() {
+		SETTER('layout', 'lock', 'right');
+	}, 8000);
+
+</script>
+</body>
+</html>

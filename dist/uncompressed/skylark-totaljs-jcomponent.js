@@ -4435,6 +4435,34 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 		// scheduler
 
 
+	// No scrollbar
+	var cssnoscrollbar = {};
+	var clsnoscrollbar = 'noscrollbar';
+	var selnoscrollbar = '.' + clsnoscrollbar;
+
+		$.fn.noscrollbar = function() {  // from v17.003
+			var t = this;
+			var sw = scrollbarWidth();
+
+			cssnoscrollbar['overflow-y'] = sw ? 'scroll' : 'auto';
+
+			for (var i = 0; i < t.length; i++) {
+				var m = t[i];
+				if (m && m.offsetParent) {
+					var el = $(m);
+					var w = $(el[0].parentNode).width();
+					if (m.$noscrollbarwidth !== w) {
+						m.$noscrollbarwidth = w;
+						cssnoscrollbar.width = Math.ceil(w + sw) + 'px';
+						el.css(cssnoscrollbar);
+						if ((el.attr('class') || '').indexOf(clsnoscrollbar) === -1)
+							el.aclass(clsnoscrollbar);
+					}
+				}
+			}
+			return t;
+		};
+
 
 		$.fn.aclass = function(a) {
 			return this.addClass(a);
@@ -5404,6 +5432,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 * Returns all nested components.
 	 */
 	PPC.nested = function() {
+		var self = this;
 		return self.view.helper.nested(this.element);
 
 		/*
@@ -6089,7 +6118,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 			fn = path;
 			path = self.path;
 		} else {
-			path = pathmaker(path);
+			path = this.view.binding.pathmaker(path);
 		}
 
 		self.on('watch', path, fn, init);
@@ -6328,11 +6357,13 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 * Emits an event within jComponent. Is alias for EMIT() method.
 	 */
 	PPC.emit = function() {
+		var self = this;
 		self.view.eventer.emit.apply(self.view.eventer, arguments); // W>EMIT
 		return this;
 	};
 
 	PPC.evaluate = function(path, expression, nopath) {
+		var self = this;
 		if (!expression) {
 			expression = path;
 			path = this.path;
@@ -7934,7 +7965,7 @@ define('skylark-totaljs-jcomponent/views/eventer',[
 				} else if (path.length > self.path.length) {
 					var index = path.lastIndexOf('.', self.path.length);
 					if (index === -1 ? false : self.path === path.substring(0, index)) {
-						var val = get(self.path); // GET
+						var val = view.storing.get(self.path); // GET
 						self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
 					}
 				} else {
@@ -8043,7 +8074,7 @@ define('skylark-totaljs-jcomponent/views/eventer',[
 					watches.unshift(obj);
 				}
 
-				init && fn.call(context || M, path, obj.format ? obj.format(get(path), path, 0) : get(path), 0);
+				init && fn.call(context || M, path, obj.format ? obj.format(view.storing.get(path), path, 0) : view.storing.get(path), 0);
 			} else {
 				if (events[name]) {
 					if (push) {

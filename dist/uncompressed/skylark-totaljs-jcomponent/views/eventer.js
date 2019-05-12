@@ -15,7 +15,7 @@ define([
 				} else if (path.length > self.path.length) {
 					var index = path.lastIndexOf('.', self.path.length);
 					if (index === -1 ? false : self.path === path.substring(0, index)) {
-						var val = get(self.path); // GET
+						var val = view.storing.get(self.path); // GET
 						self.fn.call(self.context, path, self.format ? self.format(val, path, type) : val, type);
 					}
 				} else {
@@ -124,7 +124,7 @@ define([
 					watches.unshift(obj);
 				}
 
-				init && fn.call(context || M, path, obj.format ? obj.format(get(path), path, 0) : get(path), 0);
+				init && fn.call(context || M, path, obj.format ? obj.format(view.storing.get(path), path, 0) : view.storing.get(path), 0);
 			} else {
 				if (events[name]) {
 					if (push) {

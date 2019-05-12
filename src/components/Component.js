@@ -579,6 +579,7 @@ define([
 	 * Returns all nested components.
 	 */
 	PPC.nested = function() {
+		var self = this;
 		return self.view.helper.nested(this.element);
 
 		/*
@@ -1264,7 +1265,7 @@ define([
 			fn = path;
 			path = self.path;
 		} else {
-			path = pathmaker(path);
+			path = this.view.binding.pathmaker(path);
 		}
 
 		self.on('watch', path, fn, init);
@@ -1503,11 +1504,13 @@ define([
 	 * Emits an event within jComponent. Is alias for EMIT() method.
 	 */
 	PPC.emit = function() {
+		var self = this;
 		self.view.eventer.emit.apply(self.view.eventer, arguments); // W>EMIT
 		return this;
 	};
 
 	PPC.evaluate = function(path, expression, nopath) {
+		var self = this;
 		if (!expression) {
 			expression = path;
 			path = this.path;

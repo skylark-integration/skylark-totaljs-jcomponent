@@ -396,6 +396,34 @@ define([
 		// scheduler
 
 
+	// No scrollbar
+	var cssnoscrollbar = {};
+	var clsnoscrollbar = 'noscrollbar';
+	var selnoscrollbar = '.' + clsnoscrollbar;
+
+		$.fn.noscrollbar = function() {  // from v17.003
+			var t = this;
+			var sw = scrollbarWidth();
+
+			cssnoscrollbar['overflow-y'] = sw ? 'scroll' : 'auto';
+
+			for (var i = 0; i < t.length; i++) {
+				var m = t[i];
+				if (m && m.offsetParent) {
+					var el = $(m);
+					var w = $(el[0].parentNode).width();
+					if (m.$noscrollbarwidth !== w) {
+						m.$noscrollbarwidth = w;
+						cssnoscrollbar.width = Math.ceil(w + sw) + 'px';
+						el.css(cssnoscrollbar);
+						if ((el.attr('class') || '').indexOf(clsnoscrollbar) === -1)
+							el.aclass(clsnoscrollbar);
+					}
+				}
+			}
+			return t;
+		};
+
 
 		$.fn.aclass = function(a) {
 			return this.addClass(a);

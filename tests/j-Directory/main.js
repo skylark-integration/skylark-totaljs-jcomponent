@@ -15,7 +15,6 @@ require.config({
   ],
 });
  
-var form = {};
 
 // require(["module/name", ...], function(params){ ... });
 require([
