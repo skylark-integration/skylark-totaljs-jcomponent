@@ -3,9 +3,7 @@ define([
 	"skylark-langx/langx",
 	"./utils/query"
 ],function(skylark,langx,$){
-	var totaljs = skylark.totaljs = {};
-	var M = totaljs.jc = {
-	}; // W.MAIN = W.M = W.jC = W.COM = M = {};
+	var M = skylark.attach("intg.totaljs.jc",{}); // W.MAIN = W.M = W.jC = W.COM = M = {};
 
 	// Internal cache
 	//var blocked = {};

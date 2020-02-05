@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["skylark-langx/skylark","skylark-langx/langx","./utils/query"],function(n,r,t){var a=(n.totaljs={}).jc={};return a.version=16.044,a.$version="",a.$language="",a.prototypes=function(n){var r={};return r.Component=PPC,r.Usage=USAGE.prototype,r.Plugin=Plugin.prototype,n.call(r,r),a},a});
+define(["skylark-langx/skylark","skylark-langx/langx","./utils/query"],function(n,t,a){var r=n.attach("intg.totaljs.jc",{});return r.version=16.044,r.$version="",r.$language="",r.prototypes=function(n){var t={};return t.Component=PPC,t.Usage=USAGE.prototype,t.Plugin=Plugin.prototype,n.call(t,t),r},r});
 //# sourceMappingURL=sourcemaps/jc.js.map
