@@ -103,13 +103,13 @@ define([
 
 
 	cache.clear = function () { // W.CLEARCACHE = 
-		if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
+		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
 			var rem = localStorage.removeItem;
 			var k = $localstorage; //M.$localstorage;
 			rem(k); 
 			rem(k + '.cache');
 			rem(k + '.blocked');
-		}
+		//}
 		return this;
 	};
 

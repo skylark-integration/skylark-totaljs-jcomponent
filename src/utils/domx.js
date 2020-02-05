@@ -1,7 +1,7 @@
 define([
 	"../langx",
-	"skylark-utils-dom/query",
-	"skylark-utils-dom/plugins"
+	"./query",
+	"skylark-domx-plugins"
 ],function(langx, $, plugins){
 	var statics = langx.statics;
 	

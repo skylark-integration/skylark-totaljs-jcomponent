@@ -4,11 +4,12 @@ define([
 	"../utils/domx",
 	"../utils/http",
 	"../utils/logs",
+	"../utils/cache",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,cache,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -28,7 +29,7 @@ define([
 	}, (1000 * 60) * 5);	
 
 	function clean2() {
-		clear();
+		cache.clear();
 		clean();
 	}
 
@@ -38,7 +39,7 @@ define([
 
 
 
-		clear('find');
+		cache.clear('find');
 
 
 		//W.DATETIME = W.NOW = new Date();

@@ -253,7 +253,12 @@ define([
 		};
 
 		W.ERRORS =	function errors(path, except, highlight) { // 
+		
 			return gs.errors(path,except,highlight);
+		};
+
+		W.EXEC = function(path) {
+			return gs.exec.apply(gs,arguments);
 		};
 
 	   /**
@@ -494,6 +499,13 @@ define([
 			return W;
 		};
 
+		W.SEEX = function(path, a, b, c, d) {
+			if (path.indexOf('.') === -1)
+				EXEC(path, a, b, c, d);
+			else
+				SET(path, a);
+		};
+	
 	   /**
 	   * Sets a new value according to the path and performs CHANGE() for all components 
 	   * which are listening on the path.

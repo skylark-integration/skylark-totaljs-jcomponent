@@ -1,8 +1,9 @@
 define([
 	"../jc",
 	"../langx",
+	"skylark-net-http/Xhr",
 	"./cache"
-],function(jc,langx,topic,cache){
+],function(jc,langx,Xhr,cache){
 	var statics = langx.statics;
 	
 	/* TODo
@@ -50,7 +51,7 @@ define([
             }
         }
 
-        var p = langx.Xhr.request(options.url,options);
+        var p = Xhr.request(options.url,options);
         p = p.then(ajaxSuccess,ajaxError);
         p.success = p.done;
         p.error = p.fail;
@@ -110,7 +111,7 @@ define([
 			query[key] = values[key];
 		}
 
-		var val = langx.Xhr.param(query, type == null || type === true);
+		var val = Xhr.param(query, type == null || type === true);
 		return url + (val ? '?' + val : '');
 	}
 

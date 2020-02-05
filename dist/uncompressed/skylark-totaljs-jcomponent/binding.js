@@ -1,5 +1,5 @@
 define([
-	"skylark-utils-dom/query",
+	"./utils/query",
 	"./jc",
 	"./langx",
 	"./plugins",

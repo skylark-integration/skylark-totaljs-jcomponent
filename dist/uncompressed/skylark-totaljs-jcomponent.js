@@ -86,10 +86,15 @@
 
 })(function(define,require) {
 
+define('skylark-totaljs-jcomponent/utils/query',[
+	"skylark-domx-query"
+], function($) {
+	return $;
+});
 define('skylark-totaljs-jcomponent/jc',[
 	"skylark-langx/skylark",
 	"skylark-langx/langx",
-	"skylark-utils-dom/query"
+	"./utils/query"
 ],function(skylark,langx,$){
 	var totaljs = skylark.totaljs = {};
 	var M = totaljs.jc = {
@@ -1963,13 +1968,13 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 
 
 	cache.clear = function () { // W.CLEARCACHE = 
-		if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
+		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
 			var rem = localStorage.removeItem;
 			var k = $localstorage; //M.$localstorage;
 			rem(k); 
 			rem(k + '.cache');
 			rem(k + '.blocked');
-		}
+		//}
 		return this;
 	};
 
@@ -2117,7 +2122,7 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 	return cache;
 });
 define('skylark-totaljs-jcomponent/plugins/Plugin',[
-	"skylark-utils-dom/query",
+	"../utils/query",
 	"../utils/cache",
 	"./_registry"
 ],function($, caches, registry){
@@ -2184,7 +2189,7 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 	return Plugin;
 });
 define('skylark-totaljs-jcomponent/plugins',[
-	"skylark-utils-dom/query",
+	"./utils/query",
 	"./jc",
 	"./plugins/_registry",
 	"./plugins/Plugin"
@@ -2217,16 +2222,12 @@ define('skylark-totaljs-jcomponent/plugins',[
 		"find" : find
 	};
 });
-define('skylark-totaljs-jcomponent/utils/query',[
-	"skylark-utils-dom/query"
-], function($) {
-	return $;
-});
 define('skylark-totaljs-jcomponent/utils/http',[
 	"../jc",
 	"../langx",
+	"skylark-net-http/Xhr",
 	"./cache"
-],function(jc,langx,topic,cache){
+],function(jc,langx,Xhr,cache){
 	var statics = langx.statics;
 	
 	/* TODo
@@ -2274,7 +2275,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
             }
         }
 
-        var p = langx.Xhr.request(options.url,options);
+        var p = Xhr.request(options.url,options);
         p = p.then(ajaxSuccess,ajaxError);
         p.success = p.done;
         p.error = p.fail;
@@ -2334,7 +2335,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 			query[key] = values[key];
 		}
 
-		var val = langx.Xhr.param(query, type == null || type === true);
+		var val = Xhr.param(query, type == null || type === true);
 		return url + (val ? '?' + val : '');
 	}
 
@@ -4039,8 +4040,8 @@ define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
 
 define('skylark-totaljs-jcomponent/utils/domx',[
 	"../langx",
-	"skylark-utils-dom/query",
-	"skylark-utils-dom/plugins"
+	"./query",
+	"skylark-domx-plugins"
 ],function(langx, $, plugins){
 	var statics = langx.statics;
 	
@@ -4738,7 +4739,7 @@ define('skylark-totaljs-jcomponent/binding/vbindArray',[
 });
 
 define('skylark-totaljs-jcomponent/binding',[
-	"skylark-utils-dom/query",
+	"./utils/query",
 	"./jc",
 	"./langx",
 	"./plugins",
@@ -8333,11 +8334,12 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../utils/domx",
 	"../utils/http",
 	"../utils/logs",
+	"../utils/cache",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,cache,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -8357,7 +8359,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	}, (1000 * 60) * 5);	
 
 	function clean2() {
-		clear();
+		cache.clear();
 		clean();
 	}
 
@@ -8367,7 +8369,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 
 
-		clear('find');
+		cache.clear('find');
 
 
 		//W.DATETIME = W.NOW = new Date();
@@ -10784,7 +10786,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				return EXEC;
 			}
 
-			var fn = paths.get(path);
+			var fn = get(path);
 
 			if (langx.isFunction(fn)) {
 				fn.apply(ctx, arg);
@@ -11649,7 +11651,12 @@ define('skylark-totaljs-jcomponent/globals',[
 		};
 
 		W.ERRORS =	function errors(path, except, highlight) { // 
+		
 			return gs.errors(path,except,highlight);
+		};
+
+		W.EXEC = function(path) {
+			return gs.exec.apply(gs,arguments);
 		};
 
 	   /**
@@ -11890,6 +11897,13 @@ define('skylark-totaljs-jcomponent/globals',[
 			return W;
 		};
 
+		W.SEEX = function(path, a, b, c, d) {
+			if (path.indexOf('.') === -1)
+				EXEC(path, a, b, c, d);
+			else
+				SET(path, a);
+		};
+	
 	   /**
 	   * Sets a new value according to the path and performs CHANGE() for all components 
 	   * which are listening on the path.

@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["skylark-utils-dom/query"],function(e){return e});
+define(["skylark-domx-query"],function(e){return e});
 //# sourceMappingURL=../sourcemaps/utils/query.js.map

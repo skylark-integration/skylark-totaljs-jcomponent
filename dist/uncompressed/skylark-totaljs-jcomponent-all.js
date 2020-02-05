@@ -86,15 +86,51 @@
 
 })(function(define,require) {
 
-define('skylark-langx/skylark',[], function() {
-    var skylark = {
+define('skylark-langx-ns/_attach',[],function(){
+    return  function attach(obj1,path,obj2) {
+        if (typeof path == "string") {
+            path = path.split(".");//[path]
+        };
+        var length = path.length,
+            ns=obj1,
+            i=0,
+            name = path[i++];
 
+        while (i < length) {
+            ns = ns[name] = ns[name] || {};
+            name = path[i++];
+        }
+
+        return ns[name] = obj2;
+    }
+});
+define('skylark-langx-ns/ns',[
+    "./_attach"
+], function(_attach) {
+    var skylark = {
+    	attach : function(path,obj) {
+    		return _attach(skylark,path,obj);
+    	}
     };
     return skylark;
 });
 
-define('skylark-langx/types',[
-],function(){
+define('skylark-langx-ns/main',[
+	"./ns"
+],function(skylark){
+	return skylark;
+});
+define('skylark-langx-ns', ['skylark-langx-ns/main'], function (main) { return main; });
+
+define('skylark-langx/skylark',[
+    "skylark-langx-ns"
+], function(ns) {
+	return ns;
+});
+
+define('skylark-langx-types/types',[
+    "skylark-langx-ns"
+],function(skylark){
     var toString = {}.toString;
     
     var type = (function() {
@@ -196,7 +232,7 @@ define('skylark-langx/types',[
     }
 
     function isHtmlNode(obj) {
-        return obj && (obj instanceof Node);
+        return obj && obj.nodeType; // obj instanceof Node; //Consider the elements in IFRAME
     }
 
     function isInstanceOf( /*Object*/ value, /*Type*/ type) {
@@ -274,7 +310,7 @@ define('skylark-langx/types',[
       return value === undefined
     }
 
-    return {
+    return skylark.attach("langx.types",{
 
         isArray: isArray,
 
@@ -315,199 +351,20 @@ define('skylark-langx/types',[
         isWindow: isWindow,
 
         type: type
-    };
+    });
 
 });
-define('skylark-langx/arrays',[
-	"./types"
-],function(types,objects){
-	var filter = Array.prototype.filter,
-		isArrayLike = types.isArrayLike;
-
-    /**
-     * The base implementation of `_.findIndex` and `_.findLastIndex` without
-     * support for iteratee shorthands.
-     *
-     * @param {Array} array The array to inspect.
-     * @param {Function} predicate The function invoked per iteration.
-     * @param {number} fromIndex The index to search from.
-     * @param {boolean} [fromRight] Specify iterating from right to left.
-     * @returns {number} Returns the index of the matched value, else `-1`.
-     */
-    function baseFindIndex(array, predicate, fromIndex, fromRight) {
-      var length = array.length,
-          index = fromIndex + (fromRight ? 1 : -1);
-
-      while ((fromRight ? index-- : ++index < length)) {
-        if (predicate(array[index], index, array)) {
-          return index;
-        }
-      }
-      return -1;
-    }
-
-    /**
-     * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
-     *
-     * @param {Array} array The array to inspect.
-     * @param {*} value The value to search for.
-     * @param {number} fromIndex The index to search from.
-     * @returns {number} Returns the index of the matched value, else `-1`.
-     */
-    function baseIndexOf(array, value, fromIndex) {
-      if (value !== value) {
-        return baseFindIndex(array, baseIsNaN, fromIndex);
-      }
-      var index = fromIndex - 1,
-          length = array.length;
-
-      while (++index < length) {
-        if (array[index] === value) {
-          return index;
-        }
-      }
-      return -1;
-    }
-
-    /**
-     * The base implementation of `isNaN` without support for number objects.
-     *
-     * @private
-     * @param {*} value The value to check.
-     * @returns {boolean} Returns `true` if `value` is `NaN`, else `false`.
-     */
-    function baseIsNaN(value) {
-      return value !== value;
-    }
-
-
-    function compact(array) {
-        return filter.call(array, function(item) {
-            return item != null;
-        });
-    }
-
-    function flatten(array) {
-        if (isArrayLike(array)) {
-            var result = [];
-            for (var i = 0; i < array.length; i++) {
-                var item = array[i];
-                if (isArrayLike(item)) {
-                    for (var j = 0; j < item.length; j++) {
-                        result.push(item[j]);
-                    }
-                } else {
-                    result.push(item);
-                }
-            }
-            return result;
-        } else {
-            return array;
-        }
-        //return array.length > 0 ? concat.apply([], array) : array;
-    }
-
-    function grep(array, callback) {
-        var out = [];
-
-        each(array, function(i, item) {
-            if (callback(item, i)) {
-                out.push(item);
-            }
-        });
-
-        return out;
-    }
-
-    function inArray(item, array) {
-        if (!array) {
-            return -1;
-        }
-        var i;
-
-        if (array.indexOf) {
-            return array.indexOf(item);
-        }
-
-        i = array.length;
-        while (i--) {
-            if (array[i] === item) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    function makeArray(obj, offset, startWith) {
-       if (isArrayLike(obj) ) {
-        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
-      }
-
-      // array of single index
-      return [ obj ];             
-    }
-
-
-    function forEach (arr, fn) {
-      if (arr.forEach) return arr.forEach(fn)
-      for (var i = 0; i < arr.length; i++) fn(arr[i], i);
-    }
-
-    function map(elements, callback) {
-        var value, values = [],
-            i, key
-        if (isArrayLike(elements))
-            for (i = 0; i < elements.length; i++) {
-                value = callback.call(elements[i], elements[i], i);
-                if (value != null) values.push(value)
-            }
-        else
-            for (key in elements) {
-                value = callback.call(elements[key], elements[key], key);
-                if (value != null) values.push(value)
-            }
-        return flatten(values)
-    }
-
-    function uniq(array) {
-        return filter.call(array, function(item, idx) {
-            return array.indexOf(item) == idx;
-        })
-    }
-
-    return {
-        baseFindIndex: baseFindIndex,
-
-        baseIndexOf : baseIndexOf,
-        
-        compact: compact,
-
-        first : function(items,n) {
-            if (n) {
-                return items.slice(0,n);
-            } else {
-                return items[0];
-            }
-        },
-
-        flatten: flatten,
-
-        inArray: inArray,
-
-        makeArray: makeArray,
-
-        forEach : forEach,
-
-        map : map,
-        
-        uniq : uniq
-
-    }
-});
-define('skylark-langx/numbers',[
+define('skylark-langx-types/main',[
 	"./types"
 ],function(types){
+	return types;
+});
+define('skylark-langx-types', ['skylark-langx-types/main'], function (main) { return main; });
+
+define('skylark-langx-numbers/numbers',[
+    "skylark-langx-ns",
+    "skylark-langx-types"
+],function(skylark,types){
 	var isObject = types.isObject,
 		isSymbol = types.isSymbol;
 
@@ -644,16 +501,25 @@ define('skylark-langx/numbers',[
 	    : (reIsBadHex.test(value) ? NAN : +value);
 	}
 
-	return  {
+	return  skylark.attach("langx.numbers",{
 		toFinite : toFinite,
 		toNumber : toNumber,
 		toInteger : toInteger
-	}
+	});
 });
-define('skylark-langx/objects',[
-	"./types",
-    "./numbers"
-],function(types,numbers){
+define('skylark-langx-numbers/main',[
+	"./numbers"
+],function(numbers){
+	return numbers;
+});
+define('skylark-langx-numbers', ['skylark-langx-numbers/main'], function (main) { return main; });
+
+define('skylark-langx-objects/objects',[
+    "skylark-langx-ns/ns",
+    "skylark-langx-ns/_attach",
+	"skylark-langx-types",
+    "skylark-langx-numbers"
+],function(skylark,_attach,types,numbers){
 	var hasOwnProperty = Object.prototype.hasOwnProperty,
         slice = Array.prototype.slice,
         isBoolean = types.isBoolean,
@@ -977,6 +843,37 @@ define('skylark-langx/objects',[
         return args.target;
     }
 
+   // Return a copy of the object without the blacklisted properties.
+    function omit(obj, prop1,prop2) {
+        if (!obj) {
+            return null;
+        }
+        var result = mixin({},obj);
+        for(var i=1;i<arguments.length;i++) {
+            var pn = arguments[i];
+            if (pn in obj) {
+                delete result[pn];
+            }
+        }
+        return result;
+
+    }
+
+   // Return a copy of the object only containing the whitelisted properties.
+    function pick(obj,prop1,prop2) {
+        if (!obj) {
+            return null;
+        }
+        var result = {};
+        for(var i=1;i<arguments.length;i++) {
+            var pn = arguments[i];
+            if (pn in obj) {
+                result[pn] = obj[pn];
+            }
+        }
+        return result;
+    }
+
     function removeItem(items, item) {
         if (isArray(items)) {
             var idx = items.indexOf(item);
@@ -1026,7 +923,7 @@ define('skylark-langx/objects',[
 
     // Retrieve the values of an object's properties.
     function values(obj) {
-        var keys = _.keys(obj);
+        var keys = allKeys(obj);
         var length = keys.length;
         var values = Array(length);
         for (var i = 0; i < length; i++) {
@@ -1059,8 +956,10 @@ define('skylark-langx/objects',[
 
     }
 
-    return {
+    return skylark.attach("langx.objects",{
         allKeys: allKeys,
+
+        attach : _attach,
 
         clone: clone,
 
@@ -1082,6 +981,10 @@ define('skylark-langx/objects',[
 
         mixin: mixin,
 
+        omit: omit,
+
+        pick: pick,
+
         removeItem: removeItem,
 
         result : result,
@@ -1089,16 +992,261 @@ define('skylark-langx/objects',[
         safeMixin: safeMixin,
 
         values: values
-    };
-
+    });
 
 
 });
-define('skylark-langx/klass',[
-    "./arrays",
-    "./objects",
-    "./types"
-],function(arrays,objects,types){
+define('skylark-langx-objects/main',[
+	"./objects"
+],function(objects){
+	return objects;
+});
+define('skylark-langx-objects', ['skylark-langx-objects/main'], function (main) { return main; });
+
+define('skylark-langx-arrays/arrays',[
+  "skylark-langx-ns/ns",
+  "skylark-langx-types",
+  "skylark-langx-objects"
+],function(skylark,types,objects){
+	var filter = Array.prototype.filter,
+		isArrayLike = types.isArrayLike;
+
+    /**
+     * The base implementation of `_.findIndex` and `_.findLastIndex` without
+     * support for iteratee shorthands.
+     *
+     * @param {Array} array The array to inspect.
+     * @param {Function} predicate The function invoked per iteration.
+     * @param {number} fromIndex The index to search from.
+     * @param {boolean} [fromRight] Specify iterating from right to left.
+     * @returns {number} Returns the index of the matched value, else `-1`.
+     */
+    function baseFindIndex(array, predicate, fromIndex, fromRight) {
+      var length = array.length,
+          index = fromIndex + (fromRight ? 1 : -1);
+
+      while ((fromRight ? index-- : ++index < length)) {
+        if (predicate(array[index], index, array)) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * The base implementation of `_.indexOf` without `fromIndex` bounds checks.
+     *
+     * @param {Array} array The array to inspect.
+     * @param {*} value The value to search for.
+     * @param {number} fromIndex The index to search from.
+     * @returns {number} Returns the index of the matched value, else `-1`.
+     */
+    function baseIndexOf(array, value, fromIndex) {
+      if (value !== value) {
+        return baseFindIndex(array, baseIsNaN, fromIndex);
+      }
+      var index = fromIndex - 1,
+          length = array.length;
+
+      while (++index < length) {
+        if (array[index] === value) {
+          return index;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * The base implementation of `isNaN` without support for number objects.
+     *
+     * @private
+     * @param {*} value The value to check.
+     * @returns {boolean} Returns `true` if `value` is `NaN`, else `false`.
+     */
+    function baseIsNaN(value) {
+      return value !== value;
+    }
+
+
+    function compact(array) {
+        return filter.call(array, function(item) {
+            return item != null;
+        });
+    }
+
+    function filter2(array,func) {
+      return filter.call(array,func);
+    }
+
+    function flatten(array) {
+        if (isArrayLike(array)) {
+            var result = [];
+            for (var i = 0; i < array.length; i++) {
+                var item = array[i];
+                if (isArrayLike(item)) {
+                    for (var j = 0; j < item.length; j++) {
+                        result.push(item[j]);
+                    }
+                } else {
+                    result.push(item);
+                }
+            }
+            return result;
+        } else {
+            return array;
+        }
+        //return array.length > 0 ? concat.apply([], array) : array;
+    }
+
+    function grep(array, callback) {
+        var out = [];
+
+        objects.each(array, function(i, item) {
+            if (callback(item, i)) {
+                out.push(item);
+            }
+        });
+
+        return out;
+    }
+
+    function inArray(item, array) {
+        if (!array) {
+            return -1;
+        }
+        var i;
+
+        if (array.indexOf) {
+            return array.indexOf(item);
+        }
+
+        i = array.length;
+        while (i--) {
+            if (array[i] === item) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function makeArray(obj, offset, startWith) {
+       if (isArrayLike(obj) ) {
+        return (startWith || []).concat(Array.prototype.slice.call(obj, offset || 0));
+      }
+
+      // array of single index
+      return [ obj ];             
+    }
+
+
+    function forEach (arr, fn) {
+      if (arr.forEach) return arr.forEach(fn)
+      for (var i = 0; i < arr.length; i++) fn(arr[i], i);
+    }
+
+    function map(elements, callback) {
+        var value, values = [],
+            i, key
+        if (isArrayLike(elements))
+            for (i = 0; i < elements.length; i++) {
+                value = callback.call(elements[i], elements[i], i);
+                if (value != null) values.push(value)
+            }
+        else
+            for (key in elements) {
+                value = callback.call(elements[key], elements[key], key);
+                if (value != null) values.push(value)
+            }
+        return flatten(values)
+    }
+
+
+    function merge( first, second ) {
+      var l = second.length,
+          i = first.length,
+          j = 0;
+
+      if ( typeof l === "number" ) {
+        for ( ; j < l; j++ ) {
+          first[ i++ ] = second[ j ];
+        }
+      } else {
+        while ( second[j] !== undefined ) {
+          first[ i++ ] = second[ j++ ];
+        }
+      }
+
+      first.length = i;
+
+      return first;
+    }
+
+    function reduce(array,callback,initialValue) {
+        return Array.prototype.reduce.call(array,callback,initialValue);
+    }
+
+    function uniq(array) {
+        return filter.call(array, function(item, idx) {
+            return array.indexOf(item) == idx;
+        })
+    }
+
+    return skylark.attach("langx.arrays",{
+        baseFindIndex: baseFindIndex,
+
+        baseIndexOf : baseIndexOf,
+        
+        compact: compact,
+
+        first : function(items,n) {
+            if (n) {
+                return items.slice(0,n);
+            } else {
+                return items[0];
+            }
+        },
+
+        filter : filter2,
+        
+        flatten: flatten,
+
+        grep: grep,
+
+        inArray: inArray,
+
+        makeArray: makeArray,
+
+        merge : merge,
+
+        forEach : forEach,
+
+        map : map,
+        
+        reduce : reduce,
+
+        uniq : uniq
+
+    });
+});
+define('skylark-langx-arrays/main',[
+	"./arrays"
+],function(arrays){
+	return arrays;
+});
+define('skylark-langx-arrays', ['skylark-langx-arrays/main'], function (main) { return main; });
+
+define('skylark-langx/arrays',[
+	"skylark-langx-arrays"
+],function(arrays){
+  return arrays;
+});
+define('skylark-langx-klass/klass',[
+  "skylark-langx-ns/ns",
+  "skylark-langx-types",
+  "skylark-langx-objects",
+  "skylark-langx-arrays",
+],function(skylark,types,objects,arrays){
     var uniq = arrays.uniq,
         has = objects.has,
         mixin = objects.mixin,
@@ -1342,7 +1490,19 @@ let longEar = klass({
 
     var createClass = f1();
 
-    return createClass;
+    return skylark.attach("langx.klass",createClass);
+});
+define('skylark-langx-klass/main',[
+	"./klass"
+],function(klass){
+	return klass;
+});
+define('skylark-langx-klass', ['skylark-langx-klass/main'], function (main) { return main; });
+
+define('skylark-langx/klass',[
+    "skylark-langx-klass"
+],function(klass){
+    return klass;
 });
 define('skylark-langx/ArrayStore',[
     "./klass"
@@ -1688,8 +1848,9 @@ define('skylark-langx/ArrayStore',[
 
 	return ArrayStore;
 });
-define('skylark-langx/aspect',[
-],function(){
+define('skylark-langx-aspect/aspect',[
+    "skylark-langx-ns"
+],function(skylark){
 
   var undefined, nextId = 0;
     function advise(dispatcher, type, advice, receiveArguments){
@@ -1805,18 +1966,31 @@ define('skylark-langx/aspect',[
         };
     }
 
-    return {
+    return skylark.attach("langx.aspect",{
         after: aspect("after"),
  
         around: aspect("around"),
         
         before: aspect("before")
-    };
+    });
 });
-define('skylark-langx/funcs',[
-    "./objects",
-	"./types"
-],function(objects,types){
+define('skylark-langx-aspect/main',[
+	"./aspect"
+],function(aspect){
+	return aspect;
+});
+define('skylark-langx-aspect', ['skylark-langx-aspect/main'], function (main) { return main; });
+
+define('skylark-langx/aspect',[
+    "skylark-langx-aspect"
+],function(aspect){
+  return aspect;
+});
+define('skylark-langx-funcs/funcs',[
+  "skylark-langx-ns/ns",
+  "skylark-langx-types",
+  "skylark-langx-objects"
+],function(skylark,types,objects){
 	var mixin = objects.mixin,
         slice = Array.prototype.slice,
         isFunction = types.isFunction,
@@ -1944,7 +2118,7 @@ define('skylark-langx/funcs',[
     return template;
   };
 
-    return {
+    return skylark.attach("langx.funcs",{
         debounce: debounce,
 
         delegate: delegate,
@@ -1965,12 +2139,19 @@ define('skylark-langx/funcs',[
 
         templateSettings : templateSettings,
         template : template
-    };
+    });
 });
-define('skylark-langx/Deferred',[
-    "./arrays",
-	"./funcs",
-    "./objects"
+define('skylark-langx-funcs/main',[
+	"./funcs"
+],function(funcs){
+	return funcs;
+});
+define('skylark-langx-funcs', ['skylark-langx-funcs/main'], function (main) { return main; });
+
+define('skylark-langx-async/Deferred',[
+    "skylark-langx-arrays",
+	"skylark-langx-funcs",
+    "skylark-langx-objects"
 ],function(arrays,funcs,objects){
     "use strict";
     
@@ -2193,13 +2374,16 @@ define('skylark-langx/Deferred',[
 
     return Deferred;
 });
-define('skylark-langx/async',[
-    "./Deferred",
-    "./objects"
-],function(Deferred,objects){
+define('skylark-langx-async/async',[
+    "skylark-langx-ns",
+    "skylark-langx-objects",
+    "./Deferred"
+],function(skylark,objects,Deferred){
     var each = objects.each;
     
     var async = {
+        Deferred : Deferred,
+
         parallel : function(arr,args,ctx) {
             var rets = [];
             ctx = ctx || null;
@@ -2247,9 +2431,23 @@ define('skylark-langx/async',[
         }
     };
 
-	return async;	
+	return skylark.attach("langx.async",async);	
 });
-define('skylark-langx/datetimes',[],function(){
+define('skylark-langx-async/main',[
+	"./async"
+],function(async){
+	return async;
+});
+define('skylark-langx-async', ['skylark-langx-async/main'], function (main) { return main; });
+
+define('skylark-langx/async',[
+    "skylark-langx-async"
+],function(async){
+    return async;
+});
+define('skylark-langx-datetimes/datetimes',[
+    "skylark-langx-ns"
+],function(skylark){
      function parseMilliSeconds(str) {
 
         var strs = str.split(' ');
@@ -2308,26 +2506,53 @@ define('skylark-langx/datetimes',[],function(){
         }
     };
 	
-	return {
+	return skylark.attach("langx.datetimes",{
 		parseMilliSeconds
-	};
+	});
 });
-define('skylark-langx/Evented',[
-    "./klass",
-    "./arrays",
-    "./objects",
-	"./types"
-],function(klass,arrays,objects,types){
-	var slice = Array.prototype.slice,
+define('skylark-langx-datetimes/main',[
+	"./datetimes"
+],function(datetimes){
+	return datetimes;
+});
+define('skylark-langx-datetimes', ['skylark-langx-datetimes/main'], function (main) { return main; });
+
+define('skylark-langx/datetimes',[
+    "skylark-langx-datetimes"
+],function(datetimes){
+    return datetimes;
+});
+define('skylark-langx/Deferred',[
+    "skylark-langx-async/Deferred"
+],function(Deferred){
+    return Deferred;
+});
+define('skylark-langx-emitter/Emitter',[
+  "skylark-langx-ns/ns",
+  "skylark-langx-types",
+  "skylark-langx-objects",
+  "skylark-langx-arrays",
+  "skylark-langx-klass"
+],function(skylark,types,objects,arrays,klass){
+    var slice = Array.prototype.slice,
         compact = arrays.compact,
         isDefined = types.isDefined,
         isPlainObject = types.isPlainObject,
-		isFunction = types.isFunction,
-		isString = types.isString,
-		isEmptyObject = types.isEmptyObject,
-		mixin = objects.mixin;
+        isFunction = types.isFunction,
+        isString = types.isString,
+        isEmptyObject = types.isEmptyObject,
+        mixin = objects.mixin,
+        safeMixin = objects.safeMixin;
 
-    var Evented = klass({
+    function parse(event) {
+        var segs = ("" + event).split(".");
+        return {
+            name: segs[0],
+            ns: segs.slice(1).join(" ")
+        };
+    }
+
+    var Emitter = klass({
         on: function(events, selector, data, callback, ctx, /*used internally*/ one) {
             var self = this,
                 _hub = this._hub || (this._hub = {});
@@ -2357,12 +2582,17 @@ define('skylark-langx/Evented',[
                 events = events.split(/\s/)
             }
 
-            events.forEach(function(name) {
+            events.forEach(function(event) {
+                var parsed = parse(event),
+                    name = parsed.name,
+                    ns = parsed.ns;
+
                 (_hub[name] || (_hub[name] = [])).push({
                     fn: callback,
                     selector: selector,
                     data: data,
                     ctx: ctx,
+                    ns : ns,
                     one: one
                 });
             });
@@ -2374,7 +2604,7 @@ define('skylark-langx/Evented',[
             return this.on(events, selector, data, callback, ctx, 1);
         },
 
-        trigger: function(e /*,argument list*/ ) {
+        emit: function(e /*,argument list*/ ) {
             if (!this._hub) {
                 return this;
             }
@@ -2396,7 +2626,11 @@ define('skylark-langx/Evented',[
                 args = [e];
             }
             [e.type || e.name, "all"].forEach(function(eventName) {
-                var listeners = self._hub[eventName];
+                var parsed = parse(eventName),
+                    name = parsed.name,
+                    ns = parsed.ns;
+
+                var listeners = self._hub[name];
                 if (!listeners) {
                     return;
                 }
@@ -2406,6 +2640,9 @@ define('skylark-langx/Evented',[
 
                 for (var i = 0; i < len; i++) {
                     var listener = listeners[i];
+                    if (ns && (!listener.ns ||  !listener.ns.startsWith(ns))) {
+                        continue;
+                    }
                     if (e.data) {
                         if (listener.data) {
                             e.data = mixin({}, listener.data, e.data);
@@ -2486,21 +2723,37 @@ define('skylark-langx/Evented',[
                 events = events.split(/\s/)
             }
 
-            events.forEach(function(name) {
+            events.forEach(function(event) {
+                var parsed = parse(event),
+                    name = parsed.name,
+                    ns = parsed.ns;
+
                 var evts = _hub[name];
-                var liveEvents = [];
 
-                if (evts && callback) {
-                    for (var i = 0, len = evts.length; i < len; i++) {
-                        if (evts[i].fn !== callback && evts[i].fn._ !== callback)
-                            liveEvents.push(evts[i]);
+                if (evts) {
+                    var liveEvents = [];
+
+                    if (callback || ns) {
+                        for (var i = 0, len = evts.length; i < len; i++) {
+                            
+                            if (callback && evts[i].fn !== callback && evts[i].fn._ !== callback) {
+                                liveEvents.push(evts[i]);
+                                continue;
+                            } 
+
+                            if (ns && (!evts[i].ns || evts[i].ns.indexOf(ns)!=0)) {
+                                liveEvents.push(evts[i]);
+                                continue;
+                            }
+                        }
                     }
-                }
 
-                if (liveEvents.length) {
-                    _hub[name] = liveEvents;
-                } else {
-                    delete _hub[name];
+                    if (liveEvents.length) {
+                        _hub[name] = liveEvents;
+                    } else {
+                        delete _hub[name];
+                    }
+
                 }
             });
 
@@ -2552,14 +2805,53 @@ define('skylark-langx/Evented',[
             }
 
             return this;
+        },
+
+        trigger  : function() {
+            return this.emit.apply(this,arguments);
         }
     });
 
-	return Evented;
+    Emitter.createEvent = function (type,props) {
+        var e = new CustomEvent(type,props);
+        return safeMixin(e, props);
+    };
+
+    return skylark.attach("langx.Emitter",Emitter);
 
 });
-define('skylark-langx/hoster',[
-],function(){
+define('skylark-langx-emitter/Evented',[
+  "skylark-langx-ns/ns",
+	"./Emitter"
+],function(skylark,Emitter){
+	return skylark.attach("langx.Evented",Emitter);
+});
+define('skylark-langx-emitter/main',[
+	"./Emitter",
+	"./Evented"
+],function(Emitter){
+	return Emitter;
+});
+define('skylark-langx-emitter', ['skylark-langx-emitter/main'], function (main) { return main; });
+
+define('skylark-langx/Emitter',[
+    "skylark-langx-emitter"
+],function(Evented){
+    return Evented;
+});
+define('skylark-langx/Evented',[
+    "skylark-langx-emitter"
+],function(Evented){
+    return Evented;
+});
+define('skylark-langx/funcs',[
+    "skylark-langx-funcs"
+],function(funcs){
+    return funcs;
+});
+define('skylark-langx-hoster/hoster',[
+    "skylark-langx-ns"
+],function(skylark){
 	// The javascript host environment, brower and nodejs are supported.
 	var hoster = {
 		"isBrowser" : true, // default
@@ -2636,10 +2928,48 @@ define('skylark-langx/hoster',[
 	    }
 	}
 
-	return  hoster;
+	return  skylark.attach("langx.hoster",hoster);
 });
-define('skylark-langx/strings',[
-],function(){
+define('skylark-langx-hoster/main',[
+	"./hoster"
+],function(hoster){
+	return hoster;
+});
+define('skylark-langx-hoster', ['skylark-langx-hoster/main'], function (main) { return main; });
+
+define('skylark-langx/hoster',[
+	"skylark-langx-hoster"
+],function(hoster){
+	return hoster;
+});
+define('skylark-langx/numbers',[
+	"skylark-langx-numbers"
+],function(numbers){
+	return numbers;
+});
+define('skylark-langx/objects',[
+    "skylark-langx-objects"
+],function(objects){
+    return objects;
+});
+define('skylark-langx-strings/strings',[
+    "skylark-langx-ns"
+],function(skylark){
+    // add default escape function for escaping HTML entities
+    var escapeCharMap = Object.freeze({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;',
+        '`': '&#x60;',
+        '=': '&#x3D;',
+    });
+    function replaceChar(c) {
+        return escapeCharMap[c];
+    }
+    var escapeChars = /[&<>"'`=]/g;
+
 
      /*
      * Converts camel case into dashes.
@@ -2669,10 +2999,29 @@ define('skylark-langx/strings',[
         }
     }
 
+    function escapeHTML(str) {
+        if (str == null) {
+            return '';
+        }
+        if (!str) {
+            return String(str);
+        }
+
+        return str.toString().replace(escapeChars, replaceChar);
+    }
+
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+            var r = Math.random() * 16 | 0;
+            var v = c === 'x' ? r : ((r & 0x3) | 0x8);
+            return v.toString(16);
+        });
+    }
 
     function trim(str) {
         return str == null ? "" : String.prototype.trim.call(str);
     }
+
     function substitute( /*String*/ template,
         /*Object|Array*/
         map,
@@ -2732,7 +3081,125 @@ define('skylark-langx/strings',[
         return prefix ? prefix + id : id;
     }
 
-	return {
+
+    /**
+     * https://github.com/cho45/micro-template.js
+     * (c) cho45 http://cho45.github.com/mit-license
+     */
+    function template (id, data) {
+
+        function include(name, args) {
+            var stash = {};
+            for (var key in template.context.stash) if (template.context.stash.hasOwnProperty(key)) {
+                stash[key] = template.context.stash[key];
+            }
+            if (args) for (var key in args) if (args.hasOwnProperty(key)) {
+                stash[key] = args[key];
+            }
+            var context = template.context;
+            context.ret += template(name, stash);
+            template.context = context;
+        }
+
+        function wrapper(name, fun) {
+            var current = template.context.ret;
+            template.context.ret = '';
+            fun.apply(template.context);
+            var content = template.context.ret;
+            var orig_content = template.context.stash.content;
+            template.context.stash.content = content;
+            template.context.ret = current + template(name, template.context.stash);
+            template.context.stash.content = orig_content;
+        }
+
+        var me = arguments.callee;
+        if (!me.cache[id]) me.cache[id] = (function () {
+            var name = id, string = /^[\w\-]+$/.test(id) ? me.get(id): (name = 'template(string)', id); // no warnings
+            var line = 1, body = (
+                "try { " +
+                    (me.variable ?  "var " + me.variable + " = this.stash;" : "with (this.stash) { ") +
+                        "this.ret += '"  +
+                        string.
+                            replace(/<%/g, '\x11').replace(/%>/g, '\x13'). // if you want other tag, just edit this line
+                            replace(/'(?![^\x11\x13]+?\x13)/g, '\\x27').
+                            replace(/^\s*|\s*$/g, '').
+                            replace(/\n|\r\n/g, function () { return "';\nthis.line = " + (++line) + "; this.ret += '\\n" }).
+                            replace(/\x11=raw(.+?)\x13/g, "' + ($1) + '").
+                            replace(/\x11=(.+?)\x13/g, "' + this.escapeHTML($1) + '").
+                            replace(/\x11(.+?)\x13/g, "'; $1; this.ret += '") +
+                    "'; " + (me.variable ? "" : "}") + "return this.ret;" +
+                "} catch (e) { throw 'TemplateError: ' + e + ' (on " + name + "' + ' line ' + this.line + ')'; } " +
+                "//@ sourceURL=" + name + "\n" // source map
+            ).replace(/this\.ret \+= '';/g, '');
+            var func = new Function(body);
+            var map  = { '&' : '&amp;', '<' : '&lt;', '>' : '&gt;', '\x22' : '&#x22;', '\x27' : '&#x27;' };
+            var escapeHTML = function (string) { return (''+string).replace(/[&<>\'\"]/g, function (_) { return map[_] }) };
+            return function (stash) { return func.call(me.context = { escapeHTML: escapeHTML, line: 1, ret : '', stash: stash }) };
+        })();
+        return data ? me.cache[id](data) : me.cache[id];
+    }
+
+    template.cache = {};
+    
+
+    template.get = function (id) {
+        return document.getElementById(id).innerHTML;
+    };
+
+    function rtrim(str) {
+        return str.replace(/\s+$/g, '');
+    }
+
+    // Slugify a string
+    function slugify(str) {
+        str = str.replace(/^\s+|\s+$/g, '');
+
+        // Make the string lowercase
+        str = str.toLowerCase();
+
+        // Remove accents, swap ñ for n, etc
+        var from = "ÁÄÂÀÃÅČÇĆĎÉĚËÈÊẼĔȆÍÌÎÏŇÑÓÖÒÔÕØŘŔŠŤÚŮÜÙÛÝŸŽáäâàãåčçćďéěëèêẽĕȇíìîïňñóöòôõøðřŕšťúůüùûýÿžþÞĐđßÆa·/_,:;";
+        var to   = "AAAAAACCCDEEEEEEEEIIIINNOOOOOORRSTUUUUUYYZaaaaaacccdeeeeeeeeiiiinnooooooorrstuuuuuyyzbBDdBAa------";
+        for (var i=0, l=from.length ; i<l ; i++) {
+            str = str.replace(new RegExp(from.charAt(i), 'g'), to.charAt(i));
+        }
+
+        // Remove invalid chars
+        //str = str.replace(/[^a-z0-9 -]/g, '') 
+        // Collapse whitespace and replace by -
+        str = str.replace(/\s+/g, '-') 
+        // Collapse dashes
+        .replace(/-+/g, '-'); 
+
+        return str;
+    }    
+
+    // return boolean if string 'true' or string 'false', or if a parsable string which is a number
+    // also supports JSON object and/or arrays parsing
+    function toType(str) {
+        var type = typeof str;
+        if (type !== 'string') {
+            return str;
+        }
+        var nb = parseFloat(str);
+        if (!isNaN(nb) && isFinite(str)) {
+            return nb;
+        }
+        if (str === 'false') {
+            return false;
+        }
+        if (str === 'true') {
+            return true;
+        }
+
+        try {
+            str = JSON.parse(str);
+        } catch (e) {}
+
+        return str;
+    }
+
+	return skylark.attach("langx.strings",{
         camelCase: function(str) {
             return str.replace(/-([\da-z])/g, function(a) {
                 return a.toUpperCase().replace('-', '');
@@ -2743,9 +3210,15 @@ define('skylark-langx/strings',[
 
         deserializeValue: deserializeValue,
 
+        escapeHTML : escapeHTML,
+
+        generateUUID : generateUUID,
+
         lowerFirst: function(str) {
             return str.charAt(0).toLowerCase() + str.slice(1);
         },
+
+        rtrim : rtrim,
 
         serializeValue: function(value) {
             return JSON.stringify(value)
@@ -2754,6 +3227,10 @@ define('skylark-langx/strings',[
 
         substitute: substitute,
 
+        slugify : slugify,
+
+        template : template,
+
         trim: trim,
 
         uniqueId: uniqueId,
@@ -2761,486 +3238,20 @@ define('skylark-langx/strings',[
         upperFirst: function(str) {
             return str.charAt(0).toUpperCase() + str.slice(1);
         }
-	} ; 
+	}) ; 
 
 });
-define('skylark-langx/Xhr',[
-    "./arrays",
-    "./Deferred",
-    "./Evented",
-    "./objects",
-    "./funcs",
-    "./types"
-],function(arrays,Deferred,Evented,objects,funcs,types){
-    var each = objects.each,
-        mixin = objects.mixin,
-        noop = funcs.noop,
-        isArray = types.isArray,
-        isFunction = types.isFunction,
-        isPlainObject = types.isPlainObject,
-        type = types.type;
- 
-     var getAbsoluteUrl = (function() {
-        var a;
-
-        return function(url) {
-            if (!a) a = document.createElement('a');
-            a.href = url;
-
-            return a.href;
-        };
-    })();
-   
-    var Xhr = (function(){
-        var jsonpID = 0,
-            key,
-            name,
-            rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-            scriptTypeRE = /^(?:text|application)\/javascript/i,
-            xmlTypeRE = /^(?:text|application)\/xml/i,
-            jsonType = 'application/json',
-            htmlType = 'text/html',
-            blankRE = /^\s*$/;
-
-        var XhrDefaultOptions = {
-            async: true,
-
-            // Default type of request
-            type: 'GET',
-            // Callback that is executed before request
-            beforeSend: noop,
-            // Callback that is executed if the request succeeds
-            success: noop,
-            // Callback that is executed the the server drops error
-            error: noop,
-            // Callback that is executed on request complete (both: error and success)
-            complete: noop,
-            // The context for the callbacks
-            context: null,
-            // Whether to trigger "global" Ajax events
-            global: true,
-
-            // MIME types mapping
-            // IIS returns Javascript as "application/x-javascript"
-            accepts: {
-                script: 'text/javascript, application/javascript, application/x-javascript',
-                json: 'application/json',
-                xml: 'application/xml, text/xml',
-                html: 'text/html',
-                text: 'text/plain'
-            },
-            // Whether the request is to another domain
-            crossDomain: false,
-            // Default timeout
-            timeout: 0,
-            // Whether data should be serialized to string
-            processData: true,
-            // Whether the browser should be allowed to cache GET responses
-            cache: true,
-
-            xhrFields : {
-                withCredentials : true
-            }
-        };
-
-        function mimeToDataType(mime) {
-            if (mime) {
-                mime = mime.split(';', 2)[0];
-            }
-            if (mime) {
-                if (mime == htmlType) {
-                    return "html";
-                } else if (mime == jsonType) {
-                    return "json";
-                } else if (scriptTypeRE.test(mime)) {
-                    return "script";
-                } else if (xmlTypeRE.test(mime)) {
-                    return "xml";
-                }
-            }
-            return "text";
-        }
-
-        function appendQuery(url, query) {
-            if (query == '') return url
-            return (url + '&' + query).replace(/[&?]{1,2}/, '?')
-        }
-
-        // serialize payload and append it to the URL for GET requests
-        function serializeData(options) {
-            options.data = options.data || options.query;
-            if (options.processData && options.data && type(options.data) != "string") {
-                options.data = param(options.data, options.traditional);
-            }
-            if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
-                options.url = appendQuery(options.url, options.data);
-                options.data = undefined;
-            }
-        }
-
-        function serialize(params, obj, traditional, scope) {
-            var t, array = isArray(obj),
-                hash = isPlainObject(obj)
-            each(obj, function(key, value) {
-                t =type(value);
-                if (scope) key = traditional ? scope :
-                    scope + '[' + (hash || t == 'object' || t == 'array' ? key : '') + ']'
-                // handle data in serializeArray() format
-                if (!scope && array) params.add(value.name, value.value)
-                // recurse into nested objects
-                else if (t == "array" || (!traditional && t == "object"))
-                    serialize(params, value, traditional, key)
-                else params.add(key, value)
-            })
-        }
-
-        var param = function(obj, traditional) {
-            var params = []
-            params.add = function(key, value) {
-                if (isFunction(value)) value = value()
-                if (value == null) value = ""
-                this.push(escape(key) + '=' + escape(value))
-            }
-            serialize(params, obj, traditional)
-            return params.join('&').replace(/%20/g, '+')
-        };
-
-        var Xhr = Evented.inherit({
-            klassName : "Xhr",
-
-            _request  : function(args) {
-                var _ = this._,
-                    self = this,
-                    options = mixin({},XhrDefaultOptions,_.options,args),
-                    xhr = _.xhr = new XMLHttpRequest();
-
-                serializeData(options)
-
-                var dataType = options.dataType || options.handleAs,
-                    mime = options.mimeType || options.accepts[dataType],
-                    headers = options.headers,
-                    xhrFields = options.xhrFields,
-                    isFormData = options.data && options.data instanceof FormData,
-                    basicAuthorizationToken = options.basicAuthorizationToken,
-                    type = options.type,
-                    url = options.url,
-                    async = options.async,
-                    user = options.user , 
-                    password = options.password,
-                    deferred = new Deferred(),
-                    contentType = isFormData ? false : 'application/x-www-form-urlencoded';
-
-                if (xhrFields) {
-                    for (name in xhrFields) {
-                        xhr[name] = xhrFields[name];
-                    }
-                }
-
-                if (mime && mime.indexOf(',') > -1) {
-                    mime = mime.split(',', 2)[0];
-                }
-                if (mime && xhr.overrideMimeType) {
-                    xhr.overrideMimeType(mime);
-                }
-
-                //if (dataType) {
-                //    xhr.responseType = dataType;
-                //}
-
-                var finish = function() {
-                    xhr.onloadend = noop;
-                    xhr.onabort = noop;
-                    xhr.onprogress = noop;
-                    xhr.ontimeout = noop;
-                    xhr = null;
-                }
-                var onloadend = function() {
-                    var result, error = false
-                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && getAbsoluteUrl(url).startsWith('file:'))) {
-                        dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
-
-                        result = xhr.responseText;
-                        try {
-                            if (dataType == 'script') {
-                                eval(result);
-                            } else if (dataType == 'xml') {
-                                result = xhr.responseXML;
-                            } else if (dataType == 'json') {
-                                result = blankRE.test(result) ? null : JSON.parse(result);
-                            } else if (dataType == "blob") {
-                                result = Blob([xhrObj.response]);
-                            } else if (dataType == "arraybuffer") {
-                                result = xhr.reponse;
-                            }
-                        } catch (e) { 
-                            error = e;
-                        }
-
-                        if (error) {
-                            deferred.reject(error,xhr.status,xhr);
-                        } else {
-                            deferred.resolve(result,xhr.status,xhr);
-                        }
-                    } else {
-                        deferred.reject(new Error(xhr.statusText),xhr.status,xhr);
-                    }
-                    finish();
-                };
-
-                var onabort = function() {
-                    if (deferred) {
-                        deferred.reject(new Error("abort"),xhr.status,xhr);
-                    }
-                    finish();                 
-                }
- 
-                var ontimeout = function() {
-                    if (deferred) {
-                        deferred.reject(new Error("timeout"),xhr.status,xhr);
-                    }
-                    finish();                 
-                }
-
-                var onprogress = function(evt) {
-                    if (deferred) {
-                        deferred.notify(evt,xhr.status,xhr);
-                    }
-                }
-
-                xhr.onloadend = onloadend;
-                xhr.onabort = onabort;
-                xhr.ontimeout = ontimeout;
-                xhr.onprogress = onprogress;
-
-                xhr.open(type, url, async, user, password);
-               
-                if (headers) {
-                    for ( var key in headers) {
-                        var value = headers[key];
- 
-                        if(key.toLowerCase() === 'content-type'){
-                            contentType = headers[hdr];
-                        } else {
-                           xhr.setRequestHeader(key, value);
-                        }
-                    }
-                }   
-
-                if  (contentType && contentType !== false){
-                    xhr.setRequestHeader('Content-Type', contentType);
-                }
-
-                if(!headers || !('X-Requested-With' in headers)){
-                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                }
-
-
-                //If basicAuthorizationToken is defined set its value into "Authorization" header
-                if (basicAuthorizationToken) {
-                    xhr.setRequestHeader("Authorization", basicAuthorizationToken);
-                }
-
-                xhr.send(options.data ? options.data : null);
-
-                return deferred.promise;
-
-            },
-
-            "abort": function() {
-                var _ = this._,
-                    xhr = _.xhr;
-
-                if (xhr) {
-                    xhr.abort();
-                }    
-            },
-
-
-            "request": function(args) {
-                return this._request(args);
-            },
-
-            get : function(args) {
-                args = args || {};
-                args.type = "GET";
-                return this._request(args);
-            },
-
-            post : function(args) {
-                args = args || {};
-                args.type = "POST";
-                return this._request(args);
-            },
-
-            patch : function(args) {
-                args = args || {};
-                args.type = "PATCH";
-                return this._request(args);
-            },
-
-            put : function(args) {
-                args = args || {};
-                args.type = "PUT";
-                return this._request(args);
-            },
-
-            del : function(args) {
-                args = args || {};
-                args.type = "DELETE";
-                return this._request(args);
-            },
-
-            "init": function(options) {
-                this._ = {
-                    options : options || {}
-                };
-            }
-        });
-
-        ["request","get","post","put","del","patch"].forEach(function(name){
-            Xhr[name] = function(url,args) {
-                var xhr = new Xhr({"url" : url});
-                return xhr[name](args);
-            };
-        });
-
-        Xhr.defaultOptions = XhrDefaultOptions;
-        Xhr.param = param;
-
-        return Xhr;
-    })();
-
-	return Xhr;	
+define('skylark-langx-strings/main',[
+	"./strings"
+],function(strings){
+	return strings;
 });
-define('skylark-langx/Restful',[
-    "./Evented",
-    "./objects",
-    "./strings",
-    "./Xhr"
-],function(Evented,objects,strings,Xhr){
-    var mixin = objects.mixin,
-        substitute = strings.substitute;
+define('skylark-langx-strings', ['skylark-langx-strings/main'], function (main) { return main; });
 
-    var Restful = Evented.inherit({
-        "klassName" : "Restful",
-
-        "idAttribute": "id",
-        
-        getBaseUrl : function(args) {
-            //$$baseEndpoint : "/files/${fileId}/comments",
-            var baseEndpoint = substitute(this.baseEndpoint,args),
-                baseUrl = this.server + this.basePath + baseEndpoint;
-            if (args[this.idAttribute]!==undefined) {
-                baseUrl = baseUrl + "/" + args[this.idAttribute]; 
-            }
-            return baseUrl;
-        },
-        _head : function(args) {
-            //get resource metadata .
-            //args : id and other info for the resource ,ex
-            //{
-            //  "id" : 234,  // the own id, required
-            //  "fileId"   : 2 // the parent resource id, option by resource
-            //}
-        },
-        _get : function(args) {
-            //get resource ,one or list .
-            //args : id and other info for the resource ,ex
-            //{
-            //  "id" : 234,  // the own id, null if list
-            //  "fileId"   : 2 // the parent resource id, option by resource
-            //}
-            return Xhr.get(this.getBaseUrl(args),args);
-        },
-        _post  : function(args,verb) {
-            //create or move resource .
-            //args : id and other info for the resource ,ex
-            //{
-            //  "id" : 234,  // the own id, required
-            //  "data" : body // the own data,required
-            //  "fileId"   : 2 // the parent resource id, option by resource
-            //}
-            //verb : the verb ,ex: copy,touch,trash,untrash,watch
-            var url = this.getBaseUrl(args);
-            if (verb) {
-                url = url + "/" + verb;
-            }
-            return Xhr.post(url, args);
-        },
-
-        _put  : function(args,verb) {
-            //update resource .
-            //args : id and other info for the resource ,ex
-            //{
-            //  "id" : 234,  // the own id, required
-            //  "data" : body // the own data,required
-            //  "fileId"   : 2 // the parent resource id, option by resource
-            //}
-            //verb : the verb ,ex: copy,touch,trash,untrash,watch
-            var url = this.getBaseUrl(args);
-            if (verb) {
-                url = url + "/" + verb;
-            }
-            return Xhr.put(url, args);
-        },
-
-        _delete : function(args) {
-            //delete resource . 
-            //args : id and other info for the resource ,ex
-            //{
-            //  "id" : 234,  // the own id, required
-            //  "fileId"   : 2 // the parent resource id, option by resource
-            //}         
-
-            // HTTP request : DELETE http://center.utilhub.com/registry/v1/apps/{appid}
-            var url = this.getBaseUrl(args);
-            return Xhr.del(url);
-        },
-
-        _patch : function(args){
-            //update resource metadata. 
-            //args : id and other info for the resource ,ex
-            //{
-            //  "id" : 234,  // the own id, required
-            //  "data" : body // the own data,required
-            //  "fileId"   : 2 // the parent resource id, option by resource
-            //}
-            var url = this.getBaseUrl(args);
-            return Xhr.patch(url, args);
-        },
-        query: function(params) {
-            
-            return this._post(params);
-        },
-
-        retrieve: function(params) {
-            return this._get(params);
-        },
-
-        create: function(params) {
-            return this._post(params);
-        },
-
-        update: function(params) {
-            return this._put(params);
-        },
-
-        delete: function(params) {
-            // HTTP request : DELETE http://center.utilhub.com/registry/v1/apps/{appid}
-            return this._delete(params);
-        },
-
-        patch: function(params) {
-           // HTTP request : PATCH http://center.utilhub.com/registry/v1/apps/{appid}
-            return this._patch(params);
-        },
-        init: function(params) {
-            mixin(this,params);
- //           this._xhr = XHRx();
-       }
-    });
-
-    return Restful;
+define('skylark-langx/strings',[
+    "skylark-langx-strings"
+],function(strings){
+    return strings;
 });
 define('skylark-langx/Stateful',[
 	"./Evented",
@@ -3454,12 +3465,13 @@ define('skylark-langx/Stateful',[
 
 	return Stateful;
 });
-define('skylark-langx/topic',[
-	"./Evented"
-],function(Evented){
+define('skylark-langx-topic/topic',[
+	"skylark-langx-ns",
+	"skylark-langx-emitter/Evented"
+],function(skylark,Evented){
 	var hub = new Evented();
 
-	return {
+	return skylark.attach("langx.topic",{
 	    publish: function(name, arg1,argn) {
 	        var data = [].slice.call(arguments, 1);
 
@@ -3482,7 +3494,24 @@ define('skylark-langx/topic',[
 
         }
 
-	}
+	});
+});
+define('skylark-langx-topic/main',[
+	"./topic"
+],function(topic){
+	return topic;
+});
+define('skylark-langx-topic', ['skylark-langx-topic/main'], function (main) { return main; });
+
+define('skylark-langx/topic',[
+	"skylark-langx-topic"
+],function(topic){
+	return topic;
+});
+define('skylark-langx/types',[
+    "skylark-langx-types"
+],function(types){
+    return types;
 });
 define('skylark-langx/langx',[
     "./skylark",
@@ -3492,19 +3521,18 @@ define('skylark-langx/langx',[
     "./async",
     "./datetimes",
     "./Deferred",
+    "./Emitter",
     "./Evented",
     "./funcs",
     "./hoster",
     "./klass",
     "./numbers",
     "./objects",
-    "./Restful",
     "./Stateful",
     "./strings",
     "./topic",
-    "./types",
-    "./Xhr"
-], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Evented,funcs,hoster,klass,numbers,objects,Restful,Stateful,strings,topic,types,Xhr) {
+    "./types"
+], function(skylark,arrays,ArrayStore,aspect,async,datetimes,Deferred,Emitter,Evented,funcs,hoster,klass,numbers,objects,Stateful,strings,topic,types) {
     "use strict";
     var toString = {}.toString,
         concat = Array.prototype.concat,
@@ -3515,13 +3543,6 @@ define('skylark-langx/langx',[
         safeMixin = objects.safeMixin,
         isFunction = types.isFunction;
 
-
-    function createEvent(type, props) {
-        var e = new CustomEvent(type, props);
-
-        return safeMixin(e, props);
-    }
-    
 
     function funcArg(context, arg, idx, payload) {
         return isFunction(arg) ? arg.call(context, idx, payload) : arg;
@@ -3560,7 +3581,7 @@ define('skylark-langx/langx',[
     }
 
     mixin(langx, {
-        createEvent : createEvent,
+        createEvent : Emitter.createEvent,
 
         funcArg: funcArg,
 
@@ -3582,42 +3603,25 @@ define('skylark-langx/langx',[
         
         Deferred: Deferred,
 
+        Emitter: Emitter,
+
         Evented: Evented,
 
         hoster : hoster,
 
         klass : klass,
-
-        Restful: Restful,
-        
+       
         Stateful: Stateful,
 
-        topic : topic,
-
-        Xhr: Xhr
-
+        topic : topic
     });
 
     return skylark.langx = langx;
 });
-define('skylark-utils-dom/skylark',["skylark-langx/skylark"], function(skylark) {
-    return skylark;
-});
-
-define('skylark-utils-dom/dom',["./skylark"], function(skylark) {
-	return skylark.dom = {};
-});
-
-define('skylark-utils-dom/langx',[
+define('skylark-domx-browser/browser',[
+    "skylark-langx/skylark",
     "skylark-langx/langx"
-], function(langx) {
-    return langx;
-});
-
-define('skylark-utils-dom/browser',[
-    "./dom",
-    "./langx"
-], function(dom,langx) {
+], function(skylark,langx) {
     "use strict";
 
     var browser = langx.hoster.browser;
@@ -3740,282 +3744,21 @@ define('skylark-utils-dom/browser',[
 
     testEl = null;
 
-    return dom.browser = browser;
+    return skylark.attach("domx.browser",browser);
 });
 
-define('skylark-utils-dom/styler',[
-    "./dom",
-    "./langx"
-], function(dom, langx) {
-    var every = Array.prototype.every,
-        forEach = Array.prototype.forEach,
-        camelCase = langx.camelCase,
-        dasherize = langx.dasherize;
-
-    function maybeAddPx(name, value) {
-        return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
-    }
-
-    var cssNumber = {
-            'column-count': 1,
-            'columns': 1,
-            'font-weight': 1,
-            'line-height': 1,
-            'opacity': 1,
-            'z-index': 1,
-            'zoom': 1
-        },
-        classReCache = {
-
-        };
-
-    function classRE(name) {
-        return name in classReCache ?
-            classReCache[name] : (classReCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'));
-    }
-
-    // access className property while respecting SVGAnimatedString
-    /*
-     * Adds the specified class(es) to each element in the set of matched elements.
-     * @param {HTMLElement} node
-     * @param {String} value
-     */
-    function className(node, value) {
-        var klass = node.className || '',
-            svg = klass && klass.baseVal !== undefined
-
-        if (value === undefined) return svg ? klass.baseVal : klass
-        svg ? (klass.baseVal = value) : (node.className = value)
-    }
-
-    function disabled(elm, value ) {
-        if (arguments.length < 2) {
-            return !!this.dom.disabled;
-        }
-
-        elm.disabled = value;
-
-        return this;
-    }
-
-    var elementDisplay = {};
-
-    function defaultDisplay(nodeName) {
-        var element, display
-        if (!elementDisplay[nodeName]) {
-            element = document.createElement(nodeName)
-            document.body.appendChild(element)
-            display = getStyles(element).getPropertyValue("display")
-            element.parentNode.removeChild(element)
-            display == "none" && (display = "block")
-            elementDisplay[nodeName] = display
-        }
-        return elementDisplay[nodeName]
-    }
-    /*
-     * Display the matched elements.
-     * @param {HTMLElement} elm
-     */
-    function show(elm) {
-        styler.css(elm, "display", "");
-        if (styler.css(elm, "display") == "none") {
-            styler.css(elm, "display", defaultDisplay(elm.nodeName));
-        }
-        return this;
-    }
-
-    function isInvisible(elm) {
-        return styler.css(elm, "display") == "none" || styler.css(elm, "opacity") == 0;
-    }
-
-    /*
-     * Hide the matched elements.
-     * @param {HTMLElement} elm
-     */
-    function hide(elm) {
-        styler.css(elm, "display", "none");
-        return this;
-    }
-
-    /*
-     * Adds the specified class(es) to each element in the set of matched elements.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function addClass(elm, name) {
-        if (!name) return this
-        var cls = className(elm),
-            names;
-        if (langx.isString(name)) {
-            names = name.split(/\s+/g);
-        } else {
-            names = name;
-        }
-        names.forEach(function(klass) {
-            var re = classRE(klass);
-            if (!cls.match(re)) {
-                cls += (cls ? " " : "") + klass;
-            }
-        });
-
-        className(elm, cls);
-
-        return this;
-    }
-
-    function getStyles( elem ) {
-
-        // Support: IE <=11 only, Firefox <=30 (#15098, #14150)
-        // IE throws on elements created in popups
-        // FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
-        var view = elem.ownerDocument.defaultView;
-
-        if ( !view || !view.opener ) {
-            view = window;
-        }
-
-        return view.getComputedStyle( elem);
-    }
-
-
-    /*
-     * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
-     * @param {HTMLElement} elm
-     * @param {String} property
-     * @param {Any} value
-     */
-    function css(elm, property, value) {
-        if (arguments.length < 3) {
-            var computedStyle,
-                computedStyle = getStyles(elm)
-            if (langx.isString(property)) {
-                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
-            } else if (langx.isArrayLike(property)) {
-                var props = {}
-                forEach.call(property, function(prop) {
-                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(dasherize(prop)))
-                })
-                return props
-            }
-        }
-
-        var css = '';
-        if (typeof(property) == 'string') {
-            if (!value && value !== 0) {
-                elm.style.removeProperty(dasherize(property));
-            } else {
-                css = dasherize(property) + ":" + maybeAddPx(property, value)
-            }
-        } else {
-            for (key in property) {
-                if (property[key] === undefined) {
-                    continue;
-                }
-                if (!property[key] && property[key] !== 0) {
-                    elm.style.removeProperty(dasherize(key));
-                } else {
-                    css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
-                }
-            }
-        }
-
-        elm.style.cssText += ';' + css;
-        return this;
-    }
-
-    /*
-     * Determine whether any of the matched elements are assigned the given class.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function hasClass(elm, name) {
-        var re = classRE(name);
-        return elm.className && elm.className.match(re);
-    }
-
-    /*
-     * Remove a single class, multiple classes, or all classes from each element in the set of matched elements.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     */
-    function removeClass(elm, name) {
-        if (name) {
-            var cls = className(elm),
-                names;
-
-            if (langx.isString(name)) {
-                names = name.split(/\s+/g);
-            } else {
-                names = name;
-            }
-
-            names.forEach(function(klass) {
-                var re = classRE(klass);
-                if (cls.match(re)) {
-                    cls = cls.replace(re, " ");
-                }
-            });
-
-            className(elm, cls.trim());
-        } else {
-            className(elm, "");
-        }
-
-        return this;
-    }
-
-    /*
-     * Add or remove one or more classes from the specified element.
-     * @param {HTMLElement} elm
-     * @param {String} name
-     * @param {} when
-     */
-    function toggleClass(elm, name, when) {
-        var self = this;
-        name.split(/\s+/g).forEach(function(klass) {
-            if (when === undefined) {
-                when = !self.hasClass(elm, klass);
-            }
-            if (when) {
-                self.addClass(elm, klass);
-            } else {
-                self.removeClass(elm, klass)
-            }
-        });
-
-        return self;
-    }
-
-    var styler = function() {
-        return styler;
-    };
-
-    langx.mixin(styler, {
-        autocssfix: false,
-        cssHooks: {
-
-        },
-
-        addClass: addClass,
-        className: className,
-        css: css,
-        disabled : disabled,        
-        hasClass: hasClass,
-        hide: hide,
-        isInvisible: isInvisible,
-        removeClass: removeClass,
-        show: show,
-        toggleClass: toggleClass
-    });
-
-    return dom.styler = styler;
+define('skylark-domx-browser/main',[
+	"./browser"
+],function(browser){
+	return browser;
 });
-define('skylark-utils-dom/noder',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./styler"
-], function(dom, langx, browser, styler) {
+define('skylark-domx-browser', ['skylark-domx-browser/main'], function (main) { return main; });
+
+define('skylark-domx-noder/noder',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser"
+], function(skylark, langx, browser) {
     var isIE = !!navigator.userAgent.match(/Trident/g) || !!navigator.userAgent.match(/MSIE/g),
         fragmentRE = /^\s*<(\w+|!)[^>]*>/,
         singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
@@ -4086,7 +3829,28 @@ define('skylark-utils-dom/noder',[
         return el;
     };
 
+    function enhancePlaceContent(placing,node) {
+        if (langx.isFunction(placing)) {
+            return placing.apply(node,[]);
+        }
+        if (langx.isArrayLike(placing)) {
+            var neddsFlattern;
+            for (var i=0;i<placing.length;i++) {
+                if (langx.isFunction(placing[i])) {
+                    placing[i] = placing[i].apply(node,[]);
+                    if (langx.isArrayLike(placing[i])) {
+                        neddsFlattern = true;
+                    }
+                }
+            }
+            if (neddsFlattern) {
+                placing = langx.flatten(placing);
+            }
+        }
+        return placing;
+    }
     function after(node, placing, copyByClone) {
+        placing = enhancePlaceContent(placing,node);
         var refNode = node,
             parent = refNode.parentNode;
         if (parent) {
@@ -4105,6 +3869,7 @@ define('skylark-utils-dom/noder',[
     }
 
     function append(node, placing, copyByClone) {
+        placing = enhancePlaceContent(placing,node);
         var parentNode = node,
             nodes = ensureNodes(placing, copyByClone);
         for (var i = 0; i < nodes.length; i++) {
@@ -4114,6 +3879,7 @@ define('skylark-utils-dom/noder',[
     }
 
     function before(node, placing, copyByClone) {
+        placing = enhancePlaceContent(placing,node);
         var refNode = node,
             parent = refNode.parentNode;
         if (parent) {
@@ -4142,7 +3908,14 @@ define('skylark-utils-dom/noder',[
      * @param } parent
      */
     function createElement(tag, props, parent) {
-        var node = document.createElement(tag);
+        var node;
+
+        if (/svg/i.test(tag)) {
+            node = document.createElementNS("http://www.w3.org/2000/svg", tag)
+        } else {
+            node = document.createElement(tag);
+        }
+
         if (props) {
             for (var name in props) {
                 node.setAttribute(name, props[name]);
@@ -4327,6 +4100,8 @@ define('skylark-utils-dom/noder',[
             } else {
                 node.appendChild(html);
             }
+
+            return this;
         }
     }
 
@@ -4370,6 +4145,16 @@ define('skylark-utils-dom/noder',[
     function isInDocument(node) {
       return (node === document.body) ? true : document.body.contains(node);
     }        
+
+    var blockNodes = ["div", "p", "ul", "ol", "li", "blockquote", "hr", "pre", "h1", "h2", "h3", "h4", "h5", "table"];
+
+    function isBlockNode(node) {
+        if (!node || node.nodeType === 3) {
+          return false;
+        }
+        return new RegExp("^(" + (blockNodes.join('|')) + ")$").test(node.nodeName.toLowerCase());
+    }
+
 
     /*   
      * Get the owner document object for the specified element.
@@ -4422,31 +4207,10 @@ define('skylark-utils-dom/noder',[
      */
     function offsetParent(elm) {
         var parent = elm.offsetParent || document.body;
-        while (parent && !rootNodeRE.test(parent.nodeName) && styler.css(parent, "position") == "static") {
+        while (parent && !rootNodeRE.test(parent.nodeName) && document.defaultView.getComputedStyle(parent).position == "static") {
             parent = parent.offsetParent;
         }
         return parent;
-    }
-
-    /*   
-     *
-     * @param {Node} elm
-     * @param {Node} params
-     */
-    function overlay(elm, params) {
-        var overlayDiv = createElement("div", params);
-        styler.css(overlayDiv, {
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            zIndex: 0x7FFFFFFF,
-            opacity: 0.7
-        });
-        elm.appendChild(overlayDiv);
-        return overlayDiv;
-
     }
 
     /*   
@@ -4476,7 +4240,7 @@ define('skylark-utils-dom/noder',[
     }
 
     function scrollParent( elm, includeHidden ) {
-        var position = styler.css(elm,"position" ),
+        var position = document.defaultView.getComputedStyle(elm).position,
             excludeStaticParent = position === "absolute",
             overflowRegex = includeHidden ? /(auto|scroll|hidden)/ : /(auto|scroll)/,
             scrollParent = this.parents().filter( function() {
@@ -4493,7 +4257,17 @@ define('skylark-utils-dom/noder',[
             scrollParent;
     };
 
-        /*   
+
+    function reflow(elm) {
+        if (el == null) {
+          elm = document;
+        }
+        elm.offsetHeight;
+
+        return this;      
+    }
+
+    /*   
      * Replace an old node with the specified node.
      * @param {Node} node
      * @param {Node} oldNode
@@ -4501,62 +4275,6 @@ define('skylark-utils-dom/noder',[
     function replace(node, oldNode) {
         oldNode.parentNode.replaceChild(node, oldNode);
         return this;
-    }
-
-    /*   
-     * Replace an old node with the specified node.
-     * @param {HTMLElement} elm
-     * @param {Node} params
-     */
-    function throb(elm, params) {
-        params = params || {};
-        var self = this,
-            text = params.text,
-            style = params.style,
-            time = params.time,
-            callback = params.callback,
-            timer,
-            throbber = this.createElement("div", {
-                className: params.className || "throbber",
-                style: style
-            }),
-            _overlay = overlay(throbber, {
-                className: 'overlay fade'
-            }),
-            throb = this.createElement("div", {
-                className: "throb"
-            }),
-            textNode = this.createTextNode(text || ""),
-            remove = function() {
-                if (timer) {
-                    clearTimeout(timer);
-                    timer = null;
-                }
-                if (throbber) {
-                    self.remove(throbber);
-                    throbber = null;
-                }
-            },
-            update = function(params) {
-                if (params && params.text && throbber) {
-                    textNode.nodeValue = params.text;
-                }
-            };
-        throb.appendChild(textNode);
-        throbber.appendChild(throb);
-        elm.appendChild(throbber);
-        var end = function() {
-            remove();
-            if (callback) callback();
-        };
-        if (time) {
-            timer = setTimeout(end, time);
-        }
-
-        return {
-            remove: remove,
-            update: update
-        };
     }
 
 
@@ -4670,6 +4388,8 @@ define('skylark-utils-dom/noder',[
 
         isWindow: langx.isWindow,
 
+        nodeName : nodeName,
+
         offsetParent: offsetParent,
 
         ownerDoc: ownerDoc,
@@ -4684,13 +4404,13 @@ define('skylark-utils-dom/noder',[
 
         append: append,
 
+        reflow: reflow,
+
         remove: remove,
 
         removeChild : removeChild,
 
         replace: replace,
-
-        throb: throb,
 
         traverse: traverse,
 
@@ -4703,14 +4423,21 @@ define('skylark-utils-dom/noder',[
         unwrap: unwrap
     });
 
-    return dom.noder = noder;
+    return skylark.attach("domx.noder" , noder);
 });
-define('skylark-utils-dom/finder',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./noder"
-], function(dom, langx, browser, noder, velm) {
+define('skylark-domx-noder/main',[
+	"./noder"
+],function(noder){
+	return noder;
+});
+define('skylark-domx-noder', ['skylark-domx-noder/main'], function (main) { return main; });
+
+define('skylark-domx-finder/finder',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-noder"
+], function(skylark, langx, browser, noder) {
     var local = {},
         filter = Array.prototype.filter,
         slice = Array.prototype.slice,
@@ -5059,6 +4786,9 @@ define('skylark-utils-dom/finder',[
 
         'visible': function(elm) {
             return elm.offsetWidth && elm.offsetWidth
+        },
+        'empty': function(elm) {
+            return !elm.hasChildNodes();
         }
     };
 
@@ -5455,17 +5185,20 @@ define('skylark-utils-dom/finder',[
         var ret = [],
             rootIsSelector = root && langx.isString(root);
         while ((node = node.parentNode) && (node.nodeType !== 9)) {
-            ret.push(node);
             if (root) {
                 if (rootIsSelector) {
                     if (matches(node, root)) {
+                        break;
+                    }
+                } else if (langx.isArrayLike(root)) {
+                    if (langx.inArray(node,root)>-1) {
                         break;
                     }
                 } else if (node == root) {
                     break;
                 }
             }
-
+            ret.push(node); // TODO
         }
 
         if (selector) {
@@ -5811,2599 +5544,22 @@ define('skylark-utils-dom/finder',[
         siblings: siblings
     });
 
-    return dom.finder = finder;
+    return skylark.attach("domx.finder", finder);
 });
-define('skylark-utils-dom/datax',[
-    "./dom",
-    "./langx",
-    "./finder"
-], function(dom, langx, finder) {
-    var map = Array.prototype.map,
-        filter = Array.prototype.filter,
-        camelCase = langx.camelCase,
-        deserializeValue = langx.deserializeValue,
+define('skylark-domx-finder/main',[
+	"./finder"
+],function(finder){
 
-        capitalRE = /([A-Z])/g,
-        propMap = {
-            'tabindex': 'tabIndex',
-            'readonly': 'readOnly',
-            'for': 'htmlFor',
-            'class': 'className',
-            'maxlength': 'maxLength',
-            'cellspacing': 'cellSpacing',
-            'cellpadding': 'cellPadding',
-            'rowspan': 'rowSpan',
-            'colspan': 'colSpan',
-            'usemap': 'useMap',
-            'frameborder': 'frameBorder',
-            'contenteditable': 'contentEditable'
-        };
-    /*
-     * Set property values
-     * @param {Object} elm  
-     * @param {String} name
-     * @param {String} value
-     */
-
-    function setAttribute(elm, name, value) {
-        if (value == null) {
-            elm.removeAttribute(name);
-        } else {
-            elm.setAttribute(name, value);
-        }
-    }
-
-    function aria(elm, name, value) {
-        return this.attr(elm, "aria-" + name, value);
-    }
-
-    /*
-     * Set property values
-     * @param {Object} elm  
-     * @param {String} name
-     * @param {String} value
-     */
-
-    function attr(elm, name, value) {
-        if (value === undefined) {
-            if (typeof name === "object") {
-                for (var attrName in name) {
-                    attr(elm, attrName, name[attrName]);
-                }
-                return this;
-            } else {
-                if (elm.hasAttribute && elm.hasAttribute(name)) {
-                    return elm.getAttribute(name);
-                }
-            }
-        } else {
-            elm.setAttribute(name, value);
-            return this;
-        }
-    }
-
-
-    /*
-     *  Read all "data-*" attributes from a node
-     * @param {Object} elm  
-     */
-
-    function _attributeData(elm) {
-        var store = {}
-        langx.each(elm.attributes || [], function(i, attr) {
-            if (attr.name.indexOf('data-') == 0) {
-                store[camelCase(attr.name.replace('data-', ''))] = deserializeValue(attr.value);
-            }
-        })
-        return store;
-    }
-
-    function _store(elm, confirm) {
-        var store = elm["_$_store"];
-        if (!store && confirm) {
-            store = elm["_$_store"] = _attributeData(elm);
-        }
-        return store;
-    }
-
-    function _getData(elm, name) {
-        if (name === undefined) {
-            return _store(elm, true);
-        } else {
-            var store = _store(elm);
-            if (store) {
-                if (name in store) {
-                    return store[name];
-                }
-                var camelName = camelCase(name);
-                if (camelName in store) {
-                    return store[camelName];
-                }
-            }
-            var attrName = 'data-' + name.replace(capitalRE, "-$1").toLowerCase()
-            return attr(elm, attrName);
-        }
-
-    }
-
-    function _setData(elm, name, value) {
-        var store = _store(elm, true);
-        store[camelCase(name)] = value;
-    }
-
-
-    /*
-     * xxx
-     * @param {Object} elm  
-     * @param {String} name
-     * @param {String} value
-     */
-    function data(elm, name, value) {
-
-        if (value === undefined) {
-            if (typeof name === "object") {
-                for (var dataAttrName in name) {
-                    _setData(elm, dataAttrName, name[dataAttrName]);
-                }
-                return this;
-            } else {
-                return _getData(elm, name);
-            }
-        } else {
-            _setData(elm, name, value);
-            return this;
-        }
-    } 
-    /*
-     * Remove from the element all items that have not yet been run. 
-     * @param {Object} elm  
-     */
-
-    function cleanData(elm) {
-        if (elm["_$_store"]) {
-            delete elm["_$_store"];
-        }
-    }
-
-    /*
-     * Remove a previously-stored piece of data. 
-     * @param {Object} elm  
-     * @param {Array} names
-     */
-    function removeData(elm, names) {
-        if (names) {
-            if (langx.isString(names)) {
-                names = names.split(/\s+/);
-            }
-            var store = _store(elm, true);
-            names.forEach(function(name) {
-                delete store[name];
-            });            
-        } else {
-            cleanData(elm);
-        }
-        return this;
-    }
-
-    /*
-     * xxx 
-     * @param {Object} elm  
-     * @param {Array} names
-     */
-    function pluck(nodes, property) {
-        return map.call(nodes, function(elm) {
-            return elm[property];
-        });
-    }
-
-    /*
-     * Get or set the value of an property for the specified element.
-     * @param {Object} elm  
-     * @param {String} name
-     * @param {String} value
-     */
-    function prop(elm, name, value) {
-        name = propMap[name] || name;
-        if (value === undefined) {
-            return elm[name];
-        } else {
-            elm[name] = value;
-            return this;
-        }
-    }
-
-    /*
-     * remove Attributes  
-     * @param {Object} elm  
-     * @param {String} name
-     */
-    function removeAttr(elm, name) {
-        name.split(' ').forEach(function(attr) {
-            setAttribute(elm, attr);
-        });
-        return this;
-    }
-
-
-    /*
-     * Remove the value of a property for the first element in the set of matched elements or set one or more properties for every matched element.
-     * @param {Object} elm  
-     * @param {String} name
-     */
-    function removeProp(elm, name) {
-        name.split(' ').forEach(function(prop) {
-            delete elm[prop];
-        });
-        return this;
-    }
-
-    /*   
-     * Get the combined text contents of each element in the set of matched elements, including their descendants, or set the text contents of the matched elements.  
-     * @param {Object} elm  
-     * @param {String} txt
-     */
-    function text(elm, txt) {
-        if (txt === undefined) {
-            return elm.textContent;
-        } else {
-            elm.textContent = txt == null ? '' : '' + txt;
-            return this;
-        }
-    }
-
-    /*   
-     * Get the current value of the first element in the set of matched elements or set the value of every matched element.
-     * @param {Object} elm  
-     * @param {String} value
-     */
-    function val(elm, value) {
-        if (value === undefined) {
-            if (elm.multiple) {
-                // select multiple values
-                var selectedOptions = filter.call(finder.find(elm, "option"), (function(option) {
-                    return option.selected;
-                }));
-                return pluck(selectedOptions, "value");
-            } else {
-                return elm.value;
-            }
-        } else {
-            elm.value = value;
-            return this;
-        }
-    }
-
-
-    finder.pseudos.data = function( elem, i, match,dataName ) {
-        return !!data( elem, dataName || match[3]);
-    };
-   
-
-    function datax() {
-        return datax;
-    }
-
-    langx.mixin(datax, {
-        aria: aria,
-
-        attr: attr,
-
-        cleanData: cleanData,
-
-        data: data,
-
-        pluck: pluck,
-
-        prop: prop,
-
-        removeAttr: removeAttr,
-
-        removeData: removeData,
-
-        removeProp: removeProp,
-
-        text: text,
-
-        val: val
-    });
-
-    return dom.datax = datax;
+	return finder;
 });
-define('skylark-utils-dom/eventer',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./finder",
-    "./noder",
-    "./datax"
-], function(dom, langx, browser, finder, noder, datax) {
-    var mixin = langx.mixin,
-        each = langx.each,
-        slice = Array.prototype.slice,
-        uid = langx.uid,
-        ignoreProperties = /^([A-Z]|returnValue$|layer[XY]$)/,
-        eventMethods = {
-            preventDefault: "isDefaultPrevented",
-            stopImmediatePropagation: "isImmediatePropagationStopped",
-            stopPropagation: "isPropagationStopped"
-        },
-        readyRE = /complete|loaded|interactive/;
-
-    function compatible(event, source) {
-        if (source || !event.isDefaultPrevented) {
-            if (!source) {
-                source = event;
-            }
-
-            langx.each(eventMethods, function(name, predicate) {
-                var sourceMethod = source[name];
-                event[name] = function() {
-                    this[predicate] = langx.returnTrue;
-                    return sourceMethod && sourceMethod.apply(source, arguments);
-                }
-                event[predicate] = langx.returnFalse;
-            });
-        }
-        return event;
-    }
-
-    function parse(event) {
-        var segs = ("" + event).split(".");
-        return {
-            type: segs[0],
-            ns: segs.slice(1).sort().join(" ")
-        };
-    }
-
-    //create a custom dom event
-    var createEvent = (function() {
-        var EventCtors = [
-                window["CustomEvent"], // 0 default
-                window["CompositionEvent"], // 1
-                window["DragEvent"], // 2
-                window["Event"], // 3
-                window["FocusEvent"], // 4
-                window["KeyboardEvent"], // 5
-                window["MessageEvent"], // 6
-                window["MouseEvent"], // 7
-                window["MouseScrollEvent"], // 8
-                window["MouseWheelEvent"], // 9
-                window["MutationEvent"], // 10
-                window["ProgressEvent"], // 11
-                window["TextEvent"], // 12
-                window["TouchEvent"], // 13
-                window["UIEvent"], // 14
-                window["WheelEvent"], // 15
-                window["ClipboardEvent"] // 16
-            ],
-            NativeEvents = {
-                "compositionstart": 1, // CompositionEvent
-                "compositionend": 1, // CompositionEvent
-                "compositionupdate": 1, // CompositionEvent
-
-                "beforecopy": 16, // ClipboardEvent
-                "beforecut": 16, // ClipboardEvent
-                "beforepaste": 16, // ClipboardEvent
-                "copy": 16, // ClipboardEvent
-                "cut": 16, // ClipboardEvent
-                "paste": 16, // ClipboardEvent
-
-                "drag": 2, // DragEvent
-                "dragend": 2, // DragEvent
-                "dragenter": 2, // DragEvent
-                "dragexit": 2, // DragEvent
-                "dragleave": 2, // DragEvent
-                "dragover": 2, // DragEvent
-                "dragstart": 2, // DragEvent
-                "drop": 2, // DragEvent
-
-                "abort": 3, // Event
-                "change": 3, // Event
-                "error": 3, // Event
-                "selectionchange": 3, // Event
-                "submit": 3, // Event
-                "reset": 3, // Event
-
-                "focus": 4, // FocusEvent
-                "blur": 4, // FocusEvent
-                "focusin": 4, // FocusEvent
-                "focusout": 4, // FocusEvent
-
-                "keydown": 5, // KeyboardEvent
-                "keypress": 5, // KeyboardEvent
-                "keyup": 5, // KeyboardEvent
-
-                "message": 6, // MessageEvent
-
-                "click": 7, // MouseEvent
-                "contextmenu": 7, // MouseEvent
-                "dblclick": 7, // MouseEvent
-                "mousedown": 7, // MouseEvent
-                "mouseup": 7, // MouseEvent
-                "mousemove": 7, // MouseEvent
-                "mouseover": 7, // MouseEvent
-                "mouseout": 7, // MouseEvent
-                "mouseenter": 7, // MouseEvent
-                "mouseleave": 7, // MouseEvent
-
-
-                "textInput": 12, // TextEvent
-
-                "touchstart": 13, // TouchEvent
-                "touchmove": 13, // TouchEvent
-                "touchend": 13, // TouchEvent
-
-                "load": 14, // UIEvent
-                "resize": 14, // UIEvent
-                "select": 14, // UIEvent
-                "scroll": 14, // UIEvent
-                "unload": 14, // UIEvent,
-
-                "wheel": 15 // WheelEvent
-            };
-
-        function getEventCtor(type) {
-            var idx = NativeEvents[type];
-            if (!idx) {
-                idx = 0;
-            }
-            return EventCtors[idx];
-        }
-
-        return function(type, props) {
-            //create a custom dom event
-
-            if (langx.isString(type)) {
-                props = props || {};
-            } else {
-                props = type || {};
-                type = props.type || "";
-            }
-            var parsed = parse(type);
-            type = parsed.type;
-
-            props = langx.mixin({
-                bubbles: true,
-                cancelable: true
-            }, props);
-
-            if (parsed.ns) {
-                props.namespace = parsed.ns;
-            }
-
-            var ctor = getEventCtor(type),
-                e = new ctor(type, props);
-
-            langx.safeMixin(e, props);
-
-            return compatible(e);
-        };
-    })();
-
-    function createProxy(src, props) {
-        var key,
-            proxy = {
-                originalEvent: src
-            };
-        for (key in src) {
-            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && src[key] !== undefined) {
-                proxy[key] = src[key];
-            }
-        }
-        if (props) {
-            langx.mixin(proxy, props);
-        }
-        return compatible(proxy, src);
-    }
-
-    var
-        specialEvents = {},
-        focusinSupported = "onfocusin" in window,
-        focus = { focus: "focusin", blur: "focusout" },
-        hover = { mouseenter: "mouseover", mouseleave: "mouseout" },
-        realEvent = function(type) {
-            return hover[type] || (focusinSupported && focus[type]) || type;
-        },
-        handlers = {},
-        EventBindings = langx.klass({
-            init: function(target, event) {
-                this._target = target;
-                this._event = event;
-                this._bindings = [];
-            },
-
-            add: function(fn, options) {
-                var bindings = this._bindings,
-                    binding = {
-                        fn: fn,
-                        options: langx.mixin({}, options)
-                    };
-
-                bindings.push(binding);
-
-                var self = this;
-                if (!self._listener) {
-                    self._listener = function(domEvt) {
-                        var elm = this,
-                            e = createProxy(domEvt),
-                            args = domEvt._args,
-                            bindings = self._bindings,
-                            ns = e.namespace;
-
-                        if (langx.isDefined(args)) {
-                            args = [e].concat(args);
-                        } else {
-                            args = [e];
-                        }
-
-                        langx.each(bindings, function(idx, binding) {
-                            var match = elm;
-                            if (e.isImmediatePropagationStopped && e.isImmediatePropagationStopped()) {
-                                return false;
-                            }
-                            var fn = binding.fn,
-                                options = binding.options || {},
-                                selector = options.selector,
-                                one = options.one,
-                                data = options.data;
-
-                            if (ns && ns != options.ns && options.ns.indexOf(ns) === -1) {
-                                return;
-                            }
-                            if (selector) {
-                                match = finder.closest(e.target, selector);
-                                if (match && match !== elm) {
-                                    langx.mixin(e, {
-                                        currentTarget: match,
-                                        liveFired: elm
-                                    });
-                                } else {
-                                    return;
-                                }
-                            }
-
-                            var originalEvent = self._event;
-                            if (originalEvent in hover) {
-                                var related = e.relatedTarget;
-                                if (related && (related === match || noder.contains(match, related))) {
-                                    return;
-                                }
-                            }
-
-                            if (langx.isDefined(data)) {
-                                e.data = data;
-                            }
-
-                            if (one) {
-                                self.remove(fn, options);
-                            }
-
-                            var result = fn.apply(match, args);
-
-                            if (result === false) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                            }
-                        });;
-                    };
-
-                    var event = self._event;
-                    /*
-                                        if (event in hover) {
-                                            var l = self._listener;
-                                            self._listener = function(e) {
-                                                var related = e.relatedTarget;
-                                                if (!related || (related !== this && !noder.contains(this, related))) {
-                                                    return l.apply(this, arguments);
-                                                }
-                                            }
-                                        }
-                    */
-
-                    if (self._target.addEventListener) {
-                        self._target.addEventListener(realEvent(event), self._listener, false);
-                    } else {
-                        console.warn("invalid eventer object", self._target);
-                    }
-                }
-
-            },
-            remove: function(fn, options) {
-                options = langx.mixin({}, options);
-
-                function matcherFor(ns) {
-                    return new RegExp("(?:^| )" + ns.replace(" ", " .* ?") + "(?: |$)");
-                }
-                var matcher;
-                if (options.ns) {
-                    matcher = matcherFor(options.ns);
-                }
-
-                this._bindings = this._bindings.filter(function(binding) {
-                    var removing = (!fn || fn === binding.fn) &&
-                        (!matcher || matcher.test(binding.options.ns)) &&
-                        (!options.selector || options.selector == binding.options.selector);
-
-                    return !removing;
-                });
-                if (this._bindings.length == 0) {
-                    if (this._target.removeEventListener) {
-                        this._target.removeEventListener(realEvent(this._event), this._listener, false);
-                    }
-                    this._listener = null;
-                }
-            }
-        }),
-        EventsHandler = langx.klass({
-            init: function(elm) {
-                this._target = elm;
-                this._handler = {};
-            },
-
-            // add a event listener
-            // selector Optional
-            register: function(event, callback, options) {
-                // Seperate the event from the namespace
-                var parsed = parse(event),
-                    event = parsed.type,
-                    specialEvent = specialEvents[event],
-                    bindingEvent = specialEvent && (specialEvent.bindType || specialEvent.bindEventName);
-
-                var events = this._handler;
-
-                // Check if there is already a handler for this event
-                if (events[event] === undefined) {
-                    events[event] = new EventBindings(this._target, bindingEvent || event);
-                }
-
-                // Register the new callback function
-                events[event].add(callback, langx.mixin({
-                    ns: parsed.ns
-                }, options)); // options:{selector:xxx}
-            },
-
-            // remove a event listener
-            unregister: function(event, fn, options) {
-                // Check for parameter validtiy
-                var events = this._handler,
-                    parsed = parse(event);
-                event = parsed.type;
-
-                if (event) {
-                    var listener = events[event];
-
-                    if (listener) {
-                        listener.remove(fn, langx.mixin({
-                            ns: parsed.ns
-                        }, options));
-                    }
-                } else {
-                    //remove all events
-                    for (event in events) {
-                        var listener = events[event];
-                        listener.remove(fn, langx.mixin({
-                            ns: parsed.ns
-                        }, options));
-                    }
-                }
-            }
-        }),
-
-        findHandler = function(elm) {
-            var id = uid(elm),
-                handler = handlers[id];
-            if (!handler) {
-                handler = handlers[id] = new EventsHandler(elm);
-            }
-            return handler;
-        };
-
-    /*   
-     * Remove an event handler for one or more events from the specified element.
-     * @param {HTMLElement} elm  
-     * @param {String} events
-     * @param {String　Optional } selector
-     * @param {Function} callback
-     */
-    function off(elm, events, selector, callback) {
-        var $this = this
-        if (langx.isPlainObject(events)) {
-            langx.each(events, function(type, fn) {
-                off(elm, type, selector, fn);
-            })
-            return $this;
-        }
-
-        if (!langx.isString(selector) && !langx.isFunction(callback) && callback !== false) {
-            callback = selector;
-            selector = undefined;
-        }
-
-        if (callback === false) {
-            callback = langx.returnFalse;
-        }
-
-        if (typeof events == "string") {
-            if (events.indexOf(",") > -1) {
-                events = events.split(",");
-            } else {
-                events = events.split(/\s/);
-            }
-        }
-
-        var handler = findHandler(elm);
-
-        if (events) events.forEach(function(event) {
-
-            handler.unregister(event, callback, {
-                selector: selector,
-            });
-        });
-        return this;
-    }
-
-    /*   
-     * Attach an event handler function for one or more events to the selected elements.
-     * @param {HTMLElement} elm  
-     * @param {String} events
-     * @param {String　Optional} selector
-     * @param {Anything Optional} data
-     * @param {Function} callback
-     * @param {Boolean　Optional} one
-     */
-    function on(elm, events, selector, data, callback, one) {
-
-        var autoRemove, delegator;
-        if (langx.isPlainObject(events)) {
-            langx.each(events, function(type, fn) {
-                on(elm, type, selector, data, fn, one);
-            });
-            return this;
-        }
-
-        if (!langx.isString(selector) && !langx.isFunction(callback)) {
-            callback = data;
-            data = selector;
-            selector = undefined;
-        }
-
-        if (langx.isFunction(data)) {
-            callback = data;
-            data = undefined;
-        }
-
-        if (callback === false) {
-            callback = langx.returnFalse;
-        }
-
-        if (typeof events == "string") {
-            if (events.indexOf(",") > -1) {
-                events = events.split(",");
-            } else {
-                events = events.split(/\s/);
-            }
-        }
-
-        var handler = findHandler(elm);
-
-        events.forEach(function(event) {
-            if (event == "ready") {
-                return ready(callback);
-            }
-            handler.register(event, callback, {
-                data: data,
-                selector: selector,
-                one: !!one
-            });
-        });
-        return this;
-    }
-
-    /*   
-     * Attach a handler to an event for the elements. The handler is executed at most once per 
-     * @param {HTMLElement} elm  
-     * @param {String} event
-     * @param {String　Optional} selector
-     * @param {Anything Optional} data
-     * @param {Function} callback
-     */
-    function one(elm, events, selector, data, callback) {
-        on(elm, events, selector, data, callback, 1);
-
-        return this;
-    }
-
-    /*   
-     * Prevents propagation and clobbers the default action of the passed event. The same as calling event.preventDefault() and event.stopPropagation(). 
-     * @param {String} event
-     */
-    function stop(event) {
-        if (window.document.all) {
-            event.keyCode = 0;
-        }
-        if (event.preventDefault) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        return this;
-    }
-    /*   
-     * Execute all handlers and behaviors attached to the matched elements for the given event  
-     * @param {String} evented
-     * @param {String} type
-     * @param {Array or PlainObject } args
-     */
-    function trigger(evented, type, args) {
-        var e;
-        if (type instanceof Event) {
-            e = type;
-        } else {
-            e = createEvent(type, args);
-        }
-        e._args = args;
-
-        var fn = (evented.dispatchEvent || evented.trigger);
-        if (fn) {
-            fn.call(evented, e);
-        } else {
-            console.warn("The evented parameter is not a eventable object");
-        }
-
-        return this;
-    }
-    /*   
-     * Specify a function to execute when the DOM is fully loaded.  
-     * @param {Function} callback
-     */
-    function ready(callback) {
-        // need to check if document.body exists for IE as that browser reports
-        // document ready when it hasn't yet created the body elm
-        if (readyRE.test(document.readyState) && document.body) {
-            langx.defer(callback);
-        } else {
-            document.addEventListener('DOMContentLoaded', callback, false);
-        }
-
-        return this;
-    }
-
-    var keyCodeLookup = {
-        "backspace": 8,
-        "comma": 188,
-        "delete": 46,
-        "down": 40,
-        "end": 35,
-        "enter": 13,
-        "escape": 27,
-        "home": 36,
-        "left": 37,
-        "page_down": 34,
-        "page_up": 33,
-        "period": 190,
-        "right": 39,
-        "space": 32,
-        "tab": 9,
-        "up": 38
-    };
-    //example:
-    //shortcuts(elm).add("CTRL+ALT+SHIFT+X",function(){console.log("test!")});
-    function shortcuts(elm) {
-
-        var registry = datax.data(elm, "shortcuts");
-        if (!registry) {
-            registry = {};
-            datax.data(elm, "shortcuts", registry);
-            var run = function(shortcut, event) {
-                var n = event.metaKey || event.ctrlKey;
-                if (shortcut.ctrl == n && shortcut.alt == event.altKey && shortcut.shift == event.shiftKey) {
-                    if (event.keyCode == shortcut.keyCode || event.charCode && event.charCode == shortcut.charCode) {
-                        event.preventDefault();
-                        if ("keydown" == event.type) {
-                            shortcut.fn(event);
-                        }
-                        return true;
-                    }
-                }
-            };
-            on(elm, "keyup keypress keydown", function(event) {
-                if (!(/INPUT|TEXTAREA/.test(event.target.nodeName))) {
-                    for (var key in registry) {
-                        run(registry[key], event);
-                    }
-                }
-            });
-
-        }
-
-        return {
-            add: function(pattern, fn) {
-                var shortcutKeys;
-                if (pattern.indexOf(",") > -1) {
-                    shortcutKeys = pattern.toLowerCase().split(",");
-                } else {
-                    shortcutKeys = pattern.toLowerCase().split(" ");
-                }
-                shortcutKeys.forEach(function(shortcutKey) {
-                    var setting = {
-                        fn: fn,
-                        alt: false,
-                        ctrl: false,
-                        shift: false
-                    };
-                    shortcutKey.split("+").forEach(function(key) {
-                        switch (key) {
-                            case "alt":
-                            case "ctrl":
-                            case "shift":
-                                setting[key] = true;
-                                break;
-                            default:
-                                setting.charCode = key.charCodeAt(0);
-                                setting.keyCode = keyCodeLookup[key] || key.toUpperCase().charCodeAt(0);
-                        }
-                    });
-                    var regKey = (setting.ctrl ? "ctrl" : "") + "," + (setting.alt ? "alt" : "") + "," + (setting.shift ? "shift" : "") + "," + setting.keyCode;
-                    registry[regKey] = setting;
-                })
-            }
-
-        };
-
-    }
-
-    if (browser.support.transition) {
-        specialEvents.transitionEnd = {
-//          handle: function (e) {
-//            if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
-//          },
-          bindType: browser.support.transition.end,
-          delegateType: browser.support.transition.end
-        }        
-    }
-
-    function eventer() {
-        return eventer;
-    }
-
-    langx.mixin(eventer, {
-        create: createEvent,
-
-        keys: keyCodeLookup,
-
-        off: off,
-
-        on: on,
-
-        one: one,
-
-        proxy: createProxy,
-
-        ready: ready,
-
-        shortcuts: shortcuts,
-
-        special: specialEvents,
-
-        stop: stop,
-
-        trigger: trigger
-
-    });
-
-    return dom.eventer = eventer;
-});
-define('skylark-utils-dom/geom',[
-    "./dom",
-    "./langx",
-    "./noder",
-    "./styler"
-], function(dom, langx, noder, styler) {
-    var rootNodeRE = /^(?:body|html)$/i,
-        px = langx.toPixel,
-        offsetParent = noder.offsetParent,
-        cachedScrollbarWidth;
-
-    function scrollbarWidth() {
-        if (cachedScrollbarWidth !== undefined) {
-            return cachedScrollbarWidth;
-        }
-        var w1, w2,
-            div = noder.createFragment("<div style=" +
-                "'display:block;position:absolute;width:200px;height:200px;overflow:hidden;'>" +
-                "<div style='height:300px;width:auto;'></div></div>")[0],
-            innerDiv = div.childNodes[0];
-
-        noder.append(document.body, div);
-
-        w1 = innerDiv.offsetWidth;
-
-        styler.css(div, "overflow", "scroll");
-
-        w2 = innerDiv.offsetWidth;
-
-        if (w1 === w2) {
-            w2 = div[0].clientWidth;
-        }
-
-        noder.remove(div);
-
-        return (cachedScrollbarWidth = w1 - w2);
-    }
-    /*
-     * Get the widths of each border of the specified element.
-     * @param {HTMLElement} elm
-     */
-    function borderExtents(elm) {
-        if (noder.isWindow(elm)) {
-            return {
-                left : 0,
-                top : 0,
-                right : 0,
-                bottom : 0
-            }
-        }        var s = getComputedStyle(elm);
-        return {
-            left: px(s.borderLeftWidth, elm),
-            top: px(s.borderTopWidth, elm),
-            right: px(s.borderRightWidth, elm),
-            bottom: px(s.borderBottomWidth, elm)
-        }
-    }
-
-    //viewport coordinate
-    /*
-     * Get or set the viewport position of the specified element border box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} coords
-     */
-    function boundingPosition(elm, coords) {
-        if (coords === undefined) {
-            return rootNodeRE.test(elm.nodeName) ? { top: 0, left: 0 } : elm.getBoundingClientRect();
-        } else {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                parentOffset = boundingPosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            relativePosition(elm, {
-                top: coords.top - parentOffset.top - mex.top - pbex.top,
-                left: coords.left - parentOffset.left - mex.left - pbex.left
-            });
-            return this;
-        }
-    }
-
-    /*
-     * Get or set the viewport rect of the specified element border box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} coords
-     */
-    function boundingRect(elm, coords) {
-        if (coords === undefined) {
-            return elm.getBoundingClientRect()
-        } else {
-            boundingPosition(elm, coords);
-            size(elm, coords);
-            return this;
-        }
-    }
-
-    /*
-     * Get or set the height of the specified element client box.
-     * @param {HTMLElement} elm
-     * @param {Number} value
-     */
-    function clientHeight(elm, value) {
-        if (value == undefined) {
-            return clientSize(elm).height;
-        } else {
-            return clientSize(elm, {
-                height: value
-            });
-        }
-    }
-
-    /*
-     * Get or set the size of the specified element client box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} dimension
-     */
-    function clientSize(elm, dimension) {
-        if (dimension == undefined) {
-            return {
-                width: elm.clientWidth,
-                height: elm.clientHeight
-            }
-        } else {
-            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
-                props = {
-                    width: dimension.width,
-                    height: dimension.height
-                };
-            if (!isBorderBox) {
-                var pex = paddingExtents(elm);
-
-                if (props.width !== undefined) {
-                    props.width = props.width - pex.left - pex.right;
-                }
-
-                if (props.height !== undefined) {
-                    props.height = props.height - pex.top - pex.bottom;
-                }
-            } else {
-                var bex = borderExtents(elm);
-
-                if (props.width !== undefined) {
-                    props.width = props.width + bex.left + bex.right;
-                }
-
-                if (props.height !== undefined) {
-                    props.height = props.height + bex.top + bex.bottom;
-                }
-
-            }
-            styler.css(elm, props);
-            return this;
-        }
-        return {
-            width: elm.clientWidth,
-            height: elm.clientHeight
-        };
-    }
-
-    /*
-     * Get or set the width of the specified element client box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} dimension
-     */
-    function clientWidth(elm, value) {
-        if (value == undefined) {
-            return clientSize(elm).width;
-        } else {
-            clientSize(elm, {
-                width: value
-            });
-            return this;
-        }
-    }
-
-    /*
-     * Get the rect of the specified element content box.
-     * @param {HTMLElement} elm
-     */
-    function contentRect(elm) {
-        var cs = clientSize(elm),
-            pex = paddingExtents(elm);
-
-
-        //// On Opera, offsetLeft includes the parent's border
-        //if(has("opera")){
-        //    pe.l += be.l;
-        //    pe.t += be.t;
-        //}
-        return {
-            left: pex.left,
-            top: pex.top,
-            width: cs.width - pex.left - pex.right,
-            height: cs.height - pex.top - pex.bottom
-        };
-    }
-
-    /*
-     * Get the document size.
-     * @param {HTMLDocument} doc
-     */
-    function getDocumentSize(doc) {
-        var documentElement = doc.documentElement,
-            body = doc.body,
-            max = Math.max,
-            scrollWidth = max(documentElement.scrollWidth, body.scrollWidth),
-            clientWidth = max(documentElement.clientWidth, body.clientWidth),
-            offsetWidth = max(documentElement.offsetWidth, body.offsetWidth),
-            scrollHeight = max(documentElement.scrollHeight, body.scrollHeight),
-            clientHeight = max(documentElement.clientHeight, body.clientHeight),
-            offsetHeight = max(documentElement.offsetHeight, body.offsetHeight);
-
-        return {
-            width: scrollWidth < offsetWidth ? clientWidth : scrollWidth,
-            height: scrollHeight < offsetHeight ? clientHeight : scrollHeight
-        };
-    }
-
-    /*
-     * Get the document size.
-     * @param {HTMLElement} elm
-     * @param {Number} value
-     */
-    function height(elm, value) {
-        if (value == undefined) {
-            return size(elm).height;
-        } else {
-            size(elm, {
-                height: value
-            });
-            return this;
-        }
-    }
-
-    /*
-     * Get the widths of each margin of the specified element.
-     * @param {HTMLElement} elm
-     */
-    function marginExtents(elm) {
-        if (noder.isWindow(elm)) {
-            return {
-                left : 0,
-                top : 0,
-                right : 0,
-                bottom : 0
-            }
-        }
-        var s = getComputedStyle(elm);
-        return {
-            left: px(s.marginLeft),
-            top: px(s.marginTop),
-            right: px(s.marginRight),
-            bottom: px(s.marginBottom),
-        }
-    }
-
-
-    function marginRect(elm) {
-        var obj = relativeRect(elm),
-            me = marginExtents(elm);
-
-        return {
-            left: obj.left,
-            top: obj.top,
-            width: obj.width + me.left + me.right,
-            height: obj.height + me.top + me.bottom
-        };
-    }
-
-
-    function marginSize(elm) {
-        var obj = size(elm),
-            me = marginExtents(elm);
-
-        return {
-            width: obj.width + me.left + me.right,
-            height: obj.height + me.top + me.bottom
-        };
-    }
-
-    /*
-     * Get the widths of each padding of the specified element.
-     * @param {HTMLElement} elm
-     */
-    function paddingExtents(elm) {
-        if (noder.isWindow(elm)) {
-            return {
-                left : 0,
-                top : 0,
-                right : 0,
-                bottom : 0
-            }
-        }
-        var s = getComputedStyle(elm);
-        return {
-            left: px(s.paddingLeft),
-            top: px(s.paddingTop),
-            right: px(s.paddingRight),
-            bottom: px(s.paddingBottom),
-        }
-    }
-
-    /*
-     * Get or set the document position of the specified element border box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} coords
-     */
-    //coordinate to the document
-    function pagePosition(elm, coords) {
-        if (coords === undefined) {
-            var obj = elm.getBoundingClientRect()
-            return {
-                left: obj.left + window.pageXOffset,
-                top: obj.top + window.pageYOffset
-            }
-        } else {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                parentOffset = pagePosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            relativePosition(elm, {
-                top: coords.top - parentOffset.top - mex.top - pbex.top,
-                left: coords.left - parentOffset.left - mex.left - pbex.left
-            });
-            return this;
-        }
-    }
-
-    /*
-     * Get or set the document rect of the specified element border box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} coords
-     */
-    function pageRect(elm, coords) {
-        if (coords === undefined) {
-            var obj = elm.getBoundingClientRect()
-            return {
-                left: obj.left + window.pageXOffset,
-                top: obj.top + window.pageYOffset,
-                width: Math.round(obj.width),
-                height: Math.round(obj.height)
-            }
-        } else {
-            pagePosition(elm, coords);
-            size(elm, coords);
-            return this;
-        }
-    }
-
-    /*
-     * Get or set the position of the specified element border box , relative to parent element.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} coords
-     */
-    // coordinate relative to it's parent
-    function relativePosition(elm, coords) {
-        if (coords == undefined) {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                offset = boundingPosition(elm),
-                parentOffset = boundingPosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            // Subtract parent offsets and element margins
-            return {
-                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
-                left: offset.left - parentOffset.left - pbex.left, // - mex.left
-            }
-        } else {
-            var props = {
-                top: coords.top,
-                left: coords.left
-            }
-
-            if (styler.css(elm, "position") == "static") {
-                props['position'] = "relative";
-            }
-            styler.css(elm, props);
-            return this;
-        }
-    }
-
-    /*
-     * Get or set the rect of the specified element border box , relatived to parent element.
-     * @param {HTMLElement} elm
-     * @param {PlainObject} coords
-     */
-    function relativeRect(elm, coords) {
-        if (coords === undefined) {
-            var // Get *real* offsetParent
-                parent = offsetParent(elm),
-                // Get correct offsets
-                offset = boundingRect(elm),
-                parentOffset = boundingPosition(parent),
-                mex = marginExtents(elm),
-                pbex = borderExtents(parent);
-
-            // Subtract parent offsets and element margins
-            return {
-                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
-                left: offset.left - parentOffset.left - pbex.left, // - mex.left,
-                width: offset.width,
-                height: offset.height
-            }
-        } else {
-            relativePosition(elm, coords);
-            size(elm, coords);
-            return this;
-        }
-    }
-    /*
-     * Scroll the specified element into view.
-     * @param {HTMLElement} elm
-     * @param {} align
-     */
-    function scrollIntoView(elm, align) {
-        function getOffset(elm, rootElm) {
-            var x, y, parent = elm;
-
-            x = y = 0;
-            while (parent && parent != rootElm && parent.nodeType) {
-                x += parent.offsetLeft || 0;
-                y += parent.offsetTop || 0;
-                parent = parent.offsetParent;
-            }
-
-            return { x: x, y: y };
-        }
-
-        var parentElm = elm.parentNode;
-        var x, y, width, height, parentWidth, parentHeight;
-        var pos = getOffset(elm, parentElm);
-
-        x = pos.x;
-        y = pos.y;
-        width = elm.offsetWidth;
-        height = elm.offsetHeight;
-        parentWidth = parentElm.clientWidth;
-        parentHeight = parentElm.clientHeight;
-
-        if (align == "end") {
-            x -= parentWidth - width;
-            y -= parentHeight - height;
-        } else if (align == "center") {
-            x -= (parentWidth / 2) - (width / 2);
-            y -= (parentHeight / 2) - (height / 2);
-        }
-
-        parentElm.scrollLeft = x;
-        parentElm.scrollTop = y;
-
-        return this;
-    }
-    /*
-     * Get or set the current horizontal position of the scroll bar for the specified element.
-     * @param {HTMLElement} elm
-     * @param {Number} value
-     */
-    function scrollLeft(elm, value) {
-        var hasScrollLeft = "scrollLeft" in elm;
-        if (value === undefined) {
-            return hasScrollLeft ? elm.scrollLeft : elm.pageXOffset
-        } else {
-            if (hasScrollLeft) {
-                elm.scrollLeft = value;
-            } else {
-                elm.scrollTo(value, elm.scrollY);
-            }
-            return this;
-        }
-    }
-    /*
-     * Get or the current vertical position of the scroll bar for the specified element.
-     * @param {HTMLElement} elm
-     * @param {Number} value
-     */
-    function scrollTop(elm, value) {
-        var hasScrollTop = "scrollTop" in elm;
-
-        if (value === undefined) {
-            return hasScrollTop ? elm.scrollTop : elm.pageYOffset
-        } else {
-            if (hasScrollTop) {
-                elm.scrollTop = value;
-            } else {
-                elm.scrollTo(elm.scrollX, value);
-            }
-            return this;
-        }
-    }
-    /*
-     * Get or set the size of the specified element border box.
-     * @param {HTMLElement} elm
-     * @param {PlainObject}dimension
-     */
-    function size(elm, dimension) {
-        if (dimension == undefined) {
-            if (langx.isWindow(elm)) {
-                return {
-                    width: elm.innerWidth,
-                    height: elm.innerHeight
-                }
-
-            } else if (langx.isDocument(elm)) {
-                return getDocumentSize(document);
-            } else {
-                return {
-                    width: elm.offsetWidth,
-                    height: elm.offsetHeight
-                }
-            }
-        } else {
-            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
-                props = {
-                    width: dimension.width,
-                    height: dimension.height
-                };
-            if (!isBorderBox) {
-                var pex = paddingExtents(elm),
-                    bex = borderExtents(elm);
-
-                if (props.width !== undefined && props.width !== "" && props.width !== null) {
-                    props.width = props.width - pex.left - pex.right - bex.left - bex.right;
-                }
-
-                if (props.height !== undefined && props.height !== "" && props.height !== null) {
-                    props.height = props.height - pex.top - pex.bottom - bex.top - bex.bottom;
-                }
-            }
-            styler.css(elm, props);
-            return this;
-        }
-    }
-    /*
-     * Get or set the size of the specified element border box.
-     * @param {HTMLElement} elm
-     * @param {Number} value
-     */
-    function width(elm, value) {
-        if (value == undefined) {
-            return size(elm).width;
-        } else {
-            size(elm, {
-                width: value
-            });
-            return this;
-        }
-    }
-
-    function geom() {
-        return geom;
-    }
-
-    langx.mixin(geom, {
-        borderExtents: borderExtents,
-        //viewport coordinate
-        boundingPosition: boundingPosition,
-
-        boundingRect: boundingRect,
-
-        clientHeight: clientHeight,
-
-        clientSize: clientSize,
-
-        clientWidth: clientWidth,
-
-        contentRect: contentRect,
-
-        getDocumentSize: getDocumentSize,
-
-        height: height,
-
-        marginExtents: marginExtents,
-
-        marginRect: marginRect,
-
-        marginSize: marginSize,
-
-        offsetParent: offsetParent,
-
-        paddingExtents: paddingExtents,
-
-        //coordinate to the document
-        pagePosition: pagePosition,
-
-        pageRect: pageRect,
-
-        // coordinate relative to it's parent
-        relativePosition: relativePosition,
-
-        relativeRect: relativeRect,
-
-        scrollbarWidth: scrollbarWidth,
-
-        scrollIntoView: scrollIntoView,
-
-        scrollLeft: scrollLeft,
-
-        scrollTop: scrollTop,
-
-        size: size,
-
-        width: width
-    });
-
-    ( function() {
-        var max = Math.max,
-            abs = Math.abs,
-            rhorizontal = /left|center|right/,
-            rvertical = /top|center|bottom/,
-            roffset = /[\+\-]\d+(\.[\d]+)?%?/,
-            rposition = /^\w+/,
-            rpercent = /%$/;
-
-        function getOffsets( offsets, width, height ) {
-            return [
-                parseFloat( offsets[ 0 ] ) * ( rpercent.test( offsets[ 0 ] ) ? width / 100 : 1 ),
-                parseFloat( offsets[ 1 ] ) * ( rpercent.test( offsets[ 1 ] ) ? height / 100 : 1 )
-            ];
-        }
-
-        function parseCss( element, property ) {
-            return parseInt( styler.css( element, property ), 10 ) || 0;
-        }
-
-        function getDimensions( raw ) {
-            if ( raw.nodeType === 9 ) {
-                return {
-                    size: size(raw),
-                    offset: { top: 0, left: 0 }
-                };
-            }
-            if ( noder.isWindow( raw ) ) {
-                return {
-                    size: size(raw),
-                    offset: { 
-                        top: scrollTop(raw), 
-                        left: scrollLeft(raw) 
-                    }
-                };
-            }
-            if ( raw.preventDefault ) {
-                return {
-                    size : {
-                        width: 0,
-                        height: 0
-                    },
-                    offset: { 
-                        top: raw.pageY, 
-                        left: raw.pageX 
-                    }
-                };
-            }
-            return {
-                size: size(raw),
-                offset: pagePosition(raw)
-            };
-        }
-
-        function getScrollInfo( within ) {
-            var overflowX = within.isWindow || within.isDocument ? "" :
-                    styler.css(within.element,"overflow-x" ),
-                overflowY = within.isWindow || within.isDocument ? "" :
-                    styler.css(within.element,"overflow-y" ),
-                hasOverflowX = overflowX === "scroll" ||
-                    ( overflowX === "auto" && within.width < scrollWidth(within.element) ),
-                hasOverflowY = overflowY === "scroll" ||
-                    ( overflowY === "auto" && within.height < scrollHeight(within.element));
-            return {
-                width: hasOverflowY ? scrollbarWidth() : 0,
-                height: hasOverflowX ? scrollbarWidth() : 0
-            };
-        }
-
-        function getWithinInfo( element ) {
-            var withinElement = element || window,
-                isWindow = noder.isWindow( withinElement),
-                isDocument = !!withinElement && withinElement.nodeType === 9,
-                hasOffset = !isWindow && !isDocument,
-                msize = marginSize(withinElement);
-            return {
-                element: withinElement,
-                isWindow: isWindow,
-                isDocument: isDocument,
-                offset: hasOffset ? pagePosition(element) : { left: 0, top: 0 },
-                scrollLeft: scrollLeft(withinElement),
-                scrollTop: scrollTop(withinElement),
-                width: msize.width,
-                height: msize.height
-            };
-        }
-
-        function posit(elm,options ) {
-            // Make a copy, we don't want to modify arguments
-            options = langx.extend( {}, options );
-
-            var atOffset, targetWidth, targetHeight, targetOffset, basePosition, dimensions,
-                target = options.of,
-                within = getWithinInfo( options.within ),
-                scrollInfo = getScrollInfo( within ),
-                collision = ( options.collision || "flip" ).split( " " ),
-                offsets = {};
-
-            dimensions = getDimensions( target );
-            if ( target.preventDefault ) {
-
-                // Force left top to allow flipping
-                options.at = "left top";
-            }
-            targetWidth = dimensions.size.width;
-            targetHeight = dimensions.size.height;
-            targetOffset = dimensions.offset;
-
-            // Clone to reuse original targetOffset later
-            basePosition = langx.extend( {}, targetOffset );
-
-            // Force my and at to have valid horizontal and vertical positions
-            // if a value is missing or invalid, it will be converted to center
-            langx.each( [ "my", "at" ], function() {
-                var pos = ( options[ this ] || "" ).split( " " ),
-                    horizontalOffset,
-                    verticalOffset;
-
-                if ( pos.length === 1 ) {
-                    pos = rhorizontal.test( pos[ 0 ] ) ?
-                        pos.concat( [ "center" ] ) :
-                        rvertical.test( pos[ 0 ] ) ?
-                            [ "center" ].concat( pos ) :
-                            [ "center", "center" ];
-                }
-                pos[ 0 ] = rhorizontal.test( pos[ 0 ] ) ? pos[ 0 ] : "center";
-                pos[ 1 ] = rvertical.test( pos[ 1 ] ) ? pos[ 1 ] : "center";
-
-                // Calculate offsets
-                horizontalOffset = roffset.exec( pos[ 0 ] );
-                verticalOffset = roffset.exec( pos[ 1 ] );
-                offsets[ this ] = [
-                    horizontalOffset ? horizontalOffset[ 0 ] : 0,
-                    verticalOffset ? verticalOffset[ 0 ] : 0
-                ];
-
-                // Reduce to just the positions without the offsets
-                options[ this ] = [
-                    rposition.exec( pos[ 0 ] )[ 0 ],
-                    rposition.exec( pos[ 1 ] )[ 0 ]
-                ];
-            } );
-
-            // Normalize collision option
-            if ( collision.length === 1 ) {
-                collision[ 1 ] = collision[ 0 ];
-            }
-
-            if ( options.at[ 0 ] === "right" ) {
-                basePosition.left += targetWidth;
-            } else if ( options.at[ 0 ] === "center" ) {
-                basePosition.left += targetWidth / 2;
-            }
-
-            if ( options.at[ 1 ] === "bottom" ) {
-                basePosition.top += targetHeight;
-            } else if ( options.at[ 1 ] === "center" ) {
-                basePosition.top += targetHeight / 2;
-            }
-
-            atOffset = getOffsets( offsets.at, targetWidth, targetHeight );
-            basePosition.left += atOffset[ 0 ];
-            basePosition.top += atOffset[ 1 ];
-
-            return ( function(elem) {
-                var collisionPosition, using,
-                    msize = marginSize(elem),
-                    elemWidth = msize.width,
-                    elemHeight = msize.height,
-                    marginLeft = parseCss( elem, "marginLeft" ),
-                    marginTop = parseCss( elem, "marginTop" ),
-                    collisionWidth = elemWidth + marginLeft + parseCss( elem, "marginRight" ) +
-                        scrollInfo.width,
-                    collisionHeight = elemHeight + marginTop + parseCss( elem, "marginBottom" ) +
-                        scrollInfo.height,
-                    position = langx.extend( {}, basePosition ),
-                    myOffset = getOffsets( offsets.my, msize.width, msize.height);
-
-                if ( options.my[ 0 ] === "right" ) {
-                    position.left -= elemWidth;
-                } else if ( options.my[ 0 ] === "center" ) {
-                    position.left -= elemWidth / 2;
-                }
-
-                if ( options.my[ 1 ] === "bottom" ) {
-                    position.top -= elemHeight;
-                } else if ( options.my[ 1 ] === "center" ) {
-                    position.top -= elemHeight / 2;
-                }
-
-                position.left += myOffset[ 0 ];
-                position.top += myOffset[ 1 ];
-
-                collisionPosition = {
-                    marginLeft: marginLeft,
-                    marginTop: marginTop
-                };
-
-                langx.each( [ "left", "top" ], function( i, dir ) {
-                    if ( positions[ collision[ i ] ] ) {
-                        positions[ collision[ i ] ][ dir ]( position, {
-                            targetWidth: targetWidth,
-                            targetHeight: targetHeight,
-                            elemWidth: elemWidth,
-                            elemHeight: elemHeight,
-                            collisionPosition: collisionPosition,
-                            collisionWidth: collisionWidth,
-                            collisionHeight: collisionHeight,
-                            offset: [ atOffset[ 0 ] + myOffset[ 0 ], atOffset [ 1 ] + myOffset[ 1 ] ],
-                            my: options.my,
-                            at: options.at,
-                            within: within,
-                            elem: elem
-                        } );
-                    }
-                } );
-
-                if ( options.using ) {
-
-                    // Adds feedback as second argument to using callback, if present
-                    using = function( props ) {
-                        var left = targetOffset.left - position.left,
-                            right = left + targetWidth - elemWidth,
-                            top = targetOffset.top - position.top,
-                            bottom = top + targetHeight - elemHeight,
-                            feedback = {
-                                target: {
-                                    element: target,
-                                    left: targetOffset.left,
-                                    top: targetOffset.top,
-                                    width: targetWidth,
-                                    height: targetHeight
-                                },
-                                element: {
-                                    element: elem,
-                                    left: position.left,
-                                    top: position.top,
-                                    width: elemWidth,
-                                    height: elemHeight
-                                },
-                                horizontal: right < 0 ? "left" : left > 0 ? "right" : "center",
-                                vertical: bottom < 0 ? "top" : top > 0 ? "bottom" : "middle"
-                            };
-                        if ( targetWidth < elemWidth && abs( left + right ) < targetWidth ) {
-                            feedback.horizontal = "center";
-                        }
-                        if ( targetHeight < elemHeight && abs( top + bottom ) < targetHeight ) {
-                            feedback.vertical = "middle";
-                        }
-                        if ( max( abs( left ), abs( right ) ) > max( abs( top ), abs( bottom ) ) ) {
-                            feedback.important = "horizontal";
-                        } else {
-                            feedback.important = "vertical";
-                        }
-                        options.using.call( this, props, feedback );
-                    };
-                }
-
-                pagePosition(elem, langx.extend( position, { using: using } ));
-            })(elm);
-        }
-
-        var positions = {
-            fit: {
-                left: function( position, data ) {
-                    var within = data.within,
-                        withinOffset = within.isWindow ? within.scrollLeft : within.offset.left,
-                        outerWidth = within.width,
-                        collisionPosLeft = position.left - data.collisionPosition.marginLeft,
-                        overLeft = withinOffset - collisionPosLeft,
-                        overRight = collisionPosLeft + data.collisionWidth - outerWidth - withinOffset,
-                        newOverRight;
-
-                    // Element is wider than within
-                    if ( data.collisionWidth > outerWidth ) {
-
-                        // Element is initially over the left side of within
-                        if ( overLeft > 0 && overRight <= 0 ) {
-                            newOverRight = position.left + overLeft + data.collisionWidth - outerWidth -
-                                withinOffset;
-                            position.left += overLeft - newOverRight;
-
-                        // Element is initially over right side of within
-                        } else if ( overRight > 0 && overLeft <= 0 ) {
-                            position.left = withinOffset;
-
-                        // Element is initially over both left and right sides of within
-                        } else {
-                            if ( overLeft > overRight ) {
-                                position.left = withinOffset + outerWidth - data.collisionWidth;
-                            } else {
-                                position.left = withinOffset;
-                            }
-                        }
-
-                    // Too far left -> align with left edge
-                    } else if ( overLeft > 0 ) {
-                        position.left += overLeft;
-
-                    // Too far right -> align with right edge
-                    } else if ( overRight > 0 ) {
-                        position.left -= overRight;
-
-                    // Adjust based on position and margin
-                    } else {
-                        position.left = max( position.left - collisionPosLeft, position.left );
-                    }
-                },
-                top: function( position, data ) {
-                    var within = data.within,
-                        withinOffset = within.isWindow ? within.scrollTop : within.offset.top,
-                        outerHeight = data.within.height,
-                        collisionPosTop = position.top - data.collisionPosition.marginTop,
-                        overTop = withinOffset - collisionPosTop,
-                        overBottom = collisionPosTop + data.collisionHeight - outerHeight - withinOffset,
-                        newOverBottom;
-
-                    // Element is taller than within
-                    if ( data.collisionHeight > outerHeight ) {
-
-                        // Element is initially over the top of within
-                        if ( overTop > 0 && overBottom <= 0 ) {
-                            newOverBottom = position.top + overTop + data.collisionHeight - outerHeight -
-                                withinOffset;
-                            position.top += overTop - newOverBottom;
-
-                        // Element is initially over bottom of within
-                        } else if ( overBottom > 0 && overTop <= 0 ) {
-                            position.top = withinOffset;
-
-                        // Element is initially over both top and bottom of within
-                        } else {
-                            if ( overTop > overBottom ) {
-                                position.top = withinOffset + outerHeight - data.collisionHeight;
-                            } else {
-                                position.top = withinOffset;
-                            }
-                        }
-
-                    // Too far up -> align with top
-                    } else if ( overTop > 0 ) {
-                        position.top += overTop;
-
-                    // Too far down -> align with bottom edge
-                    } else if ( overBottom > 0 ) {
-                        position.top -= overBottom;
-
-                    // Adjust based on position and margin
-                    } else {
-                        position.top = max( position.top - collisionPosTop, position.top );
-                    }
-                }
-            },
-            flip: {
-                left: function( position, data ) {
-                    var within = data.within,
-                        withinOffset = within.offset.left + within.scrollLeft,
-                        outerWidth = within.width,
-                        offsetLeft = within.isWindow ? within.scrollLeft : within.offset.left,
-                        collisionPosLeft = position.left - data.collisionPosition.marginLeft,
-                        overLeft = collisionPosLeft - offsetLeft,
-                        overRight = collisionPosLeft + data.collisionWidth - outerWidth - offsetLeft,
-                        myOffset = data.my[ 0 ] === "left" ?
-                            -data.elemWidth :
-                            data.my[ 0 ] === "right" ?
-                                data.elemWidth :
-                                0,
-                        atOffset = data.at[ 0 ] === "left" ?
-                            data.targetWidth :
-                            data.at[ 0 ] === "right" ?
-                                -data.targetWidth :
-                                0,
-                        offset = -2 * data.offset[ 0 ],
-                        newOverRight,
-                        newOverLeft;
-
-                    if ( overLeft < 0 ) {
-                        newOverRight = position.left + myOffset + atOffset + offset + data.collisionWidth -
-                            outerWidth - withinOffset;
-                        if ( newOverRight < 0 || newOverRight < abs( overLeft ) ) {
-                            position.left += myOffset + atOffset + offset;
-                        }
-                    } else if ( overRight > 0 ) {
-                        newOverLeft = position.left - data.collisionPosition.marginLeft + myOffset +
-                            atOffset + offset - offsetLeft;
-                        if ( newOverLeft > 0 || abs( newOverLeft ) < overRight ) {
-                            position.left += myOffset + atOffset + offset;
-                        }
-                    }
-                },
-                top: function( position, data ) {
-                    var within = data.within,
-                        withinOffset = within.offset.top + within.scrollTop,
-                        outerHeight = within.height,
-                        offsetTop = within.isWindow ? within.scrollTop : within.offset.top,
-                        collisionPosTop = position.top - data.collisionPosition.marginTop,
-                        overTop = collisionPosTop - offsetTop,
-                        overBottom = collisionPosTop + data.collisionHeight - outerHeight - offsetTop,
-                        top = data.my[ 1 ] === "top",
-                        myOffset = top ?
-                            -data.elemHeight :
-                            data.my[ 1 ] === "bottom" ?
-                                data.elemHeight :
-                                0,
-                        atOffset = data.at[ 1 ] === "top" ?
-                            data.targetHeight :
-                            data.at[ 1 ] === "bottom" ?
-                                -data.targetHeight :
-                                0,
-                        offset = -2 * data.offset[ 1 ],
-                        newOverTop,
-                        newOverBottom;
-                    if ( overTop < 0 ) {
-                        newOverBottom = position.top + myOffset + atOffset + offset + data.collisionHeight -
-                            outerHeight - withinOffset;
-                        if ( newOverBottom < 0 || newOverBottom < abs( overTop ) ) {
-                            position.top += myOffset + atOffset + offset;
-                        }
-                    } else if ( overBottom > 0 ) {
-                        newOverTop = position.top - data.collisionPosition.marginTop + myOffset + atOffset +
-                            offset - offsetTop;
-                        if ( newOverTop > 0 || abs( newOverTop ) < overBottom ) {
-                            position.top += myOffset + atOffset + offset;
-                        }
-                    }
-                }
-            },
-            flipfit: {
-                left: function() {
-                    positions.flip.left.apply( this, arguments );
-                    positions.fit.left.apply( this, arguments );
-                },
-                top: function() {
-                    positions.flip.top.apply( this, arguments );
-                    positions.fit.top.apply( this, arguments );
-                }
-            }
-        };
-
-        geom.posit = posit;
-    })();
-
-    return dom.geom = geom;
-});
-define('skylark-utils-dom/fx',[
-    "./dom",
-    "./langx",
-    "./browser",
-    "./geom",
-    "./styler",
-    "./eventer"
-], function(dom, langx, browser, geom, styler, eventer) {
-    var animationName,
-        animationDuration,
-        animationTiming,
-        animationDelay,
-        transitionProperty,
-        transitionDuration,
-        transitionTiming,
-        transitionDelay,
-
-        animationEnd = browser.normalizeCssEvent('AnimationEnd'),
-        transitionEnd = browser.normalizeCssEvent('TransitionEnd'),
-
-        supportedTransforms = /^((translate|rotate|scale)(X|Y|Z|3d)?|matrix(3d)?|perspective|skew(X|Y)?)$/i,
-        transform = browser.css3PropPrefix + "transform",
-        cssReset = {};
-
-
-    cssReset[animationName = browser.normalizeCssProperty("animation-name")] =
-        cssReset[animationDuration = browser.normalizeCssProperty("animation-duration")] =
-        cssReset[animationDelay = browser.normalizeCssProperty("animation-delay")] =
-        cssReset[animationTiming = browser.normalizeCssProperty("animation-timing-function")] = "";
-
-    cssReset[transitionProperty = browser.normalizeCssProperty("transition-property")] =
-        cssReset[transitionDuration = browser.normalizeCssProperty("transition-duration")] =
-        cssReset[transitionDelay = browser.normalizeCssProperty("transition-delay")] =
-        cssReset[transitionTiming = browser.normalizeCssProperty("transition-timing-function")] = "";
-
-
-
-    /*   
-     * Perform a custom animation of a set of CSS properties.
-     * @param {Object} elm  
-     * @param {Number or String} properties
-     * @param {String} ease
-     * @param {Number or String} duration
-     * @param {Function} callback
-     * @param {Number or String} delay
-     */
-    function animate(elm, properties, duration, ease, callback, delay) {
-        var key,
-            cssValues = {},
-            cssProperties = [],
-            transforms = "",
-            that = this,
-            endEvent,
-            wrappedCallback,
-            fired = false,
-            hasScrollTop = false,
-            resetClipAuto = false;
-
-        if (langx.isPlainObject(duration)) {
-            ease = duration.easing;
-            callback = duration.complete;
-            delay = duration.delay;
-            duration = duration.duration;
-        }
-
-        if (langx.isString(duration)) {
-            duration = fx.speeds[duration];
-        }
-        if (duration === undefined) {
-            duration = fx.speeds.normal;
-        }
-        duration = duration / 1000;
-        if (fx.off) {
-            duration = 0;
-        }
-
-        if (langx.isFunction(ease)) {
-            callback = ease;
-            eace = "swing";
-        } else {
-            ease = ease || "swing";
-        }
-
-        if (delay) {
-            delay = delay / 1000;
-        } else {
-            delay = 0;
-        }
-
-        if (langx.isString(properties)) {
-            // keyframe animation
-            cssValues[animationName] = properties;
-            cssValues[animationDuration] = duration + "s";
-            cssValues[animationTiming] = ease;
-            endEvent = animationEnd;
-        } else {
-            // CSS transitions
-            for (key in properties) {
-                var v = properties[key];
-                if (supportedTransforms.test(key)) {
-                    transforms += key + "(" + v + ") ";
-                } else {
-                    if (key === "scrollTop") {
-                        hasScrollTop = true;
-                    }
-                    if (key == "clip" && langx.isPlainObject(v)) {
-                        cssValues[key] = "rect(" + v.top+"px,"+ v.right +"px,"+ v.bottom +"px,"+ v.left+"px)";
-                        if (styler.css(elm,"clip") == "auto") {
-                            var size = geom.size(elm);
-                            styler.css(elm,"clip","rect("+"0px,"+ size.width +"px,"+ size.height +"px,"+"0px)");  
-                            resetClipAuto = true;
-                        }
-
-                    } else {
-                        cssValues[key] = v;
-                    }
-                    cssProperties.push(langx.dasherize(key));
-                }
-            }
-            endEvent = transitionEnd;
-        }
-
-        if (transforms) {
-            cssValues[transform] = transforms;
-            cssProperties.push(transform);
-        }
-
-        if (duration > 0 && langx.isPlainObject(properties)) {
-            cssValues[transitionProperty] = cssProperties.join(", ");
-            cssValues[transitionDuration] = duration + "s";
-            cssValues[transitionDelay] = delay + "s";
-            cssValues[transitionTiming] = ease;
-        }
-
-        wrappedCallback = function(event) {
-            fired = true;
-            if (event) {
-                if (event.target !== event.currentTarget) {
-                    return // makes sure the event didn't bubble from "below"
-                }
-                eventer.off(event.target, endEvent, wrappedCallback)
-            } else {
-                eventer.off(elm, animationEnd, wrappedCallback) // triggered by setTimeout
-            }
-            styler.css(elm, cssReset);
-            if (resetClipAuto) {
- //               styler.css(elm,"clip","auto");
-            }
-            callback && callback.call(this);
-        };
-
-        if (duration > 0) {
-            eventer.on(elm, endEvent, wrappedCallback);
-            // transitionEnd is not always firing on older Android phones
-            // so make sure it gets fired
-            langx.debounce(function() {
-                if (fired) {
-                    return;
-                }
-                wrappedCallback.call(that);
-            }, ((duration + delay) * 1000) + 25)();
-        }
-
-        // trigger page reflow so new elements can animate
-        elm.clientLeft;
-
-        styler.css(elm, cssValues);
-
-        if (duration <= 0) {
-            langx.debounce(function() {
-                if (fired) {
-                    return;
-                }
-                wrappedCallback.call(that);
-            }, 0)();
-        }
-
-        if (hasScrollTop) {
-            scrollToTop(elm, properties["scrollTop"], duration, callback);
-        }
-
-        return this;
-    }
-
-    /*   
-     * Display an element.
-     * @param {Object} elm  
-     * @param {String} speed
-     * @param {Function} callback
-     */
-    function show(elm, speed, callback) {
-        styler.show(elm);
-        if (speed) {
-            if (!callback && langx.isFunction(speed)) {
-                callback = speed;
-                speed = "normal";
-            }
-            styler.css(elm, "opacity", 0)
-            animate(elm, { opacity: 1, scale: "1,1" }, speed, callback);
-        }
-        return this;
-    }
-
-
-    /*   
-     * Hide an element.
-     * @param {Object} elm  
-     * @param {String} speed
-     * @param {Function} callback
-     */
-    function hide(elm, speed, callback) {
-        if (speed) {
-            if (!callback && langx.isFunction(speed)) {
-                callback = speed;
-                speed = "normal";
-            }
-            animate(elm, { opacity: 0, scale: "0,0" }, speed, function() {
-                styler.hide(elm);
-                if (callback) {
-                    callback.call(elm);
-                }
-            });
-        } else {
-            styler.hide(elm);
-        }
-        return this;
-    }
-
-    /*   
-     * Set the vertical position of the scroll bar for an element.
-     * @param {Object} elm  
-     * @param {Number or String} pos
-     * @param {Number or String} speed
-     * @param {Function} callback
-     */
-    function scrollToTop(elm, pos, speed, callback) {
-        var scrollFrom = parseInt(elm.scrollTop),
-            i = 0,
-            runEvery = 5, // run every 5ms
-            freq = speed * 1000 / runEvery,
-            scrollTo = parseInt(pos);
-
-        var interval = setInterval(function() {
-            i++;
-
-            if (i <= freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
-
-            if (i >= freq + 1) {
-                clearInterval(interval);
-                if (callback) langx.debounce(callback, 1000)();
-            }
-        }, runEvery);
-    }
-
-    /*   
-     * Display or hide an element.
-     * @param {Object} elm  
-     * @param {Number or String} speed
-     * @param {Function} callback
-     */
-    function toggle(elm, speed, callback) {
-        if (styler.isInvisible(elm)) {
-            show(elm, speed, callback);
-        } else {
-            hide(elm, speed, callback);
-        }
-        return this;
-    }
-
-    /*   
-     * Adjust the opacity of an element.
-     * @param {Object} elm  
-     * @param {Number or String} speed
-     * @param {Number or String} opacity
-     * @param {String} easing
-     * @param {Function} callback
-     */
-    function fadeTo(elm, speed, opacity, easing, callback) {
-        animate(elm, { opacity: opacity }, speed, easing, callback);
-        return this;
-    }
-
-
-    /*   
-     * Display an element by fading them to opaque.
-     * @param {Object} elm  
-     * @param {Number or String} speed
-     * @param {String} easing
-     * @param {Function} callback
-     */
-    function fadeIn(elm, speed, easing, callback) {
-        var target = styler.css(elm, "opacity");
-        if (target > 0) {
-            styler.css(elm, "opacity", 0);
-        } else {
-            target = 1;
-        }
-        styler.show(elm);
-
-        fadeTo(elm, speed, target, easing, callback);
-
-        return this;
-    }
-
-    /*   
-     * Hide an element by fading them to transparent.
-     * @param {Object} elm  
-     * @param {Number or String} speed
-     * @param {String} easing
-     * @param {Function} callback
-     */
-    function fadeOut(elm, speed, easing, callback) {
-        var _elm = elm,
-            complete,
-            opacity = styler.css(elm,"opacity"),
-            options = {};
-
-        if (langx.isPlainObject(speed)) {
-            options.easing = speed.easing;
-            options.duration = speed.duration;
-            complete = speed.complete;
-        } else {
-            options.duration = speed;
-            if (callback) {
-                complete = callback;
-                options.easing = easing;
-            } else {
-                complete = easing;
-            }
-        }
-        options.complete = function() {
-            styler.css(elm,"opacity",opacity);
-            styler.hide(elm);
-            if (complete) {
-                complete.call(elm);
-            }
-        }
-
-        fadeTo(elm, options, 0);
-
-        return this;
-    }
-
-    /*   
-     * Display or hide an element by animating its opacity.
-     * @param {Object} elm  
-     * @param {Number or String} speed
-     * @param {String} ceasing
-     * @param {Function} callback
-     */
-    function fadeToggle(elm, speed, ceasing, allback) {
-        if (styler.isInvisible(elm)) {
-            fadeIn(elm, speed, easing, callback);
-        } else {
-            fadeOut(elm, speed, easing, callback);
-        }
-        return this;
-    }
-
-    /*   
-     * Display an element with a sliding motion.
-     * @param {Object} elm  
-     * @param {Number or String} duration
-     * @param {Function} callback
-     */
-    function slideDown(elm, duration, callback) {
-
-        // get the element position to restore it then
-        var position = styler.css(elm, 'position');
-
-        // show element if it is hidden
-        show(elm);
-
-        // place it so it displays as usually but hidden
-        styler.css(elm, {
-            position: 'absolute',
-            visibility: 'hidden'
-        });
-
-        // get naturally height, margin, padding
-        var marginTop = styler.css(elm, 'margin-top');
-        var marginBottom = styler.css(elm, 'margin-bottom');
-        var paddingTop = styler.css(elm, 'padding-top');
-        var paddingBottom = styler.css(elm, 'padding-bottom');
-        var height = styler.css(elm, 'height');
-
-        // set initial css for animation
-        styler.css(elm, {
-            position: position,
-            visibility: 'visible',
-            overflow: 'hidden',
-            height: 0,
-            marginTop: 0,
-            marginBottom: 0,
-            paddingTop: 0,
-            paddingBottom: 0
-        });
-
-        // animate to gotten height, margin and padding
-        animate(elm, {
-            height: height,
-            marginTop: marginTop,
-            marginBottom: marginBottom,
-            paddingTop: paddingTop,
-            paddingBottom: paddingBottom
-        }, {
-            duration: duration,
-            complete: function() {
-                if (callback) {
-                    callback.apply(elm);
-                }
-            }
-        });
-
-        return this;
-    }
-
-    /*   
-     * Hide an element with a sliding motion.
-     * @param {Object} elm  
-     * @param {Number or String} duration
-     * @param {Function} callback
-     */
-    function slideUp(elm, duration, callback) {
-        // active the function only if the element is visible
-        if (geom.height(elm) > 0) {
-
-            // get the element position to restore it then
-            var position = styler.css(elm, 'position');
-
-            // get the element height, margin and padding to restore them then
-            var height = styler.css(elm, 'height');
-            var marginTop = styler.css(elm, 'margin-top');
-            var marginBottom = styler.css(elm, 'margin-bottom');
-            var paddingTop = styler.css(elm, 'padding-top');
-            var paddingBottom = styler.css(elm, 'padding-bottom');
-
-            // set initial css for animation
-            styler.css(elm, {
-                visibility: 'visible',
-                overflow: 'hidden',
-                height: height,
-                marginTop: marginTop,
-                marginBottom: marginBottom,
-                paddingTop: paddingTop,
-                paddingBottom: paddingBottom
-            });
-
-            // animate element height, margin and padding to zero
-            animate(elm, {
-                height: 0,
-                marginTop: 0,
-                marginBottom: 0,
-                paddingTop: 0,
-                paddingBottom: 0
-            }, {
-                // callback : restore the element position, height, margin and padding to original values
-                duration: duration,
-                queue: false,
-                complete: function() {
-                    hide(elm);
-                    styler.css(elm, {
-                        visibility: 'visible',
-                        overflow: 'hidden',
-                        height: height,
-                        marginTop: marginTop,
-                        marginBottom: marginBottom,
-                        paddingTop: paddingTop,
-                        paddingBottom: paddingBottom
-                    });
-                    if (callback) {
-                        callback.apply(elm);
-                    }
-                }
-            });
-        }
-        return this;
-    }
-
-
-    /*   
-     * Display or hide an element with a sliding motion.
-     * @param {Object} elm  
-     * @param {Number or String} duration
-     * @param {Function} callback
-     */
-    function slideToggle(elm, duration, callback) {
-
-        // if the element is hidden, slideDown !
-        if (geom.height(elm) == 0) {
-            slideDown(elm, duration, callback);
-        }
-        // if the element is visible, slideUp !
-        else {
-            slideUp(elm, duration, callback);
-        }
-        return this;
-    }
-
-    function emulateTransitionEnd(elm,duration) {
-        var called = false;
-        eventer.one(elm,'transitionEnd', function () { 
-            called = true;
-        })
-        var callback = function () { 
-            if (!called) {
-                eventer.trigger(elm,'transitionEnd') 
-            }
-        };
-        setTimeout(callback, duration);
-        
-        return this;
-    } 
-
-    function fx() {
-        return fx;
-    }
-
-    langx.mixin(fx, {
-        off: false,
-
-        speeds: {
-            normal: 400,
-            fast: 200,
-            slow: 600
-        },
-
-        animate,
-        emulateTransitionEnd,
-        fadeIn,
-        fadeOut,
-        fadeTo,
-        fadeToggle,
-        hide,
-        scrollToTop,
-
-        slideDown,
-        slideToggle,
-        slideUp,
-        show,
-        toggle
-    });
-
-    return dom.fx = fx;
-});
-define('skylark-utils-dom/query',[
-    "./dom",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./eventer",
-    "./finder",
-    "./geom",
-    "./styler",
-    "./fx"
-], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx) {
+define('skylark-domx-finder', ['skylark-domx-finder/main'], function (main) { return main; });
+
+define('skylark-domx-query/query',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-finder"
+], function(skylark, langx, noder, finder) {
     var some = Array.prototype.some,
         push = Array.prototype.push,
         every = Array.prototype.every,
@@ -8444,6 +5600,23 @@ define('skylark-utils-dom/query',[
         dasherize = langx.dasherize,
         children = finder.children;
 
+    function wrapper_node_operation(func, context, oldValueFunc) {
+        return function(html) {
+            var argType, nodes = langx.map(arguments, function(arg) {
+                argType = type(arg)
+                return argType == "function" || argType == "object" || argType == "array" || arg == null ?
+                    arg : noder.createFragment(arg)
+            });
+            if (nodes.length < 1) {
+                return this
+            }
+            this.each(function(idx) {
+                func.apply(context, [this, nodes, idx > 0]);
+            });
+            return this;
+        }
+    }
+
     function wrapper_map(func, context) {
         return function() {
             var self = this,
@@ -8461,9 +5634,9 @@ define('skylark-utils-dom/query',[
                 params = slice.call(arguments);
             var result = this.map(function(idx, elem) {
                 // if (elem.nodeType == 1) {
-                if (elem.querySelector) {
+                //if (elem.querySelector) {
                     return func.apply(context, last ? [elem] : [elem, selector]);
-                }
+                //}
             });
             if (last && selector) {
                 return result.filter(selector);
@@ -8477,15 +5650,15 @@ define('skylark-utils-dom/query',[
         return function(util, selector) {
             var self = this,
                 params = slice.call(arguments);
-            if (selector === undefined) {
-                selector = util;
-                util = undefined;
-            }
+            //if (selector === undefined) { //TODO : needs confirm?
+            //    selector = util;
+            //    util = undefined;
+            //}
             var result = this.map(function(idx, elem) {
-                // if (elem.nodeType == 1) {
-                if (elem.querySelector) {
+                // if (elem.nodeType == 1) { // TODO
+                //if (elem.querySelector) {
                     return func.apply(context, last ? [elem, util] : [elem, selector, util]);
-                }
+                //}
             });
             if (last && selector) {
                 return result.filter(selector);
@@ -8500,7 +5673,7 @@ define('skylark-utils-dom/query',[
         return function() {
             var self = this,
                 params = slice.call(arguments);
-            this.each(function(idx) {
+            this.each(function(idx,node) {
                 func.apply(context, [this].concat(params));
             });
             return self;
@@ -8666,7 +5839,7 @@ define('skylark-utils-dom/query',[
 
         var $ = function(selector, context) {
             if (isFunction(selector)) {
-                eventer.ready(function() {
+                $.ready(function() {
                     selector($);
                 });
             } else if (isQ(selector)) {
@@ -8719,7 +5892,16 @@ define('skylark-utils-dom/query',[
                 return this.length
             },
 
-            remove: wrapper_every_act(noder.remove, noder),
+            //remove: wrapper_every_act(noder.remove, noder),
+            remove : function(selector) {
+                if (selector) {
+                    return this.find(selector).remove();
+                }
+                this.each(function(i,node){
+                    noder.remove(node);
+                });
+                return this;
+            },
 
             each: function(callback) {
                 langx.each(this, callback);
@@ -8760,8 +5942,8 @@ define('skylark-utils-dom/query',[
             not: function(selector) {
                 var nodes = []
                 if (isFunction(selector) && selector.call !== undefined)
-                    this.each(function(idx) {
-                        if (!selector.call(this, idx)) nodes.push(this)
+                    this.each(function(idx,node) {
+                        if (!selector.call(this, idx,node)) nodes.push(this)
                     })
                 else {
                     var excludes = typeof selector == 'string' ? this.filter(selector) :
@@ -8821,6 +6003,8 @@ define('skylark-utils-dom/query',[
 
             empty: wrapper_every_act(noder.empty, noder),
 
+            html: wrapper_value(noder.html, noder),
+
             // `pluck` is borrowed from Prototype.js
             pluck: function(property) {
                 return langx.map(this, function(el) {
@@ -8838,21 +6022,29 @@ define('skylark-utils-dom/query',[
                 return this.before(newContent).remove();
             },
 
-            wrap: function(structure) {
+            wrap: function(html) {
+                /*
                 var func = isFunction(structure)
                 if (this[0] && !func)
                     var dom = $(structure).get(0),
                         clone = dom.parentNode || this.length > 1
 
-                return this.each(function(index) {
+                return this.each(function(index,node) {
                     $(this).wrapAll(
-                        func ? structure.call(this, index) :
+                        func ? structure.call(this, index,node) :
                         clone ? dom.cloneNode(true) : dom
                     )
                 })
+                */
+                var htmlIsFunction = typeof html === "function";
+
+                return this.each( function( i ) {
+                    $( this ).wrapAll( htmlIsFunction ? html.call( this, i ) : html );
+                } );                
             },
 
-            wrapAll: function(wrappingElement) {
+            wrapAll: function(html) {
+                /*
                 if (this[0]) {
                     $(this[0]).before(wrappingElement = $(wrappingElement));
                     var children;
@@ -8863,19 +6055,68 @@ define('skylark-utils-dom/query',[
                     $(wrappingElement).append(this);
                 }
                 return this
+                */
+                var wrap;
+
+                if ( this[ 0 ] ) {
+                    if ( typeof html === "function" ) {
+                        html = html.call( this[ 0 ] );
+                    }
+
+                    // The elements to wrap the target around
+                    wrap = $( html, this[ 0 ].ownerDocument ).eq( 0 ).clone( true );
+
+                    if ( this[ 0 ].parentNode ) {
+                        wrap.insertBefore( this[ 0 ] );
+                    }
+
+                    wrap.map( function() {
+                        var elem = this;
+
+                        while ( elem.firstElementChild ) {
+                            elem = elem.firstElementChild;
+                        }
+
+                        return elem;
+                    } ).append( this );
+                }
+
+                return this;
+
             },
 
-            wrapInner: function(wrappingElement) {
+            wrapInner: function(html) {
+                /*
                 var func = isFunction(wrappingElement)
-                return this.each(function(index) {
+                return this.each(function(index,node) {
                     var self = $(this),
                         contents = self.contents(),
-                        dom = func ? wrappingElement.call(this, index) : wrappingElement
+                        dom = func ? wrappingElement.call(this, index,node) : wrappingElement
                     contents.length ? contents.wrapAll(dom) : self.append(dom)
                 })
+                */
+                if ( typeof html === "function" ) {
+                    return this.each( function( i ) {
+                        $( this ).wrapInner( html.call( this, i ) );
+                    } );
+                }
+
+                return this.each( function() {
+                    var self = $( this ),
+                        contents = self.contents();
+
+                    if ( contents.length ) {
+                        contents.wrapAll( html );
+
+                    } else {
+                        self.append( html );
+                    }
+                } );
+
             },
 
             unwrap: function(selector) {
+                /*
                 if (this.parent().children().length === 0) {
                     // remove dom without text
                     this.parent(selector).not("body").each(function() {
@@ -8887,6 +6128,12 @@ define('skylark-utils-dom/query',[
                     });
                 }
                 return this
+                */
+                this.parent(selector).not("body").each( function() {
+                    $(this).replaceWith(this.childNodes);
+                });
+                return this;
+
             },
 
             clone: function() {
@@ -8895,7 +6142,6 @@ define('skylark-utils-dom/query',[
                 })
             },
 
-            hide: wrapper_every_act(fx.hide, fx),
 
             toggle: function(setting) {
                 return this.each(function() {
@@ -8908,7 +6154,7 @@ define('skylark-utils-dom/query',[
                 return $(this.pluck('previousElementSibling')).filter(selector || '*')
             },
 
-            prevAll: wrapper_selector(finder.previousSibling, finder),
+            prevAll: wrapper_selector(finder.previousSiblings, finder),
 
             next: function(selector) {
                 return $(this.pluck('nextElementSibling')).filter(selector || '*')
@@ -8918,74 +6164,13 @@ define('skylark-utils-dom/query',[
 
             siblings: wrapper_selector(finder.siblings, finder),
 
-            html: wrapper_value(noder.html, noder, noder.html),
-
-            text: wrapper_value(datax.text, datax, datax.text),
-
-            attr: wrapper_name_value(datax.attr, datax, datax.attr),
-
-            removeAttr: wrapper_every_act(datax.removeAttr, datax),
-
-            prop: wrapper_name_value(datax.prop, datax, datax.prop),
-
-            removeProp: wrapper_every_act(datax.removeProp, datax),
-
-            data: wrapper_name_value(datax.data, datax, datax.data),
-
-            removeData: wrapper_every_act(datax.removeData, datax),
-
-            val: wrapper_value(datax.val, datax, datax.val),
-
-            offset: wrapper_value(geom.pagePosition, geom, geom.pagePosition),
-
-            style: wrapper_name_value(styler.css, styler),
-
-            css: wrapper_name_value(styler.css, styler),
-
             index: function(elem) {
                 if (elem) {
                     return this.indexOf($(elem)[0]);
                 } else {
                     return this.parent().children().indexOf(this[0]);
                 }
-            },
-
-            //hasClass(name)
-            hasClass: wrapper_some_chk(styler.hasClass, styler),
-
-            //addClass(name)
-            addClass: wrapper_every_act_firstArgFunc(styler.addClass, styler, styler.className),
-
-            //removeClass(name)
-            removeClass: wrapper_every_act_firstArgFunc(styler.removeClass, styler, styler.className),
-
-            //toogleClass(name,when)
-            toggleClass: wrapper_every_act_firstArgFunc(styler.toggleClass, styler, styler.className),
-
-            scrollTop: wrapper_value(geom.scrollTop, geom),
-
-            scrollLeft: wrapper_value(geom.scrollLeft, geom),
-
-            position: function(options) {
-                if (!this.length) return
-
-                if (options) {
-                    if (options.of && options.of.length) {
-                        options = langx.clone(options);
-                        options.of = options.of[0];
-                    }
-                    return this.each( function() {
-                        geom.posit(this,options);
-                    });
-                } else {
-                    var elem = this[0];
-
-                    return geom.relativePosition(elem);
-
-                }             
-            },
-
-            offsetParent: wrapper_map(geom.offsetParent, geom)
+            }
         });
 
         // for now
@@ -8995,86 +6180,8 @@ define('skylark-utils-dom/query',[
             return this.mouseenter(fnOver).mouseleave(fnOut || fnOver);
         };
 
-        $.fn.size = wrapper_value(geom.size, geom);
-
-        $.fn.width = wrapper_value(geom.width, geom, geom.width);
-
-        $.fn.height = wrapper_value(geom.height, geom, geom.height);
-
-        $.fn.clientSize = wrapper_value(geom.clientSize, geom.clientSize);
-
-        ['width', 'height'].forEach(function(dimension) {
-            var offset, Dimension = dimension.replace(/./, function(m) {
-                return m[0].toUpperCase()
-            });
-
-            $.fn['outer' + Dimension] = function(margin, value) {
-                if (arguments.length) {
-                    if (typeof margin !== 'boolean') {
-                        value = margin;
-                        margin = false;
-                    }
-                } else {
-                    margin = false;
-                    value = undefined;
-                }
-
-                if (value === undefined) {
-                    var el = this[0];
-                    if (!el) {
-                        return undefined;
-                    }
-                    var cb = geom.size(el);
-                    if (margin) {
-                        var me = geom.marginExtents(el);
-                        cb.width = cb.width + me.left + me.right;
-                        cb.height = cb.height + me.top + me.bottom;
-                    }
-                    return dimension === "width" ? cb.width : cb.height;
-                } else {
-                    return this.each(function(idx, el) {
-                        var mb = {};
-                        var me = geom.marginExtents(el);
-                        if (dimension === "width") {
-                            mb.width = value;
-                            if (margin) {
-                                mb.width = mb.width - me.left - me.right
-                            }
-                        } else {
-                            mb.height = value;
-                            if (margin) {
-                                mb.height = mb.height - me.top - me.bottom;
-                            }
-                        }
-                        geom.size(el, mb);
-                    })
-
-                }
-            };
-        })
-
-        $.fn.innerWidth = wrapper_value(geom.clientWidth, geom, geom.clientWidth);
-
-        $.fn.innerHeight = wrapper_value(geom.clientHeight, geom, geom.clientHeight);
 
         var traverseNode = noder.traverse;
-
-        function wrapper_node_operation(func, context, oldValueFunc) {
-            return function(html) {
-                var argType, nodes = langx.map(arguments, function(arg) {
-                    argType = type(arg)
-                    return argType == "object" || argType == "array" || arg == null ?
-                        arg : noder.createFragment(arg)
-                });
-                if (nodes.length < 1) {
-                    return this
-                }
-                this.each(function(idx) {
-                    func.apply(context, [this, nodes, idx > 0]);
-                });
-                return this;
-            }
-        }
 
 
         $.fn.after = wrapper_node_operation(noder.after, noder);
@@ -9143,52 +6250,6 @@ define('skylark-utils-dom/query',[
     })();
 
     (function($) {
-        $.fn.on = wrapper_every_act(eventer.on, eventer);
-
-        $.fn.off = wrapper_every_act(eventer.off, eventer);
-
-        $.fn.trigger = wrapper_every_act(eventer.trigger, eventer);
-
-        ('focusin focusout focus blur load resize scroll unload click dblclick ' +
-            'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
-            'change select keydown keypress keyup error transitionEnd').split(' ').forEach(function(event) {
-            $.fn[event] = function(data, callback) {
-                return (0 in arguments) ?
-                    this.on(event, data, callback) :
-                    this.trigger(event)
-            }
-        });
-
-        $.fn.one = function(event, selector, data, callback) {
-            if (!langx.isString(selector) && !langx.isFunction(callback)) {
-                callback = data;
-                data = selector;
-                selector = null;
-            }
-
-            if (langx.isFunction(data)) {
-                callback = data;
-                data = null;
-            }
-
-            return this.on(event, selector, data, callback, 1)
-        };
-
-        $.fn.animate = wrapper_every_act(fx.animate, fx);
-        $.fn.emulateTransitionEnd = wrapper_every_act(fx.emulateTransitionEnd, fx);
-
-        $.fn.show = wrapper_every_act(fx.show, fx);
-        $.fn.hide = wrapper_every_act(fx.hide, fx);
-        $.fn.toogle = wrapper_every_act(fx.toogle, fx);
-        $.fn.fadeTo = wrapper_every_act(fx.fadeTo, fx);
-        $.fn.fadeIn = wrapper_every_act(fx.fadeIn, fx);
-        $.fn.fadeOut = wrapper_every_act(fx.fadeOut, fx);
-        $.fn.fadeToggle = wrapper_every_act(fx.fadeToggle, fx);
-
-        $.fn.slideDown = wrapper_every_act(fx.slideDown, fx);
-        $.fn.slideToggle = wrapper_every_act(fx.slideToggle, fx);
-        $.fn.slideUp = wrapper_every_act(fx.slideUp, fx);
-
         $.fn.scrollParent = function( includeHidden ) {
             var position = this.css( "position" ),
                 excludeStaticParent = position === "absolute",
@@ -9206,6 +6267,7 @@ define('skylark-utils-dom/query',[
                 $( this[ 0 ].ownerDocument || document ) :
                 scrollParent;
         };
+
     })(query);
 
 
@@ -9230,7 +6292,7 @@ define('skylark-utils-dom/query',[
             }
         }
 
-        'filter,add,not,eq,first,last,find,closest,parents,parent,children,siblings'.split(',').forEach(function(property) {
+        'filter,add,not,eq,first,last,find,closest,parents,parent,children,siblings,prev,prevAll,next,nextAll'.split(',').forEach(function(property) {
             var fn = $.fn[property]
             $.fn[property] = function() {
                 var ret = fn.apply(this, arguments)
@@ -9300,17 +6362,7 @@ define('skylark-utils-dom/query',[
             return this.append(content);
         };
 
-        $.fn.replaceClass = function(newClass, oldClass) {
-            this.removeClass(oldClass);
-            this.addClass(newClass);
-            return this;
-        };
 
-        $.fn.replaceClass = function(newClass, oldClass) {
-            this.removeClass(oldClass);
-            this.addClass(newClass);
-            return this;
-        };
 
         $.fn.disableSelection = ( function() {
             var eventType = "onselectstart" in document.createElement( "div" ) ?
@@ -9327,6 +6379,14 @@ define('skylark-utils-dom/query',[
         $.fn.enableSelection = function() {
             return this.off( ".ui-disableSelection" );
         };
+
+        $.fn.reflow = function() {
+            return noder.flow(this[0]);
+        };
+
+        $.fn.isBlockNode = function() {
+            return noder.isBlockNode(this[0]);
+        };
        
 
     })(query);
@@ -9342,13 +6402,39 @@ define('skylark-utils-dom/query',[
         return returnValue;
     };
 
-    return dom.query = query;
 
+    query.wraps = {
+        wrapper_node_operation,
+        wrapper_map,
+        wrapper_value,
+        wrapper_selector,
+        wrapper_some_chk,
+        wrapper_selector_until,
+        wrapper_every_act_firstArgFunc,
+        wrapper_every_act,
+        wrapper_name_value
+
+    };
+
+    return skylark.attach("domx.query", query);
+
+});
+define('skylark-domx-query/main',[
+	"./query"
+],function(query){
+	return query;
+});
+define('skylark-domx-query', ['skylark-domx-query/main'], function (main) { return main; });
+
+define('skylark-totaljs-jcomponent/utils/query',[
+	"skylark-domx-query"
+], function($) {
+	return $;
 });
 define('skylark-totaljs-jcomponent/jc',[
 	"skylark-langx/skylark",
 	"skylark-langx/langx",
-	"skylark-utils-dom/query"
+	"./utils/query"
 ],function(skylark,langx,$){
 	var totaljs = skylark.totaljs = {};
 	var M = totaljs.jc = {
@@ -11222,13 +8308,13 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 
 
 	cache.clear = function () { // W.CLEARCACHE = 
-		if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
+		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
 			var rem = localStorage.removeItem;
 			var k = $localstorage; //M.$localstorage;
 			rem(k); 
 			rem(k + '.cache');
 			rem(k + '.blocked');
-		}
+		//}
 		return this;
 	};
 
@@ -11376,7 +8462,7 @@ define('skylark-totaljs-jcomponent/utils/cache',[
 	return cache;
 });
 define('skylark-totaljs-jcomponent/plugins/Plugin',[
-	"skylark-utils-dom/query",
+	"../utils/query",
 	"../utils/cache",
 	"./_registry"
 ],function($, caches, registry){
@@ -11443,7 +8529,7 @@ define('skylark-totaljs-jcomponent/plugins/Plugin',[
 	return Plugin;
 });
 define('skylark-totaljs-jcomponent/plugins',[
-	"skylark-utils-dom/query",
+	"./utils/query",
 	"./jc",
 	"./plugins/_registry",
 	"./plugins/Plugin"
@@ -11476,16 +8562,378 @@ define('skylark-totaljs-jcomponent/plugins',[
 		"find" : find
 	};
 });
-define('skylark-totaljs-jcomponent/utils/query',[
-	"skylark-utils-dom/query"
-], function($) {
-	return $;
+define('skylark-net-http/http',[
+  "skylark-langx-ns/ns",
+],function(skylark){
+	return skylark.attach("net.http",{});
+});
+define('skylark-net-http/Xhr',[
+  "skylark-langx-ns/ns",
+  "skylark-langx-types",
+  "skylark-langx-objects",
+  "skylark-langx-arrays",
+  "skylark-langx-funcs",
+  "skylark-langx-async/Deferred",
+  "skylark-langx-emitter/Evented",
+  "./http"
+],function(skylark,types,objects,arrays,funcs,Deferred,Evented,http){
+
+    var each = objects.each,
+        mixin = objects.mixin,
+        noop = funcs.noop,
+        isArray = types.isArray,
+        isFunction = types.isFunction,
+        isPlainObject = types.isPlainObject,
+        type = types.type;
+ 
+     var getAbsoluteUrl = (function() {
+        var a;
+
+        return function(url) {
+            if (!a) a = document.createElement('a');
+            a.href = url;
+
+            return a.href;
+        };
+    })();
+   
+    var Xhr = (function(){
+        var jsonpID = 0,
+            key,
+            name,
+            rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+            scriptTypeRE = /^(?:text|application)\/javascript/i,
+            xmlTypeRE = /^(?:text|application)\/xml/i,
+            jsonType = 'application/json',
+            htmlType = 'text/html',
+            blankRE = /^\s*$/;
+
+        var XhrDefaultOptions = {
+            async: true,
+
+            // Default type of request
+            type: 'GET',
+            // Callback that is executed before request
+            beforeSend: noop,
+            // Callback that is executed if the request succeeds
+            success: noop,
+            // Callback that is executed the the server drops error
+            error: noop,
+            // Callback that is executed on request complete (both: error and success)
+            complete: noop,
+            // The context for the callbacks
+            context: null,
+            // Whether to trigger "global" Ajax events
+            global: true,
+
+            // MIME types mapping
+            // IIS returns Javascript as "application/x-javascript"
+            accepts: {
+                script: 'text/javascript, application/javascript, application/x-javascript',
+                json: 'application/json',
+                xml: 'application/xml, text/xml',
+                html: 'text/html',
+                text: 'text/plain'
+            },
+            // Whether the request is to another domain
+            crossDomain: false,
+            // Default timeout
+            timeout: 0,
+            // Whether data should be serialized to string
+            processData: false,
+            // Whether the browser should be allowed to cache GET responses
+            cache: true,
+
+            traditional : false,
+            
+            xhrFields : {
+                withCredentials : false
+            }
+        };
+
+        function mimeToDataType(mime) {
+            if (mime) {
+                mime = mime.split(';', 2)[0];
+            }
+            if (mime) {
+                if (mime == htmlType) {
+                    return "html";
+                } else if (mime == jsonType) {
+                    return "json";
+                } else if (scriptTypeRE.test(mime)) {
+                    return "script";
+                } else if (xmlTypeRE.test(mime)) {
+                    return "xml";
+                }
+            }
+            return "text";
+        }
+
+        function appendQuery(url, query) {
+            if (query == '') return url
+            return (url + '&' + query).replace(/[&?]{1,2}/, '?')
+        }
+
+        // serialize payload and append it to the URL for GET requests
+        function serializeData(options) {
+            options.data = options.data || options.query;
+            if (options.processData && options.data && type(options.data) != "string") {
+                options.data = param(options.data, options.traditional);
+            }
+            if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
+                options.url = appendQuery(options.url, options.data);
+                options.data = undefined;
+            }
+        }
+
+        function serialize(params, obj, traditional, scope) {
+            var t, array = isArray(obj),
+                hash = isPlainObject(obj)
+            each(obj, function(key, value) {
+                t =type(value);
+                if (scope) key = traditional ? scope :
+                    scope + '[' + (hash || t == 'object' || t == 'array' ? key : '') + ']'
+                // handle data in serializeArray() format
+                if (!scope && array) params.add(value.name, value.value)
+                // recurse into nested objects
+                else if (t == "array" || (!traditional && t == "object"))
+                    serialize(params, value, traditional, key)
+                else params.add(key, value)
+            })
+        }
+
+        var param = function(obj, traditional) {
+            var params = []
+            params.add = function(key, value) {
+                if (isFunction(value)) {
+                  value = value();
+                }
+                if (value == null) {
+                  value = "";
+                }
+                this.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+            };
+            serialize(params, obj, traditional)
+            return params.join('&').replace(/%20/g, '+')
+        };
+
+        var Xhr = Evented.inherit({
+            klassName : "Xhr",
+
+            _request  : function(args) {
+                var _ = this._,
+                    self = this,
+                    options = mixin({},XhrDefaultOptions,_.options,args),
+                    xhr = _.xhr = new XMLHttpRequest();
+
+                serializeData(options)
+
+                if (options.beforeSend) {
+                    options.beforeSend.call(this, xhr, options);
+                }                
+
+                var dataType = options.dataType || options.handleAs,
+                    mime = options.mimeType || options.accepts[dataType],
+                    headers = options.headers,
+                    xhrFields = options.xhrFields,
+                    isFormData = options.data && options.data instanceof FormData,
+                    basicAuthorizationToken = options.basicAuthorizationToken,
+                    type = options.type,
+                    url = options.url,
+                    async = options.async,
+                    user = options.user , 
+                    password = options.password,
+                    deferred = new Deferred(),
+                    contentType = isFormData ? false : 'application/x-www-form-urlencoded';
+
+                if (xhrFields) {
+                    for (name in xhrFields) {
+                        xhr[name] = xhrFields[name];
+                    }
+                }
+
+                if (mime && mime.indexOf(',') > -1) {
+                    mime = mime.split(',', 2)[0];
+                }
+                if (mime && xhr.overrideMimeType) {
+                    xhr.overrideMimeType(mime);
+                }
+
+                //if (dataType) {
+                //    xhr.responseType = dataType;
+                //}
+
+                var finish = function() {
+                    xhr.onloadend = noop;
+                    xhr.onabort = noop;
+                    xhr.onprogress = noop;
+                    xhr.ontimeout = noop;
+                    xhr = null;
+                }
+                var onloadend = function() {
+                    var result, error = false
+                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && getAbsoluteUrl(url).startsWith('file:'))) {
+                        dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
+
+                        result = xhr.responseText;
+                        try {
+                            if (dataType == 'script') {
+                                eval(result);
+                            } else if (dataType == 'xml') {
+                                result = xhr.responseXML;
+                            } else if (dataType == 'json') {
+                                result = blankRE.test(result) ? null : JSON.parse(result);
+                            } else if (dataType == "blob") {
+                                result = Blob([xhrObj.response]);
+                            } else if (dataType == "arraybuffer") {
+                                result = xhr.reponse;
+                            }
+                        } catch (e) { 
+                            error = e;
+                        }
+
+                        if (error) {
+                            deferred.reject(error,xhr.status,xhr);
+                        } else {
+                            deferred.resolve(result,xhr.status,xhr);
+                        }
+                    } else {
+                        deferred.reject(new Error(xhr.statusText),xhr.status,xhr);
+                    }
+                    finish();
+                };
+
+                var onabort = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("abort"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+ 
+                var ontimeout = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("timeout"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+
+                var onprogress = function(evt) {
+                    if (deferred) {
+                        deferred.notify(evt,xhr.status,xhr);
+                    }
+                }
+
+                xhr.onloadend = onloadend;
+                xhr.onabort = onabort;
+                xhr.ontimeout = ontimeout;
+                xhr.onprogress = onprogress;
+
+                xhr.open(type, url, async, user, password);
+               
+                if (headers) {
+                    for ( var key in headers) {
+                        var value = headers[key];
+ 
+                        if(key.toLowerCase() === 'content-type'){
+                            contentType = value;
+                        } else {
+                           xhr.setRequestHeader(key, value);
+                        }
+                    }
+                }   
+
+                if  (contentType && contentType !== false){
+                    xhr.setRequestHeader('Content-Type', contentType);
+                }
+
+                if(!headers || !('X-Requested-With' in headers)){
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                }
+
+
+                //If basicAuthorizationToken is defined set its value into "Authorization" header
+                if (basicAuthorizationToken) {
+                    xhr.setRequestHeader("Authorization", basicAuthorizationToken);
+                }
+
+                xhr.send(options.data ? options.data : null);
+
+                return deferred.promise;
+
+            },
+
+            "abort": function() {
+                var _ = this._,
+                    xhr = _.xhr;
+
+                if (xhr) {
+                    xhr.abort();
+                }    
+            },
+
+
+            "request": function(args) {
+                return this._request(args);
+            },
+
+            get : function(args) {
+                args = args || {};
+                args.type = "GET";
+                return this._request(args);
+            },
+
+            post : function(args) {
+                args = args || {};
+                args.type = "POST";
+                return this._request(args);
+            },
+
+            patch : function(args) {
+                args = args || {};
+                args.type = "PATCH";
+                return this._request(args);
+            },
+
+            put : function(args) {
+                args = args || {};
+                args.type = "PUT";
+                return this._request(args);
+            },
+
+            del : function(args) {
+                args = args || {};
+                args.type = "DELETE";
+                return this._request(args);
+            },
+
+            "init": function(options) {
+                this._ = {
+                    options : options || {}
+                };
+            }
+        });
+
+        ["request","get","post","put","del","patch"].forEach(function(name){
+            Xhr[name] = function(url,args) {
+                var xhr = new Xhr({"url" : url});
+                return xhr[name](args);
+            };
+        });
+
+        Xhr.defaultOptions = XhrDefaultOptions;
+        Xhr.param = param;
+
+        return Xhr;
+    })();
+
+	return http.Xhr = Xhr;	
 });
 define('skylark-totaljs-jcomponent/utils/http',[
 	"../jc",
 	"../langx",
+	"skylark-net-http/Xhr",
 	"./cache"
-],function(jc,langx,topic,cache){
+],function(jc,langx,Xhr,cache){
 	var statics = langx.statics;
 	
 	/* TODo
@@ -11533,7 +8981,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
             }
         }
 
-        var p = langx.Xhr.request(options.url,options);
+        var p = Xhr.request(options.url,options);
         p = p.then(ajaxSuccess,ajaxError);
         p.success = p.done;
         p.error = p.fail;
@@ -11593,7 +9041,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 			query[key] = values[key];
 		}
 
-		var val = langx.Xhr.param(query, type == null || type === true);
+		var val = Xhr.param(query, type == null || type === true);
 		return url + (val ? '?' + val : '');
 	}
 
@@ -13296,18 +10744,455 @@ define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
 });
 
 
-define('skylark-utils-dom/elmx',[
-    "./dom",
-    "./langx",
-    "./datax",
-    "./eventer",
-    "./finder",
-    "./fx",
-    "./geom",
-    "./noder",
-    "./styler",
-    "./query"
-], function(dom, langx, datax, eventer, finder, fx, geom, noder, styler,$) {
+define('skylark-domx-data/data',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-finder",
+    "skylark-domx-noder"
+], function(skylark, langx, finder,noder) {
+    var map = Array.prototype.map,
+        filter = Array.prototype.filter,
+        camelCase = langx.camelCase,
+        deserializeValue = langx.deserializeValue,
+
+        capitalRE = /([A-Z])/g,
+        propMap = {
+            'tabindex': 'tabIndex',
+            'readonly': 'readOnly',
+            'for': 'htmlFor',
+            'class': 'className',
+            'maxlength': 'maxLength',
+            'cellspacing': 'cellSpacing',
+            'cellpadding': 'cellPadding',
+            'rowspan': 'rowSpan',
+            'colspan': 'colSpan',
+            'usemap': 'useMap',
+            'frameborder': 'frameBorder',
+            'contenteditable': 'contentEditable'
+        };
+
+    // Strip and collapse whitespace according to HTML spec
+    function stripAndCollapse( value ) {
+      var tokens = value.match( /[^\x20\t\r\n\f]+/g ) || [];
+      return tokens.join( " " );
+    }
+
+
+    var valHooks = {
+      option: {
+        get: function( elem ) {
+          var val = elem.getAttribute( "value" );
+          return val != null ?  val :  stripAndCollapse(text( elem ) );
+        }
+      },
+      select: {
+        get: function( elem ) {
+          var value, option, i,
+            options = elem.options,
+            index = elem.selectedIndex,
+            one = elem.type === "select-one",
+            values = one ? null : [],
+            max = one ? index + 1 : options.length;
+
+          if ( index < 0 ) {
+            i = max;
+
+          } else {
+            i = one ? index : 0;
+          }
+
+          // Loop through all the selected options
+          for ( ; i < max; i++ ) {
+            option = options[ i ];
+
+            if ( option.selected &&
+
+                // Don't return options that are disabled or in a disabled optgroup
+                !option.disabled &&
+                ( !option.parentNode.disabled ||
+                  !noder.nodeName( option.parentNode, "optgroup" ) ) ) {
+
+              // Get the specific value for the option
+              value = val(option);
+
+              // We don't need an array for one selects
+              if ( one ) {
+                return value;
+              }
+
+              // Multi-Selects return an array
+              values.push( value );
+            }
+          }
+
+          return values;
+        },
+
+        set: function( elem, value ) {
+          var optionSet, option,
+            options = elem.options,
+            values = langx.makeArray( value ),
+            i = options.length;
+
+          while ( i-- ) {
+            option = options[ i ];
+
+            /* eslint-disable no-cond-assign */
+
+            if ( option.selected =
+              langx.inArray( valHooks.option.get( option ), values ) > -1
+            ) {
+              optionSet = true;
+            }
+
+            /* eslint-enable no-cond-assign */
+          }
+
+          // Force browsers to behave consistently when non-matching value is set
+          if ( !optionSet ) {
+            elem.selectedIndex = -1;
+          }
+          return values;
+        }
+      }
+    };
+
+
+    // Radios and checkboxes getter/setter
+    langx.each( [ "radio", "checkbox" ], function() {
+      valHooks[ this ] = {
+        set: function( elem, value ) {
+          if ( langx.isArray( value ) ) {
+            return ( elem.checked = langx.inArray( val(elem), value ) > -1 );
+          }
+        }
+      };
+    });
+
+
+
+    /*
+     * Set property values
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+
+    function setAttribute(elm, name, value) {
+        if (value == null) {
+            elm.removeAttribute(name);
+        } else {
+            elm.setAttribute(name, value);
+        }
+    }
+
+    function aria(elm, name, value) {
+        return this.attr(elm, "aria-" + name, value);
+    }
+
+    /*
+     * Set property values
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+
+    function attr(elm, name, value) {
+        if (value === undefined) {
+            if (typeof name === "object") {
+                for (var attrName in name) {
+                    attr(elm, attrName, name[attrName]);
+                }
+                return this;
+            } else {
+                return elm.getAttribute(name);
+            }
+        } else {
+            elm.setAttribute(name, value);
+            return this;
+        }
+    }
+
+
+    /*
+     *  Read all "data-*" attributes from a node
+     * @param {Object} elm  
+     */
+
+    function _attributeData(elm) {
+        var store = {}
+        langx.each(elm.attributes || [], function(i, attr) {
+            if (attr.name.indexOf('data-') == 0) {
+                store[camelCase(attr.name.replace('data-', ''))] = deserializeValue(attr.value);
+            }
+        })
+        return store;
+    }
+
+    function _store(elm, confirm) {
+        var store = elm["_$_store"];
+        if (!store && confirm) {
+            store = elm["_$_store"] = _attributeData(elm);
+        }
+        return store;
+    }
+
+    function _getData(elm, name) {
+        if (name === undefined) {
+            return _store(elm, true);
+        } else {
+            var store = _store(elm);
+            if (store) {
+                if (name in store) {
+                    return store[name];
+                }
+                var camelName = camelCase(name);
+                if (camelName in store) {
+                    return store[camelName];
+                }
+            }
+            var attrName = 'data-' + name.replace(capitalRE, "-$1").toLowerCase()
+            return attr(elm, attrName);
+        }
+
+    }
+
+    function _setData(elm, name, value) {
+        var store = _store(elm, true);
+        store[camelCase(name)] = value;
+    }
+
+
+    /*
+     * xxx
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+    function data(elm, name, value) {
+
+        if (value === undefined) {
+            if (typeof name === "object") {
+                for (var dataAttrName in name) {
+                    _setData(elm, dataAttrName, name[dataAttrName]);
+                }
+                return this;
+            } else {
+                return _getData(elm, name);
+            }
+        } else {
+            _setData(elm, name, value);
+            return this;
+        }
+    } 
+    /*
+     * Remove from the element all items that have not yet been run. 
+     * @param {Object} elm  
+     */
+
+    function cleanData(elm) {
+        if (elm["_$_store"]) {
+            delete elm["_$_store"];
+        }
+    }
+
+    /*
+     * Remove a previously-stored piece of data. 
+     * @param {Object} elm  
+     * @param {Array} names
+     */
+    function removeData(elm, names) {
+        if (names) {
+            if (langx.isString(names)) {
+                names = names.split(/\s+/);
+            }
+            var store = _store(elm, true);
+            names.forEach(function(name) {
+                delete store[name];
+            });            
+        } else {
+            cleanData(elm);
+        }
+        return this;
+    }
+
+    /*
+     * xxx 
+     * @param {Object} elm  
+     * @param {Array} names
+     */
+    function pluck(nodes, property) {
+        return map.call(nodes, function(elm) {
+            return elm[property];
+        });
+    }
+
+    /*
+     * Get or set the value of an property for the specified element.
+     * @param {Object} elm  
+     * @param {String} name
+     * @param {String} value
+     */
+    function prop(elm, name, value) {
+        name = propMap[name] || name;
+        if (value === undefined) {
+            return elm[name];
+        } else {
+            elm[name] = value;
+            return this;
+        }
+    }
+
+    /*
+     * remove Attributes  
+     * @param {Object} elm  
+     * @param {String} name
+     */
+    function removeAttr(elm, name) {
+        name.split(' ').forEach(function(attr) {
+            setAttribute(elm, attr);
+        });
+        return this;
+    }
+
+
+    /*
+     * Remove the value of a property for the first element in the set of matched elements or set one or more properties for every matched element.
+     * @param {Object} elm  
+     * @param {String} name
+     */
+    function removeProp(elm, name) {
+        name.split(' ').forEach(function(prop) {
+            delete elm[prop];
+        });
+        return this;
+    }
+
+    /*   
+     * Get the combined text contents of each element in the set of matched elements, including their descendants, or set the text contents of the matched elements.  
+     * @param {Object} elm  
+     * @param {String} txt
+     */
+    function text(elm, txt) {
+        if (txt === undefined) {
+            return elm.textContent;
+        } else {
+            elm.textContent = txt == null ? '' : '' + txt;
+            return this;
+        }
+    }
+
+    /*   
+     * Get the current value of the first element in the set of matched elements or set the value of every matched element.
+     * @param {Object} elm  
+     * @param {String} value
+     */
+    function val(elm, value) {
+        var hooks = valHooks[ elm.type ] || valHooks[ elm.nodeName.toLowerCase() ];
+        if (value === undefined) {
+/*
+            if (elm.multiple) {
+                // select multiple values
+                var selectedOptions = filter.call(finder.find(elm, "option"), (function(option) {
+                    return option.selected;
+                }));
+                return pluck(selectedOptions, "value");
+            } else {
+                if (/input|textarea/i.test(elm.tagName)) {
+                  return elm.value;
+                }
+                return text(elm);
+            }
+*/
+
+          if ( hooks &&  "get" in hooks &&  ( ret = hooks.get( elm, "value" ) ) !== undefined ) {
+            return ret;
+          }
+
+          ret = elm.value;
+
+          // Handle most common string cases
+          if ( typeof ret === "string" ) {
+            return ret.replace( /\r/g, "" );
+          }
+
+          // Handle cases where value is null/undef or number
+          return ret == null ? "" : ret;
+
+        } else {
+/*          
+            if (/input|textarea/i.test(elm.tagName)) {
+              elm.value = value;
+            } else {
+              text(elm,value);
+            }
+            return this;
+*/
+          // Treat null/undefined as ""; convert numbers to string
+          if ( value == null ) {
+            value = "";
+
+          } else if ( typeof value === "number" ) {
+            value += "";
+
+          } else if ( langx.isArray( value ) ) {
+            value = langx.map( value, function( value1 ) {
+              return value1 == null ? "" : value1 + "";
+            } );
+          }
+
+          // If set returns undefined, fall back to normal setting
+          if ( !hooks || !( "set" in hooks ) || hooks.set( elm, value, "value" ) === undefined ) {
+            elm.value = value;
+          }
+        }      
+    }
+
+
+    finder.pseudos.data = function( elem, i, match,dataName ) {
+        return !!data( elem, dataName || match[3]);
+    };
+   
+
+    function datax() {
+        return datax;
+    }
+
+    langx.mixin(datax, {
+        aria: aria,
+
+        attr: attr,
+
+        cleanData: cleanData,
+
+        data: data,
+
+        pluck: pluck,
+
+        prop: prop,
+
+        removeAttr: removeAttr,
+
+        removeData: removeData,
+
+        removeProp: removeProp,
+
+        text: text,
+
+        val: val,
+
+        valHooks : valHooks
+    });
+
+    return skylark.attach("domx.data", datax);
+});
+define('skylark-domx-velm/velm',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-finder",
+    "skylark-domx-query"
+], function(skylark, langx, noder, finder, $) {
     var map = Array.prototype.map,
         slice = Array.prototype.slice;
     /*
@@ -13343,7 +11228,7 @@ define('skylark-utils-dom/elmx',[
      * the VisualElement object wrapping document.body
      */
     var root = new VisualElement(document.body),
-        elmx = function(node) {
+        velm = function(node) {
             if (node) {
                 return new VisualElement(node);
             } else {
@@ -13382,10 +11267,10 @@ define('skylark-utils-dom/elmx',[
         };
     }
 
-    langx.mixin(elmx, {
+    langx.mixin(velm, {
         batch: function(nodes, action, args) {
             nodes.forEach(function(node) {
-                var elm = (node instanceof VisualElement) ? node : elmx(node);
+                var elm = (node instanceof VisualElement) ? node : velm(node);
                 elm[action].apply(elm, args);
             });
 
@@ -13415,28 +11300,8 @@ define('skylark-utils-dom/elmx',[
         }
     });
 
-    // from ./datax
-    elmx.delegate([
-        "attr",
-        "data",
-        "prop",
-        "removeAttr",
-        "removeData",
-        "text",
-        "val"
-    ], datax);
-
-    // from ./eventer
-    elmx.delegate([
-        "off",
-        "on",
-        "one",
-        "shortcuts",
-        "trigger"
-    ], eventer);
-
     // from ./finder
-    elmx.delegate([
+    velm.delegate([
         "ancestor",
         "ancestors",
         "children",
@@ -13458,7 +11323,7 @@ define('skylark-utils-dom/elmx',[
      * find a dom element matched by the specified selector.
      * @param {String} selector
      */
-    elmx.find = function(selector) {
+    velm.find = function(selector) {
         if (selector === "body") {
             return this.root;
         } else {
@@ -13466,46 +11331,9 @@ define('skylark-utils-dom/elmx',[
         }
     };
 
-    // from ./fx
-    elmx.delegate([
-        "animate",
-        "fadeIn",
-        "fadeOut",
-        "fadeTo",
-        "fadeToggle",
-        "hide",
-        "scrollToTop",
-        "show",
-        "toggle"
-    ], fx);
-
-
-    // from ./geom
-    elmx.delegate([
-        "borderExtents",
-        "boundingPosition",
-        "boundingRect",
-        "clientHeight",
-        "clientSize",
-        "clientWidth",
-        "contentRect",
-        "height",
-        "marginExtents",
-        "offsetParent",
-        "paddingExtents",
-        "pagePosition",
-        "pageRect",
-        "relativePosition",
-        "relativeRect",
-        "scrollIntoView",
-        "scrollLeft",
-        "scrollTop",
-        "size",
-        "width"
-    ], geom);
 
     // from ./noder
-    elmx.delegate([
+    velm.delegate([
         "after",
         "append",
         "before",
@@ -13531,8 +11359,1102 @@ define('skylark-utils-dom/elmx',[
         "unwrap"
     ], noder);
 
+
+    return skylark.attach("domx.velm", velm);
+});
+define('skylark-domx-velm/main',[
+	"./velm"
+],function(velm){
+	return velm;
+});
+define('skylark-domx-velm', ['skylark-domx-velm/main'], function (main) { return main; });
+
+define('skylark-domx-data/main',[
+    "./data",
+    "skylark-domx-velm",
+    "skylark-domx-query"    
+],function(data,velm,$){
+    // from ./data
+    velm.delegate([
+        "attr",
+        "data",
+        "prop",
+        "removeAttr",
+        "removeData",
+        "text",
+        "val"
+    ], data);
+
+    $.fn.text = $.wraps.wrapper_value(data.text, data, data.text);
+
+    $.fn.attr = $.wraps.wrapper_name_value(data.attr, data, data.attr);
+
+    $.fn.removeAttr = $.wraps.wrapper_every_act(data.removeAttr, data);
+
+    $.fn.prop = $.wraps.wrapper_name_value(data.prop, data, data.prop);
+
+    $.fn.removeProp = $.wraps.wrapper_every_act(data.removeProp, data);
+
+    $.fn.data = $.wraps.wrapper_name_value(data.data, data, data.data);
+
+    $.fn.removeData = $.wraps.wrapper_every_act(data.removeData, data);
+
+    $.fn.val = $.wraps.wrapper_value(data.val, data, data.val);
+
+
+    return data;
+});
+define('skylark-domx-data', ['skylark-domx-data/main'], function (main) { return main; });
+
+define('skylark-domx-eventer/eventer',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-finder",
+    "skylark-domx-noder",
+    "skylark-domx-data"
+], function(skylark, langx, browser, finder, noder, datax) {
+    var mixin = langx.mixin,
+        each = langx.each,
+        slice = Array.prototype.slice,
+        uid = langx.uid,
+        ignoreProperties = /^([A-Z]|returnValue$|layer[XY]$)/,
+        eventMethods = {
+            preventDefault: "isDefaultPrevented",
+            stopImmediatePropagation: "isImmediatePropagationStopped",
+            stopPropagation: "isPropagationStopped"
+        },
+        readyRE = /complete|loaded|interactive/;
+
+    function compatible(event, source) {
+        if (source || !event.isDefaultPrevented) {
+            if (!source) {
+                source = event;
+            }
+
+            langx.each(eventMethods, function(name, predicate) {
+                var sourceMethod = source[name];
+                event[name] = function() {
+                    this[predicate] = langx.returnTrue;
+                    return sourceMethod && sourceMethod.apply(source, arguments);
+                }
+                event[predicate] = langx.returnFalse;
+            });
+        }
+        return event;
+    }
+
+    function parse(event) {
+        var segs = ("" + event).split(".");
+        return {
+            type: segs[0],
+            ns: segs.slice(1).sort().join(" ")
+        };
+    }
+
+
+    var NativeEventCtors = [
+            window["CustomEvent"], // 0 default
+            window["CompositionEvent"], // 1
+            window["DragEvent"], // 2
+            window["Event"], // 3
+            window["FocusEvent"], // 4
+            window["KeyboardEvent"], // 5
+            window["MessageEvent"], // 6
+            window["MouseEvent"], // 7
+            window["MouseScrollEvent"], // 8
+            window["MouseWheelEvent"], // 9
+            window["MutationEvent"], // 10
+            window["ProgressEvent"], // 11
+            window["TextEvent"], // 12
+            window["TouchEvent"], // 13
+            window["UIEvent"], // 14
+            window["WheelEvent"], // 15
+            window["ClipboardEvent"] // 16
+        ],
+        NativeEvents = {
+            "compositionstart": 1, // CompositionEvent
+            "compositionend": 1, // CompositionEvent
+            "compositionupdate": 1, // CompositionEvent
+
+            "beforecopy": 16, // ClipboardEvent
+            "beforecut": 16, // ClipboardEvent
+            "beforepaste": 16, // ClipboardEvent
+            "copy": 16, // ClipboardEvent
+            "cut": 16, // ClipboardEvent
+            "paste": 16, // ClipboardEvent
+
+            "drag": 2, // DragEvent
+            "dragend": 2, // DragEvent
+            "dragenter": 2, // DragEvent
+            "dragexit": 2, // DragEvent
+            "dragleave": 2, // DragEvent
+            "dragover": 2, // DragEvent
+            "dragstart": 2, // DragEvent
+            "drop": 2, // DragEvent
+
+            "abort": 3, // Event
+            "change": 3, // Event
+            "error": 3, // Event
+            "selectionchange": 3, // Event
+            "submit": 3, // Event
+            "reset": 3, // Event
+
+            "focus": 4, // FocusEvent
+            "blur": 4, // FocusEvent
+            "focusin": 4, // FocusEvent
+            "focusout": 4, // FocusEvent
+
+            "keydown": 5, // KeyboardEvent
+            "keypress": 5, // KeyboardEvent
+            "keyup": 5, // KeyboardEvent
+
+            "message": 6, // MessageEvent
+
+            "click": 7, // MouseEvent
+            "contextmenu": 7, // MouseEvent
+            "dblclick": 7, // MouseEvent
+            "mousedown": 7, // MouseEvent
+            "mouseup": 7, // MouseEvent
+            "mousemove": 7, // MouseEvent
+            "mouseover": 7, // MouseEvent
+            "mouseout": 7, // MouseEvent
+            "mouseenter": 7, // MouseEvent
+            "mouseleave": 7, // MouseEvent
+
+
+            "textInput": 12, // TextEvent
+
+            "touchstart": 13, // TouchEvent
+            "touchmove": 13, // TouchEvent
+            "touchend": 13, // TouchEvent
+
+            "load": 14, // UIEvent
+            "resize": 14, // UIEvent
+            "select": 14, // UIEvent
+            "scroll": 14, // UIEvent
+            "unload": 14, // UIEvent,
+
+            "wheel": 15 // WheelEvent
+        };
+
+    //create a custom dom event
+    var createEvent = (function() {
+
+        function getEventCtor(type) {
+            var idx = NativeEvents[type];
+            if (!idx) {
+                idx = 0;
+            }
+            return NativeEventCtors[idx];
+        }
+
+        return function(type, props) {
+            //create a custom dom event
+
+            if (langx.isString(type)) {
+                props = props || {};
+            } else {
+                props = type || {};
+                type = props.type || "";
+            }
+            var parsed = parse(type);
+            type = parsed.type;
+
+            props = langx.mixin({
+                bubbles: true,
+                cancelable: true
+            }, props);
+
+            if (parsed.ns) {
+                props.namespace = parsed.ns;
+            }
+
+            var ctor = getEventCtor(type),
+                e = new ctor(type, props);
+
+            langx.safeMixin(e, props);
+
+            return compatible(e);
+        };
+    })();
+
+    function createProxy(src, props) {
+        var key,
+            proxy = {
+                originalEvent: src
+            };
+        for (key in src) {
+            if (key !== "keyIdentifier" && !ignoreProperties.test(key) && src[key] !== undefined) {
+                proxy[key] = src[key];
+            }
+        }
+        if (props) {
+            langx.mixin(proxy, props);
+        }
+        return compatible(proxy, src);
+    }
+
+    var
+        specialEvents = {},
+        focusinSupported = "onfocusin" in window,
+        focus = { focus: "focusin", blur: "focusout" },
+        hover = { mouseenter: "mouseover", mouseleave: "mouseout" },
+        realEvent = function(type) {
+            return hover[type] || (focusinSupported && focus[type]) || type;
+        },
+        handlers = {},
+        EventBindings = langx.klass({
+            init: function(target, event) {
+                this._target = target;
+                this._event = event;
+                this._bindings = [];
+            },
+
+            add: function(fn, options) {
+                var bindings = this._bindings,
+                    binding = {
+                        fn: fn,
+                        options: langx.mixin({}, options)
+                    };
+
+                bindings.push(binding);
+
+                var self = this;
+                if (!self._listener) {
+                    self._listener = function(domEvt) {
+                        var elm = this,
+                            e = createProxy(domEvt),
+                            args = domEvt._args,
+                            bindings = self._bindings,
+                            ns = e.namespace;
+
+                        if (langx.isDefined(args)) {
+                            args = [e].concat(args);
+                        } else {
+                            args = [e];
+                        }
+
+                        langx.each(bindings, function(idx, binding) {
+                            var match = elm;
+                            if (e.isImmediatePropagationStopped && e.isImmediatePropagationStopped()) {
+                                return false;
+                            }
+                            var fn = binding.fn,
+                                options = binding.options || {},
+                                selector = options.selector,
+                                one = options.one,
+                                data = options.data;
+
+                            if (ns && ns != options.ns && options.ns.indexOf(ns) === -1) {
+                                return;
+                            }
+                            if (selector) {
+                                match = finder.closest(e.target, selector);
+                                if (match && match !== elm) {
+                                    langx.mixin(e, {
+                                        currentTarget: match,
+                                        liveFired: elm
+                                    });
+                                } else {
+                                    return;
+                                }
+                            }
+
+                            var originalEvent = self._event;
+                            if (originalEvent in hover) {
+                                var related = e.relatedTarget;
+                                if (related && (related === match || noder.contains(match, related))) {
+                                    return;
+                                }
+                            }
+
+                            if (langx.isDefined(data)) {
+                                e.data = data;
+                            }
+
+                            if (one) {
+                                self.remove(fn, options);
+                            }
+
+                            var result = fn.apply(match, args);
+
+                            if (result === false) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }
+                        });;
+                    };
+
+                    var event = self._event;
+                    /*
+                                        if (event in hover) {
+                                            var l = self._listener;
+                                            self._listener = function(e) {
+                                                var related = e.relatedTarget;
+                                                if (!related || (related !== this && !noder.contains(this, related))) {
+                                                    return l.apply(this, arguments);
+                                                }
+                                            }
+                                        }
+                    */
+
+                    if (self._target.addEventListener) {
+                        self._target.addEventListener(realEvent(event), self._listener, false);
+                    } else {
+                        console.warn("invalid eventer object", self._target);
+                    }
+                }
+
+            },
+            remove: function(fn, options) {
+                options = langx.mixin({}, options);
+
+                function matcherFor(ns) {
+                    return new RegExp("(?:^| )" + ns.replace(" ", " .* ?") + "(?: |$)");
+                }
+                var matcher;
+                if (options.ns) {
+                    matcher = matcherFor(options.ns);
+                }
+
+                this._bindings = this._bindings.filter(function(binding) {
+                    var removing = (!fn || fn === binding.fn) &&
+                        (!matcher || matcher.test(binding.options.ns)) &&
+                        (!options.selector || options.selector == binding.options.selector);
+
+                    return !removing;
+                });
+                if (this._bindings.length == 0) {
+                    if (this._target.removeEventListener) {
+                        this._target.removeEventListener(realEvent(this._event), this._listener, false);
+                    }
+                    this._listener = null;
+                }
+            }
+        }),
+        EventsHandler = langx.klass({
+            init: function(elm) {
+                this._target = elm;
+                this._handler = {};
+            },
+
+            // add a event listener
+            // selector Optional
+            register: function(event, callback, options) {
+                // Seperate the event from the namespace
+                var parsed = parse(event),
+                    event = parsed.type,
+                    specialEvent = specialEvents[event],
+                    bindingEvent = specialEvent && (specialEvent.bindType || specialEvent.bindEventName);
+
+                var events = this._handler;
+
+                // Check if there is already a handler for this event
+                if (events[event] === undefined) {
+                    events[event] = new EventBindings(this._target, bindingEvent || event);
+                }
+
+                // Register the new callback function
+                events[event].add(callback, langx.mixin({
+                    ns: parsed.ns
+                }, options)); // options:{selector:xxx}
+            },
+
+            // remove a event listener
+            unregister: function(event, fn, options) {
+                // Check for parameter validtiy
+                var events = this._handler,
+                    parsed = parse(event);
+                event = parsed.type;
+
+                if (event) {
+                    var listener = events[event];
+
+                    if (listener) {
+                        listener.remove(fn, langx.mixin({
+                            ns: parsed.ns
+                        }, options));
+                    }
+                } else {
+                    //remove all events
+                    for (event in events) {
+                        var listener = events[event];
+                        listener.remove(fn, langx.mixin({
+                            ns: parsed.ns
+                        }, options));
+                    }
+                }
+            }
+        }),
+
+        findHandler = function(elm) {
+            var id = uid(elm),
+                handler = handlers[id];
+            if (!handler) {
+                handler = handlers[id] = new EventsHandler(elm);
+            }
+            return handler;
+        };
+
+    /*   
+     * Remove an event handler for one or more events from the specified element.
+     * @param {HTMLElement} elm  
+     * @param {String} events
+     * @param {String　Optional } selector
+     * @param {Function} callback
+     */
+    function off(elm, events, selector, callback) {
+        var $this = this
+        if (langx.isPlainObject(events)) {
+            langx.each(events, function(type, fn) {
+                off(elm, type, selector, fn);
+            })
+            return $this;
+        }
+
+        if (!langx.isString(selector) && !langx.isFunction(callback) && callback !== false) {
+            callback = selector;
+            selector = undefined;
+        }
+
+        if (callback === false) {
+            callback = langx.returnFalse;
+        }
+
+        if (typeof events == "string") {
+            if (events.indexOf(",") > -1) {
+                events = events.split(",");
+            } else {
+                events = events.split(/\s/);
+            }
+        }
+
+        var handler = findHandler(elm);
+
+        if (events) events.forEach(function(event) {
+
+            handler.unregister(event, callback, {
+                selector: selector,
+            });
+        });
+        return this;
+    }
+
+    /*   
+     * Attach an event handler function for one or more events to the selected elements.
+     * @param {HTMLElement} elm  
+     * @param {String} events
+     * @param {String　Optional} selector
+     * @param {Anything Optional} data
+     * @param {Function} callback
+     * @param {Boolean　Optional} one
+     */
+    function on(elm, events, selector, data, callback, one) {
+
+        var autoRemove, delegator;
+        if (langx.isPlainObject(events)) {
+            langx.each(events, function(type, fn) {
+                on(elm, type, selector, data, fn, one);
+            });
+            return this;
+        }
+
+        if (!langx.isString(selector) && !langx.isFunction(callback)) {
+            callback = data;
+            data = selector;
+            selector = undefined;
+        }
+
+        if (langx.isFunction(data)) {
+            callback = data;
+            data = undefined;
+        }
+
+        if (callback === false) {
+            callback = langx.returnFalse;
+        }
+
+        if (typeof events == "string") {
+            if (events.indexOf(",") > -1) {
+                events = events.split(",");
+            } else {
+                events = events.split(/\s/);
+            }
+        }
+
+        var handler = findHandler(elm);
+
+        events.forEach(function(event) {
+            if (event == "ready") {
+                return ready(callback);
+            }
+            handler.register(event, callback, {
+                data: data,
+                selector: selector,
+                one: !!one
+            });
+        });
+        return this;
+    }
+
+    /*   
+     * Attach a handler to an event for the elements. The handler is executed at most once per 
+     * @param {HTMLElement} elm  
+     * @param {String} event
+     * @param {String　Optional} selector
+     * @param {Anything Optional} data
+     * @param {Function} callback
+     */
+    function one(elm, events, selector, data, callback) {
+        on(elm, events, selector, data, callback, 1);
+
+        return this;
+    }
+
+    /*   
+     * Prevents propagation and clobbers the default action of the passed event. The same as calling event.preventDefault() and event.stopPropagation(). 
+     * @param {String} event
+     */
+    function stop(event) {
+        if (window.document.all) {
+            event.keyCode = 0;
+        }
+        if (event.preventDefault) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        return this;
+    }
+    /*   
+     * Execute all handlers and behaviors attached to the matched elements for the given event  
+     * @param {String} evented
+     * @param {String} type
+     * @param {Array or PlainObject } args
+     */
+    function trigger(evented, type, args) {
+        var e;
+        if (type instanceof Event) {
+            e = type;
+        } else {
+            e = createEvent(type, args);
+        }
+        e._args = args;
+
+        var fn = (evented.dispatchEvent || evented.trigger);
+        if (fn) {
+            fn.call(evented, e);
+        } else {
+            console.warn("The evented parameter is not a eventable object");
+        }
+
+        return this;
+    }
+    /*   
+     * Specify a function to execute when the DOM is fully loaded.  
+     * @param {Function} callback
+     */
+    function ready(callback) {
+        // need to check if document.body exists for IE as that browser reports
+        // document ready when it hasn't yet created the body elm
+        if (readyRE.test(document.readyState) && document.body) {
+            langx.defer(callback);
+        } else {
+            document.addEventListener('DOMContentLoaded', callback, false);
+        }
+
+        return this;
+    }
+
+    var keyCodeLookup = {
+        "backspace": 8,
+        "comma": 188,
+        "delete": 46,
+        "down": 40,
+        "end": 35,
+        "enter": 13,
+        "escape": 27,
+        "home": 36,
+        "left": 37,
+        "page_down": 34,
+        "page_up": 33,
+        "period": 190,
+        "right": 39,
+        "space": 32,
+        "tab": 9,
+        "up": 38
+    };
+    //example:
+    //shortcuts(elm).add("CTRL+ALT+SHIFT+X",function(){console.log("test!")});
+    function shortcuts(elm) {
+
+        var registry = datax.data(elm, "shortcuts");
+        if (!registry) {
+            registry = {};
+            datax.data(elm, "shortcuts", registry);
+            var run = function(shortcut, event) {
+                var n = event.metaKey || event.ctrlKey;
+                if (shortcut.ctrl == n && shortcut.alt == event.altKey && shortcut.shift == event.shiftKey) {
+                    if (event.keyCode == shortcut.keyCode || event.charCode && event.charCode == shortcut.charCode) {
+                        event.preventDefault();
+                        if ("keydown" == event.type) {
+                            shortcut.fn(event);
+                        }
+                        return true;
+                    }
+                }
+            };
+            on(elm, "keyup keypress keydown", function(event) {
+                if (!(/INPUT|TEXTAREA/.test(event.target.nodeName))) {
+                    for (var key in registry) {
+                        run(registry[key], event);
+                    }
+                }
+            });
+
+        }
+
+        return {
+            add: function(pattern, fn) {
+                var shortcutKeys;
+                if (pattern.indexOf(",") > -1) {
+                    shortcutKeys = pattern.toLowerCase().split(",");
+                } else {
+                    shortcutKeys = pattern.toLowerCase().split(" ");
+                }
+                shortcutKeys.forEach(function(shortcutKey) {
+                    var setting = {
+                        fn: fn,
+                        alt: false,
+                        ctrl: false,
+                        shift: false
+                    };
+                    shortcutKey.split("+").forEach(function(key) {
+                        switch (key) {
+                            case "alt":
+                            case "ctrl":
+                            case "shift":
+                                setting[key] = true;
+                                break;
+                            default:
+                                setting.charCode = key.charCodeAt(0);
+                                setting.keyCode = keyCodeLookup[key] || key.toUpperCase().charCodeAt(0);
+                        }
+                    });
+                    var regKey = (setting.ctrl ? "ctrl" : "") + "," + (setting.alt ? "alt" : "") + "," + (setting.shift ? "shift" : "") + "," + setting.keyCode;
+                    registry[regKey] = setting;
+                })
+            }
+
+        };
+
+    }
+
+    if (browser.support.transition) {
+        specialEvents.transitionEnd = {
+//          handle: function (e) {
+//            if ($(e.target).is(this)) return e.handleObj.handler.apply(this, arguments)
+//          },
+          bindType: browser.support.transition.end,
+          delegateType: browser.support.transition.end
+        }        
+    }
+
+    function eventer() {
+        return eventer;
+    }
+
+    langx.mixin(eventer, {
+        NativeEvents : NativeEvents,
+        
+        create: createEvent,
+
+        keys: keyCodeLookup,
+
+        off: off,
+
+        on: on,
+
+        one: one,
+
+        proxy: createProxy,
+
+        ready: ready,
+
+        shortcuts: shortcuts,
+
+        special: specialEvents,
+
+        stop: stop,
+
+        trigger: trigger
+
+    });
+
+    each(NativeEvents,function(name){
+        eventer[name] = function(elm,selector,data,callback) {
+            if (arguments.length>1) {
+                return this.on(elm,name,selector,data,callback);
+            } else {
+                if (name == "focus") {
+                    if (elm.focus) {
+                        elm.focus();
+                    }
+                } else if (name == "blur") {
+                    if (elm.blur) {
+                        elm.blur();
+                    }
+                } else if (name == "click") {
+                    if (elm.click) {
+                        elm.click();
+                    }
+                } else {
+                    this.trigger(elm,name);
+                }
+
+                return this;
+            }
+        };
+    });
+
+    return skylark.attach("domx.eventer",eventer);
+});
+define('skylark-domx-eventer/main',[
+    "skylark-langx/langx",
+    "./eventer",
+    "skylark-domx-velm",
+    "skylark-domx-query"        
+],function(langx,eventer,velm,$){
+
+    var delegateMethodNames = [
+        "off",
+        "on",
+        "one",
+        "trigger"
+    ];
+
+    langx.each(eventer.NativeEvents,function(name){
+        delegateMethodNames.push(name);
+    });
+
+    // from ./eventer
+    velm.delegate(delegateMethodNames, eventer);
+
+    langx.each(delegateMethodNames,function(i,name){
+        $.fn[name] = $.wraps.wrapper_every_act(eventer[name],eventer);
+    });
+
+
+    /*
+    $.fn.on = $.wraps.wrapper_every_act(eventer.on, eventer);
+
+    $.fn.off = $.wraps.wrapper_every_act(eventer.off, eventer);
+
+    $.fn.trigger = $.wraps.wrapper_every_act(eventer.trigger, eventer);
+
+    ('focusin focusout focus blur load resize scroll unload click dblclick ' +
+        'mousedown mouseup mousemove mouseover mouseout mouseenter mouseleave ' +
+        'change select keydown keypress keyup error transitionEnd').split(' ').forEach(function(event) {
+        $.fn[event] = $.wraps.wrapper_every_act(eventer[event],eventer);
+    });
+
+    $.fn.one = function(event, selector, data, callback) {
+        if (!langx.isString(selector) && !langx.isFunction(callback)) {
+            callback = data;
+            data = selector;
+            selector = null;
+        }
+
+        if (langx.isFunction(data)) {
+            callback = data;
+            data = null;
+        }
+
+        return this.on(event, selector, data, callback, 1)
+    }; 
+    */
+
+    $.ready = eventer.ready;
+
+    return eventer;
+});
+define('skylark-domx-eventer', ['skylark-domx-eventer/main'], function (main) { return main; });
+
+define('skylark-domx-styler/styler',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx"
+], function(skylark, langx) {
+    var every = Array.prototype.every,
+        forEach = Array.prototype.forEach,
+        camelCase = langx.camelCase,
+        dasherize = langx.dasherize;
+
+    function maybeAddPx(name, value) {
+        return (typeof value == "number" && !cssNumber[dasherize(name)]) ? value + "px" : value
+    }
+
+    var cssNumber = {
+            'column-count': 1,
+            'columns': 1,
+            'font-weight': 1,
+            'line-height': 1,
+            'opacity': 1,
+            'z-index': 1,
+            'zoom': 1
+        },
+        classReCache = {
+
+        };
+
+    function classRE(name) {
+        return name in classReCache ?
+            classReCache[name] : (classReCache[name] = new RegExp('(^|\\s)' + name + '(\\s|$)'));
+    }
+
+    // access className property while respecting SVGAnimatedString
+    /*
+     * Adds the specified class(es) to each element in the set of matched elements.
+     * @param {HTMLElement} node
+     * @param {String} value
+     */
+    function className(node, value) {
+        var klass = node.className || '',
+            svg = klass && klass.baseVal !== undefined
+
+        if (value === undefined) return svg ? klass.baseVal : klass
+        svg ? (klass.baseVal = value) : (node.className = value)
+    }
+
+    function disabled(elm, value ) {
+        if (arguments.length < 2) {
+            return !!this.dom.disabled;
+        }
+
+        elm.disabled = value;
+
+        return this;
+    }
+
+    var elementDisplay = {};
+
+    function defaultDisplay(nodeName) {
+        var element, display
+        if (!elementDisplay[nodeName]) {
+            element = document.createElement(nodeName)
+            document.body.appendChild(element)
+            display = getStyles(element).getPropertyValue("display")
+            element.parentNode.removeChild(element)
+            display == "none" && (display = "block")
+            elementDisplay[nodeName] = display
+        }
+        return elementDisplay[nodeName]
+    }
+    /*
+     * Display the matched elements.
+     * @param {HTMLElement} elm
+     */
+    function show(elm) {
+        styler.css(elm, "display", "");
+        if (styler.css(elm, "display") == "none") {
+            styler.css(elm, "display", defaultDisplay(elm.nodeName));
+        }
+        return this;
+    }
+
+    function isInvisible(elm) {
+        return styler.css(elm, "display") == "none" || styler.css(elm, "opacity") == 0;
+    }
+
+    /*
+     * Hide the matched elements.
+     * @param {HTMLElement} elm
+     */
+    function hide(elm) {
+        styler.css(elm, "display", "none");
+        return this;
+    }
+
+    /*
+     * Adds the specified class(es) to each element in the set of matched elements.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
+    function addClass(elm, name) {
+        if (!name) return this
+        var cls = className(elm),
+            names;
+        if (langx.isString(name)) {
+            names = name.split(/\s+/g);
+        } else {
+            names = name;
+        }
+        names.forEach(function(klass) {
+            var re = classRE(klass);
+            if (!cls.match(re)) {
+                cls += (cls ? " " : "") + klass;
+            }
+        });
+
+        className(elm, cls);
+
+        return this;
+    }
+
+    function getStyles( elem ) {
+
+        // Support: IE <=11 only, Firefox <=30 (#15098, #14150)
+        // IE throws on elements created in popups
+        // FF meanwhile throws on frame elements through "defaultView.getComputedStyle"
+        var view = elem.ownerDocument.defaultView;
+
+        if ( !view || !view.opener ) {
+            view = window;
+        }
+
+        return view.getComputedStyle( elem);
+    }
+
+
+    /*
+     * Get the value of a computed style property for the first element in the set of matched elements or set one or more CSS properties for every matched element.
+     * @param {HTMLElement} elm
+     * @param {String} property
+     * @param {Any} value
+     */
+    function css(elm, property, value) {
+        if (arguments.length < 3) {
+            var computedStyle,
+                computedStyle = getStyles(elm)
+            if (langx.isString(property)) {
+                return elm.style[camelCase(property)] || computedStyle.getPropertyValue(dasherize(property))
+            } else if (langx.isArrayLike(property)) {
+                var props = {}
+                forEach.call(property, function(prop) {
+                    props[prop] = (elm.style[camelCase(prop)] || computedStyle.getPropertyValue(dasherize(prop)))
+                })
+                return props
+            }
+        }
+
+        var css = '';
+        if (typeof(property) == 'string') {
+            if (!value && value !== 0) {
+                elm.style.removeProperty(dasherize(property));
+            } else {
+                css = dasherize(property) + ":" + maybeAddPx(property, value)
+            }
+        } else {
+            for (key in property) {
+                if (property[key] === undefined) {
+                    continue;
+                }
+                if (!property[key] && property[key] !== 0) {
+                    elm.style.removeProperty(dasherize(key));
+                } else {
+                    css += dasherize(key) + ':' + maybeAddPx(key, property[key]) + ';'
+                }
+            }
+        }
+
+        elm.style.cssText += ';' + css;
+        return this;
+    }
+
+    /*
+     * Determine whether any of the matched elements are assigned the given class.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
+    function hasClass(elm, name) {
+        var re = classRE(name);
+        return elm.className && elm.className.match(re);
+    }
+
+    /*
+     * Remove a single class, multiple classes, or all classes from each element in the set of matched elements.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     */
+    function removeClass(elm, name) {
+        if (name) {
+            var cls = className(elm),
+                names;
+
+            if (langx.isString(name)) {
+                names = name.split(/\s+/g);
+            } else {
+                names = name;
+            }
+
+            names.forEach(function(klass) {
+                var re = classRE(klass);
+                if (cls.match(re)) {
+                    cls = cls.replace(re, " ");
+                }
+            });
+
+            className(elm, cls.trim());
+        } else {
+            className(elm, "");
+        }
+
+        return this;
+    }
+
+    /*
+     * Add or remove one or more classes from the specified element.
+     * @param {HTMLElement} elm
+     * @param {String} name
+     * @param {} when
+     */
+    function toggleClass(elm, name, when) {
+        var self = this;
+        name.split(/\s+/g).forEach(function(klass) {
+            if (when === undefined) {
+                when = !self.hasClass(elm, klass);
+            }
+            if (when) {
+                self.addClass(elm, klass);
+            } else {
+                self.removeClass(elm, klass)
+            }
+        });
+
+        return self;
+    }
+
+    var styler = function() {
+        return styler;
+    };
+
+    langx.mixin(styler, {
+        autocssfix: false,
+        cssHooks: {
+
+        },
+
+        addClass: addClass,
+        className: className,
+        css: css,
+        disabled : disabled,        
+        hasClass: hasClass,
+        hide: hide,
+        isInvisible: isInvisible,
+        removeClass: removeClass,
+        show: show,
+        toggleClass: toggleClass
+    });
+
+    return skylark.attach("domx.styler", styler);
+});
+define('skylark-domx-styler/main',[
+	"./styler",
+	"skylark-domx-velm",
+	"skylark-domx-query"	
+],function(styler,velm,$){
+	
     // from ./styler
-    elmx.delegate([
+    velm.delegate([
         "addClass",
         "className",
         "css",
@@ -13554,7 +12476,7 @@ define('skylark-utils-dom/elmx',[
 
         var method = property;
 
-        VisualElement.prototype[method ] = function (value) {
+        velm.VisualElement.prototype[method ] = function (value) {
 
             this.css( property, value );
 
@@ -13564,38 +12486,1910 @@ define('skylark-utils-dom/elmx',[
 
     });
 
-    // events
-    var events = [ 'keyUp', 'keyDown', 'mouseOver', 'mouseOut', 'click', 'dblClick', 'change' ];
 
-    events.forEach( function ( event ) {
+    $.fn.style = $.wraps.wrapper_name_value(styler.css, styler);
 
-        var method = event;
+    $.fn.css = $.wraps.wrapper_name_value(styler.css, styler);
 
-        VisualElement.prototype[method ] = function ( callback ) {
+    //hasClass(name)
+    $.fn.hasClass = $.wraps.wrapper_some_chk(styler.hasClass, styler);
 
-            this.on( event.toLowerCase(), callback);
+    //addClass(name)
+    $.fn.addClass = $.wraps.wrapper_every_act_firstArgFunc(styler.addClass, styler, styler.className);
 
+    //removeClass(name)
+    $.fn.removeClass = $.wraps.wrapper_every_act_firstArgFunc(styler.removeClass, styler, styler.className);
+
+    //toogleClass(name,when)
+    $.fn.toggleClass = $.wraps.wrapper_every_act_firstArgFunc(styler.toggleClass, styler, styler.className);
+
+    $.fn.replaceClass = function(newClass, oldClass) {
+        this.removeClass(oldClass);
+        this.addClass(newClass);
+        return this;
+    };
+
+    $.fn.replaceClass = function(newClass, oldClass) {
+        this.removeClass(oldClass);
+        this.addClass(newClass);
+        return this;
+    };
+        
+	return styler;
+});
+define('skylark-domx-styler', ['skylark-domx-styler/main'], function (main) { return main; });
+
+define('skylark-domx-geom/geom',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-styler"
+], function(skylark, langx, noder, styler) {
+    var rootNodeRE = /^(?:body|html)$/i,
+        px = langx.toPixel,
+        offsetParent = noder.offsetParent,
+        cachedScrollbarWidth;
+
+    function scrollbarWidth() {
+        if (cachedScrollbarWidth !== undefined) {
+            return cachedScrollbarWidth;
+        }
+        var w1, w2,
+            div = noder.createFragment("<div style=" +
+                "'display:block;position:absolute;width:200px;height:200px;overflow:hidden;'>" +
+                "<div style='height:300px;width:auto;'></div></div>")[0],
+            innerDiv = div.childNodes[0];
+
+        noder.append(document.body, div);
+
+        w1 = innerDiv.offsetWidth;
+
+        styler.css(div, "overflow", "scroll");
+
+        w2 = innerDiv.offsetWidth;
+
+        if (w1 === w2) {
+            w2 = div[0].clientWidth;
+        }
+
+        noder.remove(div);
+
+        return (cachedScrollbarWidth = w1 - w2);
+    }
+    /*
+     * Get the widths of each border of the specified element.
+     * @param {HTMLElement} elm
+     */
+    function borderExtents(elm) {
+        if (noder.isWindow(elm)) {
+            return {
+                left : 0,
+                top : 0,
+                right : 0,
+                bottom : 0
+            }
+        }        var s = getComputedStyle(elm);
+        return {
+            left: px(s.borderLeftWidth, elm),
+            top: px(s.borderTopWidth, elm),
+            right: px(s.borderRightWidth, elm),
+            bottom: px(s.borderBottomWidth, elm)
+        }
+    }
+
+    //viewport coordinate
+    /*
+     * Get or set the viewport position of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
+    function boundingPosition(elm, coords) {
+        if (coords === undefined) {
+            return rootNodeRE.test(elm.nodeName) ? { top: 0, left: 0 } : elm.getBoundingClientRect();
+        } else {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                parentOffset = boundingPosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            relativePosition(elm, {
+                top: coords.top - parentOffset.top - mex.top - pbex.top,
+                left: coords.left - parentOffset.left - mex.left - pbex.left
+            });
             return this;
-        };
+        }
+    }
 
+    /*
+     * Get or set the viewport rect of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
+    function boundingRect(elm, coords) {
+        if (coords === undefined) {
+            return elm.getBoundingClientRect()
+        } else {
+            boundingPosition(elm, coords);
+            size(elm, coords);
+            return this;
+        }
+    }
+
+    /*
+     * Get or set the height of the specified element client box.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
+    function clientHeight(elm, value) {
+        if (value == undefined) {
+            return clientSize(elm).height;
+        } else {
+            return clientSize(elm, {
+                height: value
+            });
+        }
+    }
+
+    /*
+     * Get or set the size of the specified element client box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} dimension
+     */
+    function clientSize(elm, dimension) {
+        if (dimension == undefined) {
+            return {
+                width: elm.clientWidth,
+                height: elm.clientHeight
+            }
+        } else {
+            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
+                props = {
+                    width: dimension.width,
+                    height: dimension.height
+                };
+            if (!isBorderBox) {
+                var pex = paddingExtents(elm);
+
+                if (props.width !== undefined) {
+                    props.width = props.width - pex.left - pex.right;
+                }
+
+                if (props.height !== undefined) {
+                    props.height = props.height - pex.top - pex.bottom;
+                }
+            } else {
+                var bex = borderExtents(elm);
+
+                if (props.width !== undefined) {
+                    props.width = props.width + bex.left + bex.right;
+                }
+
+                if (props.height !== undefined) {
+                    props.height = props.height + bex.top + bex.bottom;
+                }
+
+            }
+            styler.css(elm, props);
+            return this;
+        }
+        return {
+            width: elm.clientWidth,
+            height: elm.clientHeight
+        };
+    }
+
+    /*
+     * Get or set the width of the specified element client box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} dimension
+     */
+    function clientWidth(elm, value) {
+        if (value == undefined) {
+            return clientSize(elm).width;
+        } else {
+            clientSize(elm, {
+                width: value
+            });
+            return this;
+        }
+    }
+
+    /*
+     * Get the rect of the specified element content box.
+     * @param {HTMLElement} elm
+     */
+    function contentRect(elm) {
+        var cs = clientSize(elm),
+            pex = paddingExtents(elm);
+
+
+        //// On Opera, offsetLeft includes the parent's border
+        //if(has("opera")){
+        //    pe.l += be.l;
+        //    pe.t += be.t;
+        //}
+        return {
+            left: pex.left,
+            top: pex.top,
+            width: cs.width - pex.left - pex.right,
+            height: cs.height - pex.top - pex.bottom
+        };
+    }
+
+    /*
+     * Get the document size.
+     * @param {HTMLDocument} doc
+     */
+    function getDocumentSize(doc) {
+        var documentElement = doc.documentElement,
+            body = doc.body,
+            max = Math.max,
+            scrollWidth = max(documentElement.scrollWidth, body.scrollWidth),
+            clientWidth = max(documentElement.clientWidth, body.clientWidth),
+            offsetWidth = max(documentElement.offsetWidth, body.offsetWidth),
+            scrollHeight = max(documentElement.scrollHeight, body.scrollHeight),
+            clientHeight = max(documentElement.clientHeight, body.clientHeight),
+            offsetHeight = max(documentElement.offsetHeight, body.offsetHeight);
+
+        return {
+            width: scrollWidth < offsetWidth ? clientWidth : scrollWidth,
+            height: scrollHeight < offsetHeight ? clientHeight : scrollHeight
+        };
+    }
+
+    /*
+     * Get the document size.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
+    function height(elm, value) {
+        if (value == undefined) {
+            return size(elm).height;
+        } else {
+            size(elm, {
+                height: value
+            });
+            return this;
+        }
+    }
+
+    /*
+     * Get the widths of each margin of the specified element.
+     * @param {HTMLElement} elm
+     */
+    function marginExtents(elm) {
+        if (noder.isWindow(elm)) {
+            return {
+                left : 0,
+                top : 0,
+                right : 0,
+                bottom : 0
+            }
+        }
+        var s = getComputedStyle(elm);
+        return {
+            left: px(s.marginLeft),
+            top: px(s.marginTop),
+            right: px(s.marginRight),
+            bottom: px(s.marginBottom),
+        }
+    }
+
+
+    function marginRect(elm) {
+        var obj = relativeRect(elm),
+            me = marginExtents(elm);
+
+        return {
+            left: obj.left,
+            top: obj.top,
+            width: obj.width + me.left + me.right,
+            height: obj.height + me.top + me.bottom
+        };
+    }
+
+
+    function marginSize(elm) {
+        var obj = size(elm),
+            me = marginExtents(elm);
+
+        return {
+            width: obj.width + me.left + me.right,
+            height: obj.height + me.top + me.bottom
+        };
+    }
+
+    /*
+     * Get the widths of each padding of the specified element.
+     * @param {HTMLElement} elm
+     */
+    function paddingExtents(elm) {
+        if (noder.isWindow(elm)) {
+            return {
+                left : 0,
+                top : 0,
+                right : 0,
+                bottom : 0
+            }
+        }
+        var s = getComputedStyle(elm);
+        return {
+            left: px(s.paddingLeft),
+            top: px(s.paddingTop),
+            right: px(s.paddingRight),
+            bottom: px(s.paddingBottom),
+        }
+    }
+
+    /*
+     * Get or set the document position of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
+    //coordinate to the document
+    function pagePosition(elm, coords) {
+        if (coords === undefined) {
+            var obj = elm.getBoundingClientRect()
+            return {
+                left: obj.left + window.pageXOffset,
+                top: obj.top + window.pageYOffset
+            }
+        } else {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                parentOffset = pagePosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            relativePosition(elm, {
+                top: coords.top - parentOffset.top - mex.top - pbex.top,
+                left: coords.left - parentOffset.left - mex.left - pbex.left
+            });
+            return this;
+        }
+    }
+
+    /*
+     * Get or set the document rect of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
+    function pageRect(elm, coords) {
+        if (coords === undefined) {
+            var obj = elm.getBoundingClientRect()
+            return {
+                left: obj.left + window.pageXOffset,
+                top: obj.top + window.pageYOffset,
+                width: Math.round(obj.width),
+                height: Math.round(obj.height)
+            }
+        } else {
+            pagePosition(elm, coords);
+            size(elm, coords);
+            return this;
+        }
+    }
+
+    /*
+     * Get or set the position of the specified element border box , relative to parent element.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
+    // coordinate relative to it's parent
+    function relativePosition(elm, coords) {
+        if (coords == undefined) {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                offset = boundingPosition(elm),
+                parentOffset = boundingPosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            // Subtract parent offsets and element margins
+            return {
+                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
+                left: offset.left - parentOffset.left - pbex.left, // - mex.left
+            }
+        } else {
+            var props = {
+                top: coords.top,
+                left: coords.left
+            }
+
+            if (styler.css(elm, "position") == "static") {
+                props['position'] = "relative";
+            }
+            styler.css(elm, props);
+            return this;
+        }
+    }
+
+    /*
+     * Get or set the rect of the specified element border box , relatived to parent element.
+     * @param {HTMLElement} elm
+     * @param {PlainObject} coords
+     */
+    function relativeRect(elm, coords) {
+        if (coords === undefined) {
+            var // Get *real* offsetParent
+                parent = offsetParent(elm),
+                // Get correct offsets
+                offset = boundingRect(elm),
+                parentOffset = boundingPosition(parent),
+                mex = marginExtents(elm),
+                pbex = borderExtents(parent);
+
+            // Subtract parent offsets and element margins
+            return {
+                top: offset.top - parentOffset.top - pbex.top, // - mex.top,
+                left: offset.left - parentOffset.left - pbex.left, // - mex.left,
+                width: offset.width,
+                height: offset.height
+            }
+        } else {
+            relativePosition(elm, coords);
+            size(elm, coords);
+            return this;
+        }
+    }
+    /*
+     * Scroll the specified element into view.
+     * @param {HTMLElement} elm
+     * @param {} align
+     */
+    function scrollIntoView(elm, align) {
+        function getOffset(elm, rootElm) {
+            var x, y, parent = elm;
+
+            x = y = 0;
+            while (parent && parent != rootElm && parent.nodeType) {
+                x += parent.offsetLeft || 0;
+                y += parent.offsetTop || 0;
+                parent = parent.offsetParent;
+            }
+
+            return { x: x, y: y };
+        }
+
+        var parentElm = elm.parentNode;
+        var x, y, width, height, parentWidth, parentHeight;
+        var pos = getOffset(elm, parentElm);
+
+        x = pos.x;
+        y = pos.y;
+        width = elm.offsetWidth;
+        height = elm.offsetHeight;
+        parentWidth = parentElm.clientWidth;
+        parentHeight = parentElm.clientHeight;
+
+        if (align == "end") {
+            x -= parentWidth - width;
+            y -= parentHeight - height;
+        } else if (align == "center") {
+            x -= (parentWidth / 2) - (width / 2);
+            y -= (parentHeight / 2) - (height / 2);
+        }
+
+        parentElm.scrollLeft = x;
+        parentElm.scrollTop = y;
+
+        return this;
+    }
+    /*
+     * Get or set the current horizontal position of the scroll bar for the specified element.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
+    function scrollLeft(elm, value) {
+        if (elm.nodeType === 9) {
+            elm = elm.defaultView;
+        }
+        var hasScrollLeft = "scrollLeft" in elm;
+        if (value === undefined) {
+            return hasScrollLeft ? elm.scrollLeft : elm.pageXOffset
+        } else {
+            if (hasScrollLeft) {
+                elm.scrollLeft = value;
+            } else {
+                elm.scrollTo(value, elm.scrollY);
+            }
+            return this;
+        }
+    }
+    /*
+     * Get or the current vertical position of the scroll bar for the specified element.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
+    function scrollTop(elm, value) {
+        if (elm.nodeType === 9) {
+            elm = elm.defaultView;
+        }
+        var hasScrollTop = "scrollTop" in elm;
+
+        if (value === undefined) {
+            return hasScrollTop ? elm.scrollTop : elm.pageYOffset
+        } else {
+            if (hasScrollTop) {
+                elm.scrollTop = value;
+            } else {
+                elm.scrollTo(elm.scrollX, value);
+            }
+            return this;
+        }
+    }
+    /*
+     * Get or set the size of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {PlainObject}dimension
+     */
+    function size(elm, dimension) {
+        if (dimension == undefined) {
+            if (langx.isWindow(elm)) {
+                return {
+                    width: elm.innerWidth,
+                    height: elm.innerHeight
+                }
+
+            } else if (langx.isDocument(elm)) {
+                return getDocumentSize(document);
+            } else {
+                return {
+                    width: elm.offsetWidth,
+                    height: elm.offsetHeight
+                }
+            }
+        } else {
+            var isBorderBox = (styler.css(elm, "box-sizing") === "border-box"),
+                props = {
+                    width: dimension.width,
+                    height: dimension.height
+                };
+            if (!isBorderBox) {
+                var pex = paddingExtents(elm),
+                    bex = borderExtents(elm);
+
+                if (props.width !== undefined && props.width !== "" && props.width !== null) {
+                    props.width = props.width - pex.left - pex.right - bex.left - bex.right;
+                }
+
+                if (props.height !== undefined && props.height !== "" && props.height !== null) {
+                    props.height = props.height - pex.top - pex.bottom - bex.top - bex.bottom;
+                }
+            }
+            styler.css(elm, props);
+            return this;
+        }
+    }
+    /*
+     * Get or set the size of the specified element border box.
+     * @param {HTMLElement} elm
+     * @param {Number} value
+     */
+    function width(elm, value) {
+        if (value == undefined) {
+            return size(elm).width;
+        } else {
+            size(elm, {
+                width: value
+            });
+            return this;
+        }
+    }
+
+    function geom() {
+        return geom;
+    }
+
+    langx.mixin(geom, {
+        borderExtents: borderExtents,
+        //viewport coordinate
+        boundingPosition: boundingPosition,
+
+        boundingRect: boundingRect,
+
+        clientHeight: clientHeight,
+
+        clientSize: clientSize,
+
+        clientWidth: clientWidth,
+
+        contentRect: contentRect,
+
+        getDocumentSize: getDocumentSize,
+
+        height: height,
+
+        marginExtents: marginExtents,
+
+        marginRect: marginRect,
+
+        marginSize: marginSize,
+
+        offsetParent: offsetParent,
+
+        paddingExtents: paddingExtents,
+
+        //coordinate to the document
+        pagePosition: pagePosition,
+
+        pageRect: pageRect,
+
+        // coordinate relative to it's parent
+        relativePosition: relativePosition,
+
+        relativeRect: relativeRect,
+
+        scrollbarWidth: scrollbarWidth,
+
+        scrollIntoView: scrollIntoView,
+
+        scrollLeft: scrollLeft,
+
+        scrollTop: scrollTop,
+
+        size: size,
+
+        width: width
     });
 
+    ( function() {
+        var max = Math.max,
+            abs = Math.abs,
+            rhorizontal = /left|center|right/,
+            rvertical = /top|center|bottom/,
+            roffset = /[\+\-]\d+(\.[\d]+)?%?/,
+            rposition = /^\w+/,
+            rpercent = /%$/;
 
-    return dom.elmx = elmx;
+        function getOffsets( offsets, width, height ) {
+            return [
+                parseFloat( offsets[ 0 ] ) * ( rpercent.test( offsets[ 0 ] ) ? width / 100 : 1 ),
+                parseFloat( offsets[ 1 ] ) * ( rpercent.test( offsets[ 1 ] ) ? height / 100 : 1 )
+            ];
+        }
+
+        function parseCss( element, property ) {
+            return parseInt( styler.css( element, property ), 10 ) || 0;
+        }
+
+        function getDimensions( raw ) {
+            if ( raw.nodeType === 9 ) {
+                return {
+                    size: size(raw),
+                    offset: { top: 0, left: 0 }
+                };
+            }
+            if ( noder.isWindow( raw ) ) {
+                return {
+                    size: size(raw),
+                    offset: { 
+                        top: scrollTop(raw), 
+                        left: scrollLeft(raw) 
+                    }
+                };
+            }
+            if ( raw.preventDefault ) {
+                return {
+                    size : {
+                        width: 0,
+                        height: 0
+                    },
+                    offset: { 
+                        top: raw.pageY, 
+                        left: raw.pageX 
+                    }
+                };
+            }
+            return {
+                size: size(raw),
+                offset: pagePosition(raw)
+            };
+        }
+
+        function getScrollInfo( within ) {
+            var overflowX = within.isWindow || within.isDocument ? "" :
+                    styler.css(within.element,"overflow-x" ),
+                overflowY = within.isWindow || within.isDocument ? "" :
+                    styler.css(within.element,"overflow-y" ),
+                hasOverflowX = overflowX === "scroll" ||
+                    ( overflowX === "auto" && within.width < scrollWidth(within.element) ),
+                hasOverflowY = overflowY === "scroll" ||
+                    ( overflowY === "auto" && within.height < scrollHeight(within.element));
+            return {
+                width: hasOverflowY ? scrollbarWidth() : 0,
+                height: hasOverflowX ? scrollbarWidth() : 0
+            };
+        }
+
+        function getWithinInfo( element ) {
+            var withinElement = element || window,
+                isWindow = noder.isWindow( withinElement),
+                isDocument = !!withinElement && withinElement.nodeType === 9,
+                hasOffset = !isWindow && !isDocument,
+                msize = marginSize(withinElement);
+            return {
+                element: withinElement,
+                isWindow: isWindow,
+                isDocument: isDocument,
+                offset: hasOffset ? pagePosition(element) : { left: 0, top: 0 },
+                scrollLeft: scrollLeft(withinElement),
+                scrollTop: scrollTop(withinElement),
+                width: msize.width,
+                height: msize.height
+            };
+        }
+
+        function posit(elm,options ) {
+            // Make a copy, we don't want to modify arguments
+            options = langx.extend( {}, options );
+
+            var atOffset, targetWidth, targetHeight, targetOffset, basePosition, dimensions,
+                target = options.of,
+                within = getWithinInfo( options.within ),
+                scrollInfo = getScrollInfo( within ),
+                collision = ( options.collision || "flip" ).split( " " ),
+                offsets = {};
+
+            dimensions = getDimensions( target );
+            if ( target.preventDefault ) {
+
+                // Force left top to allow flipping
+                options.at = "left top";
+            }
+            targetWidth = dimensions.size.width;
+            targetHeight = dimensions.size.height;
+            targetOffset = dimensions.offset;
+
+            // Clone to reuse original targetOffset later
+            basePosition = langx.extend( {}, targetOffset );
+
+            // Force my and at to have valid horizontal and vertical positions
+            // if a value is missing or invalid, it will be converted to center
+            langx.each( [ "my", "at" ], function() {
+                var pos = ( options[ this ] || "" ).split( " " ),
+                    horizontalOffset,
+                    verticalOffset;
+
+                if ( pos.length === 1 ) {
+                    pos = rhorizontal.test( pos[ 0 ] ) ?
+                        pos.concat( [ "center" ] ) :
+                        rvertical.test( pos[ 0 ] ) ?
+                            [ "center" ].concat( pos ) :
+                            [ "center", "center" ];
+                }
+                pos[ 0 ] = rhorizontal.test( pos[ 0 ] ) ? pos[ 0 ] : "center";
+                pos[ 1 ] = rvertical.test( pos[ 1 ] ) ? pos[ 1 ] : "center";
+
+                // Calculate offsets
+                horizontalOffset = roffset.exec( pos[ 0 ] );
+                verticalOffset = roffset.exec( pos[ 1 ] );
+                offsets[ this ] = [
+                    horizontalOffset ? horizontalOffset[ 0 ] : 0,
+                    verticalOffset ? verticalOffset[ 0 ] : 0
+                ];
+
+                // Reduce to just the positions without the offsets
+                options[ this ] = [
+                    rposition.exec( pos[ 0 ] )[ 0 ],
+                    rposition.exec( pos[ 1 ] )[ 0 ]
+                ];
+            } );
+
+            // Normalize collision option
+            if ( collision.length === 1 ) {
+                collision[ 1 ] = collision[ 0 ];
+            }
+
+            if ( options.at[ 0 ] === "right" ) {
+                basePosition.left += targetWidth;
+            } else if ( options.at[ 0 ] === "center" ) {
+                basePosition.left += targetWidth / 2;
+            }
+
+            if ( options.at[ 1 ] === "bottom" ) {
+                basePosition.top += targetHeight;
+            } else if ( options.at[ 1 ] === "center" ) {
+                basePosition.top += targetHeight / 2;
+            }
+
+            atOffset = getOffsets( offsets.at, targetWidth, targetHeight );
+            basePosition.left += atOffset[ 0 ];
+            basePosition.top += atOffset[ 1 ];
+
+            return ( function(elem) {
+                var collisionPosition, using,
+                    msize = marginSize(elem),
+                    elemWidth = msize.width,
+                    elemHeight = msize.height,
+                    marginLeft = parseCss( elem, "marginLeft" ),
+                    marginTop = parseCss( elem, "marginTop" ),
+                    collisionWidth = elemWidth + marginLeft + parseCss( elem, "marginRight" ) +
+                        scrollInfo.width,
+                    collisionHeight = elemHeight + marginTop + parseCss( elem, "marginBottom" ) +
+                        scrollInfo.height,
+                    position = langx.extend( {}, basePosition ),
+                    myOffset = getOffsets( offsets.my, msize.width, msize.height);
+
+                if ( options.my[ 0 ] === "right" ) {
+                    position.left -= elemWidth;
+                } else if ( options.my[ 0 ] === "center" ) {
+                    position.left -= elemWidth / 2;
+                }
+
+                if ( options.my[ 1 ] === "bottom" ) {
+                    position.top -= elemHeight;
+                } else if ( options.my[ 1 ] === "center" ) {
+                    position.top -= elemHeight / 2;
+                }
+
+                position.left += myOffset[ 0 ];
+                position.top += myOffset[ 1 ];
+
+                collisionPosition = {
+                    marginLeft: marginLeft,
+                    marginTop: marginTop
+                };
+
+                langx.each( [ "left", "top" ], function( i, dir ) {
+                    if ( positions[ collision[ i ] ] ) {
+                        positions[ collision[ i ] ][ dir ]( position, {
+                            targetWidth: targetWidth,
+                            targetHeight: targetHeight,
+                            elemWidth: elemWidth,
+                            elemHeight: elemHeight,
+                            collisionPosition: collisionPosition,
+                            collisionWidth: collisionWidth,
+                            collisionHeight: collisionHeight,
+                            offset: [ atOffset[ 0 ] + myOffset[ 0 ], atOffset [ 1 ] + myOffset[ 1 ] ],
+                            my: options.my,
+                            at: options.at,
+                            within: within,
+                            elem: elem
+                        } );
+                    }
+                } );
+
+                if ( options.using ) {
+
+                    // Adds feedback as second argument to using callback, if present
+                    using = function( props ) {
+                        var left = targetOffset.left - position.left,
+                            right = left + targetWidth - elemWidth,
+                            top = targetOffset.top - position.top,
+                            bottom = top + targetHeight - elemHeight,
+                            feedback = {
+                                target: {
+                                    element: target,
+                                    left: targetOffset.left,
+                                    top: targetOffset.top,
+                                    width: targetWidth,
+                                    height: targetHeight
+                                },
+                                element: {
+                                    element: elem,
+                                    left: position.left,
+                                    top: position.top,
+                                    width: elemWidth,
+                                    height: elemHeight
+                                },
+                                horizontal: right < 0 ? "left" : left > 0 ? "right" : "center",
+                                vertical: bottom < 0 ? "top" : top > 0 ? "bottom" : "middle"
+                            };
+                        if ( targetWidth < elemWidth && abs( left + right ) < targetWidth ) {
+                            feedback.horizontal = "center";
+                        }
+                        if ( targetHeight < elemHeight && abs( top + bottom ) < targetHeight ) {
+                            feedback.vertical = "middle";
+                        }
+                        if ( max( abs( left ), abs( right ) ) > max( abs( top ), abs( bottom ) ) ) {
+                            feedback.important = "horizontal";
+                        } else {
+                            feedback.important = "vertical";
+                        }
+                        options.using.call( this, props, feedback );
+                    };
+                }
+
+                pagePosition(elem, langx.extend( position, { using: using } ));
+            })(elm);
+        }
+
+        var positions = {
+            fit: {
+                left: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.isWindow ? within.scrollLeft : within.offset.left,
+                        outerWidth = within.width,
+                        collisionPosLeft = position.left - data.collisionPosition.marginLeft,
+                        overLeft = withinOffset - collisionPosLeft,
+                        overRight = collisionPosLeft + data.collisionWidth - outerWidth - withinOffset,
+                        newOverRight;
+
+                    // Element is wider than within
+                    if ( data.collisionWidth > outerWidth ) {
+
+                        // Element is initially over the left side of within
+                        if ( overLeft > 0 && overRight <= 0 ) {
+                            newOverRight = position.left + overLeft + data.collisionWidth - outerWidth -
+                                withinOffset;
+                            position.left += overLeft - newOverRight;
+
+                        // Element is initially over right side of within
+                        } else if ( overRight > 0 && overLeft <= 0 ) {
+                            position.left = withinOffset;
+
+                        // Element is initially over both left and right sides of within
+                        } else {
+                            if ( overLeft > overRight ) {
+                                position.left = withinOffset + outerWidth - data.collisionWidth;
+                            } else {
+                                position.left = withinOffset;
+                            }
+                        }
+
+                    // Too far left -> align with left edge
+                    } else if ( overLeft > 0 ) {
+                        position.left += overLeft;
+
+                    // Too far right -> align with right edge
+                    } else if ( overRight > 0 ) {
+                        position.left -= overRight;
+
+                    // Adjust based on position and margin
+                    } else {
+                        position.left = max( position.left - collisionPosLeft, position.left );
+                    }
+                },
+                top: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.isWindow ? within.scrollTop : within.offset.top,
+                        outerHeight = data.within.height,
+                        collisionPosTop = position.top - data.collisionPosition.marginTop,
+                        overTop = withinOffset - collisionPosTop,
+                        overBottom = collisionPosTop + data.collisionHeight - outerHeight - withinOffset,
+                        newOverBottom;
+
+                    // Element is taller than within
+                    if ( data.collisionHeight > outerHeight ) {
+
+                        // Element is initially over the top of within
+                        if ( overTop > 0 && overBottom <= 0 ) {
+                            newOverBottom = position.top + overTop + data.collisionHeight - outerHeight -
+                                withinOffset;
+                            position.top += overTop - newOverBottom;
+
+                        // Element is initially over bottom of within
+                        } else if ( overBottom > 0 && overTop <= 0 ) {
+                            position.top = withinOffset;
+
+                        // Element is initially over both top and bottom of within
+                        } else {
+                            if ( overTop > overBottom ) {
+                                position.top = withinOffset + outerHeight - data.collisionHeight;
+                            } else {
+                                position.top = withinOffset;
+                            }
+                        }
+
+                    // Too far up -> align with top
+                    } else if ( overTop > 0 ) {
+                        position.top += overTop;
+
+                    // Too far down -> align with bottom edge
+                    } else if ( overBottom > 0 ) {
+                        position.top -= overBottom;
+
+                    // Adjust based on position and margin
+                    } else {
+                        position.top = max( position.top - collisionPosTop, position.top );
+                    }
+                }
+            },
+            flip: {
+                left: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.offset.left + within.scrollLeft,
+                        outerWidth = within.width,
+                        offsetLeft = within.isWindow ? within.scrollLeft : within.offset.left,
+                        collisionPosLeft = position.left - data.collisionPosition.marginLeft,
+                        overLeft = collisionPosLeft - offsetLeft,
+                        overRight = collisionPosLeft + data.collisionWidth - outerWidth - offsetLeft,
+                        myOffset = data.my[ 0 ] === "left" ?
+                            -data.elemWidth :
+                            data.my[ 0 ] === "right" ?
+                                data.elemWidth :
+                                0,
+                        atOffset = data.at[ 0 ] === "left" ?
+                            data.targetWidth :
+                            data.at[ 0 ] === "right" ?
+                                -data.targetWidth :
+                                0,
+                        offset = -2 * data.offset[ 0 ],
+                        newOverRight,
+                        newOverLeft;
+
+                    if ( overLeft < 0 ) {
+                        newOverRight = position.left + myOffset + atOffset + offset + data.collisionWidth -
+                            outerWidth - withinOffset;
+                        if ( newOverRight < 0 || newOverRight < abs( overLeft ) ) {
+                            position.left += myOffset + atOffset + offset;
+                        }
+                    } else if ( overRight > 0 ) {
+                        newOverLeft = position.left - data.collisionPosition.marginLeft + myOffset +
+                            atOffset + offset - offsetLeft;
+                        if ( newOverLeft > 0 || abs( newOverLeft ) < overRight ) {
+                            position.left += myOffset + atOffset + offset;
+                        }
+                    }
+                },
+                top: function( position, data ) {
+                    var within = data.within,
+                        withinOffset = within.offset.top + within.scrollTop,
+                        outerHeight = within.height,
+                        offsetTop = within.isWindow ? within.scrollTop : within.offset.top,
+                        collisionPosTop = position.top - data.collisionPosition.marginTop,
+                        overTop = collisionPosTop - offsetTop,
+                        overBottom = collisionPosTop + data.collisionHeight - outerHeight - offsetTop,
+                        top = data.my[ 1 ] === "top",
+                        myOffset = top ?
+                            -data.elemHeight :
+                            data.my[ 1 ] === "bottom" ?
+                                data.elemHeight :
+                                0,
+                        atOffset = data.at[ 1 ] === "top" ?
+                            data.targetHeight :
+                            data.at[ 1 ] === "bottom" ?
+                                -data.targetHeight :
+                                0,
+                        offset = -2 * data.offset[ 1 ],
+                        newOverTop,
+                        newOverBottom;
+                    if ( overTop < 0 ) {
+                        newOverBottom = position.top + myOffset + atOffset + offset + data.collisionHeight -
+                            outerHeight - withinOffset;
+                        if ( newOverBottom < 0 || newOverBottom < abs( overTop ) ) {
+                            position.top += myOffset + atOffset + offset;
+                        }
+                    } else if ( overBottom > 0 ) {
+                        newOverTop = position.top - data.collisionPosition.marginTop + myOffset + atOffset +
+                            offset - offsetTop;
+                        if ( newOverTop > 0 || abs( newOverTop ) < overBottom ) {
+                            position.top += myOffset + atOffset + offset;
+                        }
+                    }
+                }
+            },
+            flipfit: {
+                left: function() {
+                    positions.flip.left.apply( this, arguments );
+                    positions.fit.left.apply( this, arguments );
+                },
+                top: function() {
+                    positions.flip.top.apply( this, arguments );
+                    positions.fit.top.apply( this, arguments );
+                }
+            }
+        };
+
+        geom.posit = posit;
+    })();
+
+    return skylark.attach("domx.geom", geom);
 });
-define('skylark-utils-dom/plugins',[
-    "./dom",
-    "./langx",
-    "./noder",
-    "./datax",
-    "./eventer",
-    "./finder",
+define('skylark-domx-geom/main',[
+    "skylark-langx/langx",
     "./geom",
-    "./styler",
-    "./fx",
-    "./query",
-    "./elmx"
-], function(dom, langx, noder, datax, eventer, finder, geom, styler, fx, $, elmx) {
+    "skylark-domx-velm",
+    "skylark-domx-query"        
+],function(langx,geom,velm,$){
+   // from ./geom
+    velm.delegate([
+        "borderExtents",
+        "boundingPosition",
+        "boundingRect",
+        "clientHeight",
+        "clientSize",
+        "clientWidth",
+        "contentRect",
+        "height",
+        "marginExtents",
+        "offsetParent",
+        "paddingExtents",
+        "pagePosition",
+        "pageRect",
+        "relativePosition",
+        "relativeRect",
+        "scrollIntoView",
+        "scrollLeft",
+        "scrollTop",
+        "size",
+        "width"
+    ], geom);
+
+    $.fn.offset = $.wraps.wrapper_value(geom.pagePosition, geom, geom.pagePosition);
+
+    $.fn.scrollTop = $.wraps.wrapper_value(geom.scrollTop, geom);
+
+    $.fn.scrollLeft = $.wraps.wrapper_value(geom.scrollLeft, geom);
+
+    $.fn.position =  function(options) {
+        if (!this.length) {
+            return this;
+        }
+
+        if (options) {
+            if (options.of && options.of.length) {
+                options = langx.clone(options);
+                options.of = options.of[0];
+            }
+            return this.each( function() {
+                geom.posit(this,options);
+            });
+        } else {
+            var elem = this[0];
+
+            return geom.relativePosition(elem);
+
+        }             
+    };
+
+    $.fn.offsetParent = $.wraps.wrapper_map(geom.offsetParent, geom);
+
+
+    $.fn.size = $.wraps.wrapper_value(geom.size, geom);
+
+    $.fn.width = $.wraps.wrapper_value(geom.width, geom, geom.width);
+
+    $.fn.height = $.wraps.wrapper_value(geom.height, geom, geom.height);
+
+    $.fn.clientSize = $.wraps.wrapper_value(geom.clientSize, geom.clientSize);
+    
+    ['width', 'height'].forEach(function(dimension) {
+        var offset, Dimension = dimension.replace(/./, function(m) {
+            return m[0].toUpperCase()
+        });
+
+        $.fn['outer' + Dimension] = function(margin, value) {
+            if (arguments.length) {
+                if (typeof margin !== 'boolean') {
+                    value = margin;
+                    margin = false;
+                }
+            } else {
+                margin = false;
+                value = undefined;
+            }
+
+            if (value === undefined) {
+                var el = this[0];
+                if (!el) {
+                    return undefined;
+                }
+                var cb = geom.size(el);
+                if (margin) {
+                    var me = geom.marginExtents(el);
+                    cb.width = cb.width + me.left + me.right;
+                    cb.height = cb.height + me.top + me.bottom;
+                }
+                return dimension === "width" ? cb.width : cb.height;
+            } else {
+                return this.each(function(idx, el) {
+                    var mb = {};
+                    var me = geom.marginExtents(el);
+                    if (dimension === "width") {
+                        mb.width = value;
+                        if (margin) {
+                            mb.width = mb.width - me.left - me.right
+                        }
+                    } else {
+                        mb.height = value;
+                        if (margin) {
+                            mb.height = mb.height - me.top - me.bottom;
+                        }
+                    }
+                    geom.size(el, mb);
+                })
+
+            }
+        };
+    })
+
+    $.fn.innerWidth = $.wraps.wrapper_value(geom.clientWidth, geom, geom.clientWidth);
+
+    $.fn.innerHeight = $.wraps.wrapper_value(geom.clientHeight, geom, geom.clientHeight);
+
+    return geom;
+});
+define('skylark-domx-geom', ['skylark-domx-geom/main'], function (main) { return main; });
+
+define('skylark-domx-fx/fx',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-browser",
+    "skylark-domx-noder",
+    "skylark-domx-geom",
+    "skylark-domx-styler",
+    "skylark-domx-eventer"
+], function(skylark, langx, browser, noder, geom, styler, eventer) {
+    var animationName,
+        animationDuration,
+        animationTiming,
+        animationDelay,
+        transitionProperty,
+        transitionDuration,
+        transitionTiming,
+        transitionDelay,
+
+        animationEnd = browser.normalizeCssEvent('AnimationEnd'),
+        transitionEnd = browser.normalizeCssEvent('TransitionEnd'),
+
+        supportedTransforms = /^((translate|rotate|scale)(X|Y|Z|3d)?|matrix(3d)?|perspective|skew(X|Y)?)$/i,
+        transform = browser.css3PropPrefix + "transform",
+        cssReset = {};
+
+
+    cssReset[animationName = browser.normalizeCssProperty("animation-name")] =
+        cssReset[animationDuration = browser.normalizeCssProperty("animation-duration")] =
+        cssReset[animationDelay = browser.normalizeCssProperty("animation-delay")] =
+        cssReset[animationTiming = browser.normalizeCssProperty("animation-timing-function")] = "";
+
+    cssReset[transitionProperty = browser.normalizeCssProperty("transition-property")] =
+        cssReset[transitionDuration = browser.normalizeCssProperty("transition-duration")] =
+        cssReset[transitionDelay = browser.normalizeCssProperty("transition-delay")] =
+        cssReset[transitionTiming = browser.normalizeCssProperty("transition-timing-function")] = "";
+
+
+
+    /*   
+     * Perform a custom animation of a set of CSS properties.
+     * @param {Object} elm  
+     * @param {Number or String} properties
+     * @param {String} ease
+     * @param {Number or String} duration
+     * @param {Function} callback
+     * @param {Number or String} delay
+     */
+    function animate(elm, properties, duration, ease, callback, delay) {
+        var key,
+            cssValues = {},
+            cssProperties = [],
+            transforms = "",
+            that = this,
+            endEvent,
+            wrappedCallback,
+            fired = false,
+            hasScrollTop = false,
+            resetClipAuto = false;
+
+        if (langx.isPlainObject(duration)) {
+            ease = duration.easing;
+            callback = duration.complete;
+            delay = duration.delay;
+            duration = duration.duration;
+        }
+
+        if (langx.isString(duration)) {
+            duration = fx.speeds[duration];
+        }
+        if (duration === undefined) {
+            duration = fx.speeds.normal;
+        }
+        duration = duration / 1000;
+        if (fx.off) {
+            duration = 0;
+        }
+
+        if (langx.isFunction(ease)) {
+            callback = ease;
+            eace = "swing";
+        } else {
+            ease = ease || "swing";
+        }
+
+        if (delay) {
+            delay = delay / 1000;
+        } else {
+            delay = 0;
+        }
+
+        if (langx.isString(properties)) {
+            // keyframe animation
+            cssValues[animationName] = properties;
+            cssValues[animationDuration] = duration + "s";
+            cssValues[animationTiming] = ease;
+            endEvent = animationEnd;
+        } else {
+            // CSS transitions
+            for (key in properties) {
+                var v = properties[key];
+                if (supportedTransforms.test(key)) {
+                    transforms += key + "(" + v + ") ";
+                } else {
+                    if (key === "scrollTop") {
+                        hasScrollTop = true;
+                    }
+                    if (key == "clip" && langx.isPlainObject(v)) {
+                        cssValues[key] = "rect(" + v.top+"px,"+ v.right +"px,"+ v.bottom +"px,"+ v.left+"px)";
+                        if (styler.css(elm,"clip") == "auto") {
+                            var size = geom.size(elm);
+                            styler.css(elm,"clip","rect("+"0px,"+ size.width +"px,"+ size.height +"px,"+"0px)");  
+                            resetClipAuto = true;
+                        }
+
+                    } else {
+                        cssValues[key] = v;
+                    }
+                    cssProperties.push(langx.dasherize(key));
+                }
+            }
+            endEvent = transitionEnd;
+        }
+
+        if (transforms) {
+            cssValues[transform] = transforms;
+            cssProperties.push(transform);
+        }
+
+        if (duration > 0 && langx.isPlainObject(properties)) {
+            cssValues[transitionProperty] = cssProperties.join(", ");
+            cssValues[transitionDuration] = duration + "s";
+            cssValues[transitionDelay] = delay + "s";
+            cssValues[transitionTiming] = ease;
+        }
+
+        wrappedCallback = function(event) {
+            fired = true;
+            if (event) {
+                if (event.target !== event.currentTarget) {
+                    return // makes sure the event didn't bubble from "below"
+                }
+                eventer.off(event.target, endEvent, wrappedCallback)
+            } else {
+                eventer.off(elm, animationEnd, wrappedCallback) // triggered by setTimeout
+            }
+            styler.css(elm, cssReset);
+            if (resetClipAuto) {
+ //               styler.css(elm,"clip","auto");
+            }
+            callback && callback.call(this);
+        };
+
+        if (duration > 0) {
+            eventer.on(elm, endEvent, wrappedCallback);
+            // transitionEnd is not always firing on older Android phones
+            // so make sure it gets fired
+            langx.debounce(function() {
+                if (fired) {
+                    return;
+                }
+                wrappedCallback.call(that);
+            }, ((duration + delay) * 1000) + 25)();
+        }
+
+        // trigger page reflow so new elements can animate
+        elm.clientLeft;
+
+        styler.css(elm, cssValues);
+
+        if (duration <= 0) {
+            langx.debounce(function() {
+                if (fired) {
+                    return;
+                }
+                wrappedCallback.call(that);
+            }, 0)();
+        }
+
+        if (hasScrollTop) {
+            scrollToTop(elm, properties["scrollTop"], duration, callback);
+        }
+
+        return this;
+    }
+
+    /*   
+     * Display an element.
+     * @param {Object} elm  
+     * @param {String} speed
+     * @param {Function} callback
+     */
+    function show(elm, speed, callback) {
+        styler.show(elm);
+        if (speed) {
+            if (!callback && langx.isFunction(speed)) {
+                callback = speed;
+                speed = "normal";
+            }
+            styler.css(elm, "opacity", 0)
+            animate(elm, { opacity: 1, scale: "1,1" }, speed, callback);
+        }
+        return this;
+    }
+
+
+    /*   
+     * Hide an element.
+     * @param {Object} elm  
+     * @param {String} speed
+     * @param {Function} callback
+     */
+    function hide(elm, speed, callback) {
+        if (speed) {
+            if (!callback && langx.isFunction(speed)) {
+                callback = speed;
+                speed = "normal";
+            }
+            animate(elm, { opacity: 0, scale: "0,0" }, speed, function() {
+                styler.hide(elm);
+                if (callback) {
+                    callback.call(elm);
+                }
+            });
+        } else {
+            styler.hide(elm);
+        }
+        return this;
+    }
+
+    /*   
+     * Set the vertical position of the scroll bar for an element.
+     * @param {Object} elm  
+     * @param {Number or String} pos
+     * @param {Number or String} speed
+     * @param {Function} callback
+     */
+    function scrollToTop(elm, pos, speed, callback) {
+        var scrollFrom = parseInt(elm.scrollTop),
+            i = 0,
+            runEvery = 5, // run every 5ms
+            freq = speed * 1000 / runEvery,
+            scrollTo = parseInt(pos);
+
+        var interval = setInterval(function() {
+            i++;
+
+            if (i <= freq) elm.scrollTop = (scrollTo - scrollFrom) / freq * i + scrollFrom;
+
+            if (i >= freq + 1) {
+                clearInterval(interval);
+                if (callback) langx.debounce(callback, 1000)();
+            }
+        }, runEvery);
+    }
+
+    /*   
+     * Display or hide an element.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {Function} callback
+     */
+    function toggle(elm, speed, callback) {
+        if (styler.isInvisible(elm)) {
+            show(elm, speed, callback);
+        } else {
+            hide(elm, speed, callback);
+        }
+        return this;
+    }
+
+    /*   
+     * Adjust the opacity of an element.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {Number or String} opacity
+     * @param {String} easing
+     * @param {Function} callback
+     */
+    function fadeTo(elm, speed, opacity, easing, callback) {
+        animate(elm, { opacity: opacity }, speed, easing, callback);
+        return this;
+    }
+
+
+    /*   
+     * Display an element by fading them to opaque.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {String} easing
+     * @param {Function} callback
+     */
+    function fadeIn(elm, speed, easing, callback) {
+        var target = styler.css(elm, "opacity");
+        if (target > 0) {
+            styler.css(elm, "opacity", 0);
+        } else {
+            target = 1;
+        }
+        styler.show(elm);
+
+        fadeTo(elm, speed, target, easing, callback);
+
+        return this;
+    }
+
+    /*   
+     * Hide an element by fading them to transparent.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {String} easing
+     * @param {Function} callback
+     */
+    function fadeOut(elm, speed, easing, callback) {
+        var _elm = elm,
+            complete,
+            opacity = styler.css(elm,"opacity"),
+            options = {};
+
+        if (langx.isPlainObject(speed)) {
+            options.easing = speed.easing;
+            options.duration = speed.duration;
+            complete = speed.complete;
+        } else {
+            options.duration = speed;
+            if (callback) {
+                complete = callback;
+                options.easing = easing;
+            } else {
+                complete = easing;
+            }
+        }
+        options.complete = function() {
+            styler.css(elm,"opacity",opacity);
+            styler.hide(elm);
+            if (complete) {
+                complete.call(elm);
+            }
+        }
+
+        fadeTo(elm, options, 0);
+
+        return this;
+    }
+
+    /*   
+     * Display or hide an element by animating its opacity.
+     * @param {Object} elm  
+     * @param {Number or String} speed
+     * @param {String} ceasing
+     * @param {Function} callback
+     */
+    function fadeToggle(elm, speed, ceasing, allback) {
+        if (styler.isInvisible(elm)) {
+            fadeIn(elm, speed, easing, callback);
+        } else {
+            fadeOut(elm, speed, easing, callback);
+        }
+        return this;
+    }
+
+    /*   
+     * Display an element with a sliding motion.
+     * @param {Object} elm  
+     * @param {Number or String} duration
+     * @param {Function} callback
+     */
+    function slideDown(elm, duration, callback) {
+
+        // get the element position to restore it then
+        var position = styler.css(elm, 'position');
+
+        // show element if it is hidden
+        show(elm);
+
+        // place it so it displays as usually but hidden
+        styler.css(elm, {
+            position: 'absolute',
+            visibility: 'hidden'
+        });
+
+        // get naturally height, margin, padding
+        var marginTop = styler.css(elm, 'margin-top');
+        var marginBottom = styler.css(elm, 'margin-bottom');
+        var paddingTop = styler.css(elm, 'padding-top');
+        var paddingBottom = styler.css(elm, 'padding-bottom');
+        var height = styler.css(elm, 'height');
+
+        // set initial css for animation
+        styler.css(elm, {
+            position: position,
+            visibility: 'visible',
+            overflow: 'hidden',
+            height: 0,
+            marginTop: 0,
+            marginBottom: 0,
+            paddingTop: 0,
+            paddingBottom: 0
+        });
+
+        // animate to gotten height, margin and padding
+        animate(elm, {
+            height: height,
+            marginTop: marginTop,
+            marginBottom: marginBottom,
+            paddingTop: paddingTop,
+            paddingBottom: paddingBottom
+        }, {
+            duration: duration,
+            complete: function() {
+                if (callback) {
+                    callback.apply(elm);
+                }
+            }
+        });
+
+        return this;
+    }
+
+    /*   
+     * Hide an element with a sliding motion.
+     * @param {Object} elm  
+     * @param {Number or String} duration
+     * @param {Function} callback
+     */
+    function slideUp(elm, duration, callback) {
+        // active the function only if the element is visible
+        if (geom.height(elm) > 0) {
+
+            // get the element position to restore it then
+            var position = styler.css(elm, 'position');
+
+            // get the element height, margin and padding to restore them then
+            var height = styler.css(elm, 'height');
+            var marginTop = styler.css(elm, 'margin-top');
+            var marginBottom = styler.css(elm, 'margin-bottom');
+            var paddingTop = styler.css(elm, 'padding-top');
+            var paddingBottom = styler.css(elm, 'padding-bottom');
+
+            // set initial css for animation
+            styler.css(elm, {
+                visibility: 'visible',
+                overflow: 'hidden',
+                height: height,
+                marginTop: marginTop,
+                marginBottom: marginBottom,
+                paddingTop: paddingTop,
+                paddingBottom: paddingBottom
+            });
+
+            // animate element height, margin and padding to zero
+            animate(elm, {
+                height: 0,
+                marginTop: 0,
+                marginBottom: 0,
+                paddingTop: 0,
+                paddingBottom: 0
+            }, {
+                // callback : restore the element position, height, margin and padding to original values
+                duration: duration,
+                queue: false,
+                complete: function() {
+                    hide(elm);
+                    styler.css(elm, {
+                        visibility: 'visible',
+                        overflow: 'hidden',
+                        height: height,
+                        marginTop: marginTop,
+                        marginBottom: marginBottom,
+                        paddingTop: paddingTop,
+                        paddingBottom: paddingBottom
+                    });
+                    if (callback) {
+                        callback.apply(elm);
+                    }
+                }
+            });
+        }
+        return this;
+    }
+
+
+    /*   
+     * Display or hide an element with a sliding motion.
+     * @param {Object} elm  
+     * @param {Number or String} duration
+     * @param {Function} callback
+     */
+    function slideToggle(elm, duration, callback) {
+
+        // if the element is hidden, slideDown !
+        if (geom.height(elm) == 0) {
+            slideDown(elm, duration, callback);
+        }
+        // if the element is visible, slideUp !
+        else {
+            slideUp(elm, duration, callback);
+        }
+        return this;
+    }
+
+    function emulateTransitionEnd(elm,duration) {
+        var called = false;
+        eventer.one(elm,'transitionEnd', function () { 
+            called = true;
+        })
+        var callback = function () { 
+            if (!called) {
+                eventer.trigger(elm,browser.support.transition.end) 
+            }
+        };
+        setTimeout(callback, duration);
+        
+        return this;
+    } 
+
+    /*   
+     *
+     * @param {Node} elm
+     * @param {Node} params
+     */
+    function overlay(elm, params) {
+        var overlayDiv = noder.createElement("div", params);
+        styler.css(overlayDiv, {
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            zIndex: 0x7FFFFFFF,
+            opacity: 0.7
+        });
+        elm.appendChild(overlayDiv);
+        return overlayDiv;
+
+    }
+    
+    /*   
+     * Replace an old node with the specified node.
+     * @param {HTMLElement} elm
+     * @param {Node} params
+     */
+    function throb(elm, params) {
+        params = params || {};
+        var self = this,
+            text = params.text,
+            style = params.style,
+            time = params.time,
+            callback = params.callback,
+            timer,
+
+            throbber = noder.createElement("div", {
+                "class": params.className || "throbber"
+            }),
+            _overlay = overlay(throbber, {
+                "class": 'overlay fade'
+            }),
+            throb = noder.createElement("div", {
+                "class": "throb"
+            }),
+            textNode = noder.createTextNode(text || ""),
+            remove = function() {
+                if (timer) {
+                    clearTimeout(timer);
+                    timer = null;
+                }
+                if (throbber) {
+                    noder.remove(throbber);
+                    throbber = null;
+                }
+            },
+            update = function(params) {
+                if (params && params.text && throbber) {
+                    textNode.nodeValue = params.text;
+                }
+            };
+        if (params.style) {
+            styler.css(throbber,params.style);
+        }
+        throb.appendChild(textNode);
+        throbber.appendChild(throb);
+        elm.appendChild(throbber);
+        var end = function() {
+            remove();
+            if (callback) callback();
+        };
+        if (time) {
+            timer = setTimeout(end, time);
+        }
+
+        return {
+            remove: remove,
+            update: update
+        };
+    }
+
+    function fx() {
+        return fx;
+    }
+
+    langx.mixin(fx, {
+        off: false,
+
+        speeds: {
+            normal: 400,
+            fast: 200,
+            slow: 600
+        },
+
+        animate,
+        emulateTransitionEnd,
+        fadeIn,
+        fadeOut,
+        fadeTo,
+        fadeToggle,
+        hide,
+        scrollToTop,
+
+        slideDown,
+        slideToggle,
+        slideUp,
+        show,
+        throb,
+        toggle
+    });
+
+    return skylark.attach("domx.fx", fx);
+});
+define('skylark-domx-fx/main',[
+	"./fx",
+	"skylark-domx-velm",
+	"skylark-domx-query"	
+],function(fx,velm,$){
+    // from ./fx
+    velm.delegate([
+        "animate",
+        "emulateTransitionEnd",
+        "fadeIn",
+        "fadeOut",
+        "fadeTo",
+        "fadeToggle",
+        "hide",
+        "scrollToTop",
+        "slideDown",
+        "slideToggle",
+        "slideUp",
+        "show",
+        "toggle"
+    ], fx);
+
+    $.fn.hide =  $.wraps.wrapper_every_act(fx.hide, fx);
+
+    $.fn.animate = $.wraps.wrapper_every_act(fx.animate, fx);
+    $.fn.emulateTransitionEnd = $.wraps.wrapper_every_act(fx.emulateTransitionEnd, fx);
+
+    $.fn.show = $.wraps.wrapper_every_act(fx.show, fx);
+    $.fn.hide = $.wraps.wrapper_every_act(fx.hide, fx);
+    $.fn.toogle = $.wraps.wrapper_every_act(fx.toogle, fx);
+    $.fn.fadeTo = $.wraps.wrapper_every_act(fx.fadeTo, fx);
+    $.fn.fadeIn = $.wraps.wrapper_every_act(fx.fadeIn, fx);
+    $.fn.fadeOut = $.wraps.wrapper_every_act(fx.fadeOut, fx);
+    $.fn.fadeToggle = $.wraps.wrapper_every_act(fx.fadeToggle, fx);
+
+    $.fn.slideDown = $.wraps.wrapper_every_act(fx.slideDown, fx);
+    $.fn.slideToggle = $.wraps.wrapper_every_act(fx.slideToggle, fx);
+    $.fn.slideUp = $.wraps.wrapper_every_act(fx.slideUp, fx);
+
+	return fx;
+});
+define('skylark-domx-fx', ['skylark-domx-fx/main'], function (main) { return main; });
+
+define('skylark-domx-plugins/plugins',[
+    "skylark-langx/skylark",
+    "skylark-langx/langx",
+    "skylark-domx-noder",
+    "skylark-domx-data",
+    "skylark-domx-eventer",
+    "skylark-domx-finder",
+    "skylark-domx-geom",
+    "skylark-domx-styler",
+    "skylark-domx-fx",
+    "skylark-domx-query",
+    "skylark-domx-velm"
+], function(skylark, langx, noder, datax, eventer, finder, geom, styler, fx, $, elmx) {
     "use strict";
 
     var slice = Array.prototype.slice,
@@ -13642,6 +14436,7 @@ define('skylark-utils-dom/plugins',[
         return pluginInstance;
     }
 
+
     function shortcutter(pluginName,extfn) {
        /*
         * Create or get or destory a plugin instance assocated with the element,
@@ -13652,12 +14447,15 @@ define('skylark-utils-dom/plugins',[
             if ( options === "instance" ) {
               return plugin || null;
             }
+
             if (!plugin) {
                 plugin = instantiate(elm, pluginName,typeof options == 'object' && options || {});
-            }
-
+                if (typeof options != "string") {
+                  return this;
+                }
+            } 
             if (options) {
-                var args = slice.call(arguments,2);
+                var args = slice.call(arguments,1); //2
                 if (extfn) {
                     return extfn.apply(plugin,args);
                 } else {
@@ -13713,7 +14511,7 @@ define('skylark-utils-dom/plugins',[
                   this.each(function () {
                     var args2 = slice.call(args);
                     args2.unshift(this);
-                    var  ret  = shortcut.apply(null,args2);
+                    var  ret  = shortcut.apply(undefined,args2);
                     if (ret !== undefined) {
                         returnValue = ret;
                         return false;
@@ -13762,15 +14560,15 @@ define('skylark-utils-dom/plugins',[
             for (var i=0;i<ctors.length;i++) {
               ctor = ctors[i];
               if (ctor.prototype.hasOwnProperty("options")) {
-                langx.mixin(defaults,ctor.prototype.options);
+                langx.mixin(defaults,ctor.prototype.options,true);
               }
               if (ctor.hasOwnProperty("options")) {
-                langx.mixin(defaults,ctor.options);
+                langx.mixin(defaults,ctor.options,true);
               }
             }
           }
           Object.defineProperty(this,"options",{
-            value :langx.mixin({},defaults,options)
+            value :langx.mixin({},defaults,options,true)
           });
 
           //return this.options = langx.mixin({},defaults,options);
@@ -13857,6 +14655,13 @@ define('skylark-utils-dom/plugins',[
             return this;
         },
 
+        getUID : function (prefix) {
+            prefix = prefix || "plugin";
+            do prefix += ~~(Math.random() * 1000000)
+            while (document.getElementById(prefix))
+            return prefix;
+        },
+
         elm : function() {
             return this._elm;
         }
@@ -13891,12 +14696,19 @@ define('skylark-utils-dom/plugins',[
         shortcuts
     });
 
-    return plugins;
+    return  skylark.attach("domx.plugins",plugins);
 });
+define('skylark-domx-plugins/main',[
+	"./plugins"
+],function(plugins){
+	return plugins;
+});
+define('skylark-domx-plugins', ['skylark-domx-plugins/main'], function (main) { return main; });
+
 define('skylark-totaljs-jcomponent/utils/domx',[
 	"../langx",
-	"skylark-utils-dom/query",
-	"skylark-utils-dom/plugins"
+	"./query",
+	"skylark-domx-plugins"
 ],function(langx, $, plugins){
 	var statics = langx.statics;
 	
@@ -14594,7 +15406,7 @@ define('skylark-totaljs-jcomponent/binding/vbindArray',[
 });
 
 define('skylark-totaljs-jcomponent/binding',[
-	"skylark-utils-dom/query",
+	"./utils/query",
 	"./jc",
 	"./langx",
 	"./plugins",
@@ -18189,11 +19001,12 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../utils/domx",
 	"../utils/http",
 	"../utils/logs",
+	"../utils/cache",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,cache,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -18213,7 +19026,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	}, (1000 * 60) * 5);	
 
 	function clean2() {
-		clear();
+		cache.clear();
 		clean();
 	}
 
@@ -18223,7 +19036,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 
 
-		clear('find');
+		cache.clear('find');
 
 
 		//W.DATETIME = W.NOW = new Date();
@@ -20640,7 +21453,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				return EXEC;
 			}
 
-			var fn = paths.get(path);
+			var fn = get(path);
 
 			if (langx.isFunction(fn)) {
 				fn.apply(ctx, arg);
@@ -21505,7 +22318,12 @@ define('skylark-totaljs-jcomponent/globals',[
 		};
 
 		W.ERRORS =	function errors(path, except, highlight) { // 
+		
 			return gs.errors(path,except,highlight);
+		};
+
+		W.EXEC = function(path) {
+			return gs.exec.apply(gs,arguments);
 		};
 
 	   /**
@@ -21746,6 +22564,13 @@ define('skylark-totaljs-jcomponent/globals',[
 			return W;
 		};
 
+		W.SEEX = function(path, a, b, c, d) {
+			if (path.indexOf('.') === -1)
+				EXEC(path, a, b, c, d);
+			else
+				SET(path, a);
+		};
+	
 	   /**
 	   * Sets a new value according to the path and performs CHANGE() for all components 
 	   * which are listening on the path.

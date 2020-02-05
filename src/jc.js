@@ -1,7 +1,7 @@
 define([
 	"skylark-langx/skylark",
 	"skylark-langx/langx",
-	"skylark-utils-dom/query"
+	"./utils/query"
 ],function(skylark,langx,$){
 	var totaljs = skylark.totaljs = {};
 	var M = totaljs.jc = {

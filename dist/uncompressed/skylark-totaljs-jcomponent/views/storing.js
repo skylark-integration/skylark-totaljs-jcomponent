@@ -907,7 +907,7 @@ define([
 				return EXEC;
 			}
 
-			var fn = paths.get(path);
+			var fn = get(path);
 
 			if (langx.isFunction(fn)) {
 				fn.apply(ctx, arg);

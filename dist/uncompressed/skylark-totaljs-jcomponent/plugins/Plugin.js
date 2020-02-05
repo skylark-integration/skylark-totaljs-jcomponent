@@ -1,5 +1,5 @@
 define([
-	"skylark-utils-dom/query",
+	"../utils/query",
 	"../utils/cache",
 	"./_registry"
 ],function($, caches, registry){
