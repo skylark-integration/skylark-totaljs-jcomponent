@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define([],function(){return function(n){var e={};return{get:function(n){return e[n]},set:function(n,t){return e[n]=t,this},clear:function(){if(arguments.length)for(var n=langx.keys(e),t=0,r=n.length;t<r;t++){for(var f=n[t],i=!1,u=arguments,l=0;l<u.length;l++)if(f.substring(0,u[l].length)===u[l]){i=!0;break}i&&delete e[f]}else e={}}}}});
+define(["../langx"],function(e){return function(e){var n={};return{get:function(e){return n[e]},set:function(e,t){return n[e]=t,this},clear:function(){if(arguments.length)for(var e=Object.keys(n),t=0,r=e.length;t<r;t++){for(var f=e[t],i=!1,u=arguments,l=0;l<u.length;l++)if(f.substring(0,u[l].length)===u[l]){i=!0;break}i&&delete n[f]}else n={}}}}});
 //# sourceMappingURL=../sourcemaps/views/cache.js.map

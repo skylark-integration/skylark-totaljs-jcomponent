@@ -7096,7 +7096,9 @@ define('skylark-totaljs-jcomponent/views/binding',[
 	return binding;
 });
 define('skylark-totaljs-jcomponent/views/cache',[
-],function(){
+	"../langx"
+],function(langx){
+
 	function cache(view) {	
 		var page = {};
 
@@ -7116,7 +7118,7 @@ define('skylark-totaljs-jcomponent/views/cache',[
 				return;
 			}
 
-			var keys = langx.keys(page);
+			var keys = Object.keys(page);
 
 			for (var i = 0, length = keys.length; i < length; i++) {
 				var key = keys[i];
@@ -8432,9 +8434,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			imports = {},
 			toggles = [],
 			//ready = [], // view.ready
-			cache = {
-				current : {}
-			},
+			current = {},
 			compiles = {
 				is : false,
 				recompile : false
@@ -8507,7 +8507,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 					key = '$import' + key;
 
-					cache.current.element = item.element[0];
+					current.element = item.element[0];
 
 					if (statics[key]) {
 						response = domx.removescripts(response);
@@ -8532,7 +8532,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 						}
 					}
 
-					cache.current.element = null;
+					current.element = null;
 					count++;
 					next();
 
@@ -8826,9 +8826,9 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					con.fn(obj) && obj.reconfigure(con.config, NOOP);
 				}
 
-				cache.current.com = obj;
+				current.com = obj;
 				com.declaration.call(obj, obj, obj.config);
-				cache.current.com = null;
+				current.com = null;
 
 				meta[3] && el.attrd('jc-value', meta[3]);
 
@@ -8882,10 +8882,10 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 						}
 						dependencies(com, function(obj, el) {
 							if (langx.isFunction(obj.make)) {
-								var parent = cache.current.com;
-								cache.current.com = obj;
+								var parent = current.com;
+								current.com = obj;
 								obj.make(data);
-								cache.current.com = parent;
+								current.com = parent;
 							}
 							init(el, obj);
 						}, obj, el);
@@ -8941,10 +8941,10 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					dependencies(com, function(obj, el) {
 
 						if (obj.make) {
-							var parent = cache.current.com;
-							cache.current.com = obj;
+							var parent = current.com;
+							current.com = obj;
 							obj.make();
-							cache.current.com = parent;
+							current.com = parent;
 						}
 
 						init(el, obj);
@@ -8955,10 +8955,10 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					setTimeout(function(init, el, obj) {
 
 						if (obj.make) {
-							var parent = cache.current.com;
-							cache.current.com = obj;
+							var parent = current.com;
+							current.com = obj;
 							obj.make();
-							cache.current.com = parent;
+							current.com = parent;
 						}
 
 						init(el, obj);
@@ -11201,6 +11201,7 @@ define('skylark-totaljs-jcomponent/views/View',[
 		_construct : function(elm,options) {
 			domx.Plugin.prototype._construct.apply(this,arguments);
 
+			this.cache = cache(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
@@ -11208,7 +11209,6 @@ define('skylark-totaljs-jcomponent/views/View',[
 			this.storing = storing(this);
 			this.componenter = componenter(this);
 			this.compiler = compiler(this);
-			this.cache = cache(this);
 			
 			this.ready = [];
 		},

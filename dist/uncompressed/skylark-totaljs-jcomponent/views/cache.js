@@ -1,5 +1,7 @@
 define([
-],function(){
+	"../langx"
+],function(langx){
+
 	function cache(view) {	
 		var page = {};
 
@@ -19,7 +21,7 @@ define([
 				return;
 			}
 
-			var keys = langx.keys(page);
+			var keys = Object.keys(page);
 
 			for (var i = 0, length = keys.length; i < length; i++) {
 				var key = keys[i];

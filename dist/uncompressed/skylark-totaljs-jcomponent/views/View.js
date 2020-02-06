@@ -40,6 +40,7 @@ define([
 		_construct : function(elm,options) {
 			domx.Plugin.prototype._construct.apply(this,arguments);
 
+			this.cache = cache(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
@@ -47,7 +48,6 @@ define([
 			this.storing = storing(this);
 			this.componenter = componenter(this);
 			this.compiler = compiler(this);
-			this.cache = cache(this);
 			
 			this.ready = [];
 		},

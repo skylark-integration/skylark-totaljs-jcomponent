@@ -91,9 +91,7 @@ define([
 			imports = {},
 			toggles = [],
 			//ready = [], // view.ready
-			cache = {
-				current : {}
-			},
+			current = {},
 			compiles = {
 				is : false,
 				recompile : false
@@ -166,7 +164,7 @@ define([
 
 					key = '$import' + key;
 
-					cache.current.element = item.element[0];
+					current.element = item.element[0];
 
 					if (statics[key]) {
 						response = domx.removescripts(response);
@@ -191,7 +189,7 @@ define([
 						}
 					}
 
-					cache.current.element = null;
+					current.element = null;
 					count++;
 					next();
 
@@ -485,9 +483,9 @@ define([
 					con.fn(obj) && obj.reconfigure(con.config, NOOP);
 				}
 
-				cache.current.com = obj;
+				current.com = obj;
 				com.declaration.call(obj, obj, obj.config);
-				cache.current.com = null;
+				current.com = null;
 
 				meta[3] && el.attrd('jc-value', meta[3]);
 
@@ -541,10 +539,10 @@ define([
 						}
 						dependencies(com, function(obj, el) {
 							if (langx.isFunction(obj.make)) {
-								var parent = cache.current.com;
-								cache.current.com = obj;
+								var parent = current.com;
+								current.com = obj;
 								obj.make(data);
-								cache.current.com = parent;
+								current.com = parent;
 							}
 							init(el, obj);
 						}, obj, el);
@@ -600,10 +598,10 @@ define([
 					dependencies(com, function(obj, el) {
 
 						if (obj.make) {
-							var parent = cache.current.com;
-							cache.current.com = obj;
+							var parent = current.com;
+							current.com = obj;
 							obj.make();
-							cache.current.com = parent;
+							current.com = parent;
 						}
 
 						init(el, obj);
@@ -614,10 +612,10 @@ define([
 					setTimeout(function(init, el, obj) {
 
 						if (obj.make) {
-							var parent = cache.current.com;
-							cache.current.com = obj;
+							var parent = current.com;
+							current.com = obj;
 							obj.make();
-							cache.current.com = parent;
+							current.com = parent;
 						}
 
 						init(el, obj);
