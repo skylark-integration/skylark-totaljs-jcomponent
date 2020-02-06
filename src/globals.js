@@ -631,5 +631,5 @@ define([
 		return W;
 	}
 
-	return jc.globals = init;
+	return init;
 })

@@ -12041,7 +12041,7 @@ define('skylark-totaljs-jcomponent/globals',[
 		return W;
 	}
 
-	return jc.globals = init;
+	return init;
 });
 define('skylark-totaljs-jcomponent/main',[
 	"./jc",
