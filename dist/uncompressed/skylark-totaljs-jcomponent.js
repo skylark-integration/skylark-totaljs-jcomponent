@@ -9889,8 +9889,9 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 define('skylark-totaljs-jcomponent/views/storing',[
 	"../langx",
 	"../utils/storage",
-	"../binding/pathmaker"
-],function(langx,storage,pathmaker){
+	"../binding/pathmaker",
+	"../plugins"
+],function(langx,storage,pathmaker,plugins){
 	var	SELINPUT = 'input,textarea,select';
 	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
 	
