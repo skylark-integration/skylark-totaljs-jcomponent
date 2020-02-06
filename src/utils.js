@@ -1,7 +1,7 @@
 define([
 	"./jc",
 	"./utils/blocks",
-	"./utils/cache",
+	"./utils/storage",
 	"./utils/cookies",
 	"./utils/domx",
 	"./utils/envs",
@@ -9,11 +9,11 @@ define([
 	"./utils/localStorage",
 	"./utils/logs",
 	"./utils/query"
-],function(jc,blocks,cache,cookies,domx,envs,http,localStorage,logs,query){
+],function(jc,blocks,storage,cookies,domx,envs,http,localStorage,logs,query){
 	
 	return jc.utils = {
 		blocks : blocks,
-		cache : cache,
+		storage : storage,
 		cookies : cookies,
 		domx : domx,
 		envs : envs,

@@ -4,12 +4,11 @@ define([
 	"../utils/domx",
 	"../utils/http",
 	"../utils/logs",
-	"../utils/cache",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,cache,registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -22,69 +21,68 @@ define([
 
 	var fallback = { $: 0 }; // $ === count of new items in fallback
 
-	setInterval(function() {
-		temp = {};
-//		paths = {};
-//		cleaner();
-	}, (1000 * 60) * 5);	
-
-	function clean2() {
-		cache.clear();
-		clean();
-	}
-
-	function clean() {
-		var is = false;
-		var index;
-
-
-
-		cache.clear('find');
-
-
-		//W.DATETIME = W.NOW = new Date();
-		//var now = W.NOW.getTime();
-		var is2 = false;
-		var is3 = false;
-
-
-
-
-		if (is) {
-			refresh();
-			setTimeout(compile, 2000);
-		}
-	}
-
-
-	setInterval(function() {
-//		temp = {};
-//		paths = {};
-		clean();
-	}, (1000 * 60) * 5);
-
-
-    /*
-    for (var i = 0, length = all.length; i < length; i++) { // M.components.length
-        var m = all[i]; // M.components[i];
-        if (!m.$removed || name === m.name){
-            config && m.reconfigure(config, undefined, true);
-            declaration.call(m, m, m.config);
-        }
-    }
-
-    RECOMPILE();
-    */
-
-
-
 	function compiler(view) {
 		var helper = view.helper,
 			eventer = view.eventer,
 			storing = view.storing,
 			scoper = view.scoper,
 			binding = view.binding,
+			cache = view.cache,
 			componenter = view.componenter;
+
+		setInterval(function() {
+			temp = {};
+	//		paths = {};
+	//		cleaner();
+		}, (1000 * 60) * 5);	
+
+		function clean2() {
+			cache.clear();
+			clean();
+		}
+
+		function clean() {
+			var is = false;
+			var index;
+
+
+
+			cache.clear('find');
+
+
+			//W.DATETIME = W.NOW = new Date();
+			//var now = W.NOW.getTime();
+			var is2 = false;
+			var is3 = false;
+
+
+
+
+			if (is) {
+				refresh();
+				setTimeout(compile, 2000);
+			}
+		}
+
+
+		setInterval(function() {
+	//		temp = {};
+	//		paths = {};
+			clean();
+		}, (1000 * 60) * 5);
+
+
+	    /*
+	    for (var i = 0, length = all.length; i < length; i++) { // M.components.length
+	        var m = all[i]; // M.components[i];
+	        if (!m.$removed || name === m.name){
+	            config && m.reconfigure(config, undefined, true);
+	            declaration.call(m, m, m.config);
+	        }
+	    }
+
+	    RECOMPILE();
+	    */
     
 		var 
 			importing = 0,
@@ -92,7 +90,7 @@ define([
 			initing = [],
 			imports = {},
 			toggles = [],
-			ready = [],
+			//ready = [], // view.ready
 			cache = {
 				current : {}
 			},
@@ -231,7 +229,7 @@ define([
 			if (next) {
 				next();
 			} else { //if ($domready) {
-				if (ready) {
+				if (view.ready) {
 					compiles.is = false;
 				}
 
@@ -849,7 +847,7 @@ define([
 				function initialize() {
 					var item = initing.pop();
 					if (item === undefined)
-						!ready && compile();
+						!view.ready && compile();
 					else {
 						if (!item.$removed) {
 							componenter.prepare(item);
@@ -896,11 +894,11 @@ define([
 					compile();
 				}
 
-				if (ready) {
-					var arr = ready;
+				if (view.ready) {
+					var arr = view.ready;
 					for (var i = 0, length = arr.length; i < length; i++)
 						arr[i](count);
-					ready = undefined;
+					view.ready = undefined;
 					compile();
 					setTimeout(compile, 3000);
 					setTimeout(compile, 6000);

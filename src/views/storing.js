@@ -1,23 +1,22 @@
 define([
 	"../langx",
+	"../utils/storage",
 	"../binding/pathmaker"
-],function(langx,pathmaker){
+],function(langx,storage,pathmaker){
 	var	SELINPUT = 'input,textarea,select';
 	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
 	
 	var REGISARR = /\[\d+\]$/;
 	
 	function storing (view) {
-		var cache = {}; // lwf
 
 		var skipproxy = '';
 
 		var eventer = view.eventer,
-			binding = view.binding;
+			binding = view.binding,
+			cache = view.cache;
 
 		var store = view.option("store");
-
-
 
 		function parsepath(path) {
 			var arr = path.split('.');
@@ -163,21 +162,21 @@ define([
 
 
 	 	//cache
-		function cache(path, expire, rebind) { // W.CACHEPATH = 
+		function cachePath(path, expire, rebind) { // W.CACHEPATH = 
 			var key = '$jcpath';
 			WATCH(path, function(p, value) {
-				var obj = storages.get(key); // cachestorage(key);
+				var obj = storage(key); // cachestorage(key);
 				if (obj) {
 					obj[path] = value;
 				}else {
 					obj = {};
 					obj[path] = value;
 				}
-				storages.put(key, obj, expire); // cachestorage(key, obj, expire);
+				storage(key, obj, expire); // cachestorage(key, obj, expire);
 			});
 
 			if (rebind === undefined || rebind) {
-				var cache = storages.get(key); // cachestorage(key);
+				var cache = storage(key); // cachestorage(key);
 				if (cache && cache[path] !== undefined && cache[path] !== get(path)){
 					setx(path, cache[path], true);	
 				} 
@@ -448,7 +447,7 @@ define([
 			}
 
 			if (reset) {
-				caches.clear('dirty', 'valid');
+				cache.clear('dirty', 'valid');
 			}
 
 			for (var i = 0, length = state.length; i < length; i++) {
@@ -622,7 +621,7 @@ define([
 			}
 
 			if (reset) {
-				clear('dirty', 'valid');
+				cache.clear('dirty', 'valid');
 			}
 
 			for (var i = 0, length = state.length; i < length; i++) {
@@ -755,7 +754,7 @@ define([
 	   * @param  {Function} fn 
 	   * @param  {Boolean} update Optional Optional, default "true"
 	   */
-		function make(obj, fn, update) { // W.MAKE
+		function make(obj, fn, needsUpdate) { // W.MAKE
 
 			switch (typeof(obj)) {
 				case 'function':
@@ -773,10 +772,10 @@ define([
 					fn.call(obj, obj, p, function(path, value) {
 						setx(obj, path, value);
 					});
-					if (is && (update === undefined || update === true))
+					if (is && (needsUpdate === undefined || needsUpdate === true))
 						update(p, true);
 					else {
-						if (C.ready) {
+						if (view.ready) {
 							set(p, obj);
 						} else {
 							setx(p, obj, true);
@@ -1011,7 +1010,7 @@ define([
 				}
 			}
 
-			clear('valid', 'dirty');
+			cache.clear('valid', 'dirty');
 			state(arr, 1, 3);
 			return this;
 		}
@@ -1236,7 +1235,7 @@ define([
 
 		return {
 			"bind"  : bind,
-			"cache" : cache,
+			"cachePath" : cachePath,
 			"can" : can,
 			"change" : change,
 			"changed" : changed,

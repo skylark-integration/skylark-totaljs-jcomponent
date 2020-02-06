@@ -2,8 +2,8 @@ define([
 	"../jc",
 	"../langx",
 	"skylark-net-http/Xhr",
-	"./cache"
-],function(jc,langx,Xhr,cache){
+	"./storage"
+],function(jc,langx,Xhr,storage){
 	var statics = langx.statics;
 	
 	/* TODo
@@ -81,7 +81,7 @@ define([
 
 		params = langx.stringify(params);
 		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
-		return cache.set(key, value, expire);
+		return storage.set(key, value, expire);
 	}
 	
 

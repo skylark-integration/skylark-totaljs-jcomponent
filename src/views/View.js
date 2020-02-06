@@ -3,13 +3,14 @@ define([
 	"../utils/domx",
 	"../utils/query",
 	"./binding",
+	"./cache",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, componenter, eventer,compiler, helper,scoper,storing){
 
 
 
@@ -39,6 +40,7 @@ define([
 		_construct : function(elm,options) {
 			domx.Plugin.prototype._construct.apply(this,arguments);
 
+			this.cache = cache(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
@@ -46,6 +48,8 @@ define([
 			this.storing = storing(this);
 			this.componenter = componenter(this);
 			this.compiler = compiler(this);
+			
+			this.ready = [];
 		},
 
 	   /**

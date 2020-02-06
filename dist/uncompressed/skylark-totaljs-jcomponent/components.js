@@ -3,7 +3,6 @@ define([
 	"./langx",
 	"./utils/domx",
 	"./utils/query",
-	"./utils/cache",
 	"./components/Component",
 	"./components/configs",
 	"./components/configure",
@@ -13,7 +12,7 @@ define([
 	"./components/register",
 	"./components/Usage",
 	"./components/versions"
-],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,versions){
+],function(jc, langx, domx, $, Component,configs,configure,extensions,extend,registry,register,Usage,versions){
 
 
 //	var components = {};

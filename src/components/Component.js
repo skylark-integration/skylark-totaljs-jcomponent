@@ -997,7 +997,7 @@ define([
 		self.path = path;
 		self.$path = arr;
 		
-		if (type !== 1 && C.ready) {
+		if (type !== 1 && self.view.ready) {//C.ready
 			refresh(); // TODO
 		}
 		return self;

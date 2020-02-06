@@ -5,23 +5,22 @@ define([
 	//var M = jc,
 	//	MD = defaults;
 
-	var page = {},
-		session = {} ,
-		storage = {};
+	var	sessionData = {} ,
+		localData= {};
 
 	function save() {
 		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
-		localStorage.setItem('cache', storage); // M.$localstorage
+		localStorage.setItem('cache', localData); // M.$localstorage
 		//}
 	}
 
 
-	function cache(key, value, expire) {  //W.CACHE = 
+	function storage(key, value, expire) { //cachestorage //W.CACHE =  
 
 		if (value !== undefined) {
-			return cache.set(key,value,expire)
+			return storage.set(key,value,expire)
 		} else {
-			return cache.get(key);
+			return storage.get(key);
 		}
 
 	}
@@ -30,10 +29,10 @@ define([
 		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
 		//	localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
 		//}
-		localStorage.set('cache', storage);
+		localStorage.set('cache', localData);
 	}
 
-	cache.get = function (key,expire) {
+	storage.get = function (key,expire) {
 		var checkSession = !expire || expire == "session",
 			checkStorage = !expire  || expire != "session",
 			value;
@@ -43,7 +42,7 @@ define([
 		}
 
 		if (value === undefined && checkStorage) {
-			var item = storage[key];
+			var item = localData[key];
 			if (item && item.expire > langx.now()) {
 				value = item.value;
 			}
@@ -52,7 +51,7 @@ define([
 		return value;
 	};
 
-	cache.set = function (key, value, expire) { 
+	storage.set = function (key, value, expire) { 
 		if (!expire || expire === 'session') {
 			session[key] = value;
 			return this;
@@ -64,7 +63,7 @@ define([
 
 		var now = Date.now();
 
-		storage[key] = { 
+		localData[key] = { 
 			expire: now + expire, 
 			value: value 
 		};
@@ -74,25 +73,25 @@ define([
 
 	};
 
-	cache.remove = function (key, isSearching) { // W.REMOVECACHE = 
+	storage.remove = function (key, isSearching) { // W.REMOVECACHE = 
 		if (isSearching) {
-			for (var m in storage) {
+			for (var m in localData) {
 				if (m.indexOf(key) !== -1)
-					delete storage[key];
+					delete localData[key];
 			}
 		} else {
-			delete storage[key];
+			delete localData[key];
 		}
 		save();
 		return this;
 	};
 
 
-	cache.clean = function () { 
-		for (var key in storage) {
-			var item = storage[key];
+	storage.clean = function () { 
+		for (var key in localData) {
+			var item = localData[key];
 			if (!item.expire || item.expire <= now) {
-				delete storage[key];
+				delete localData[key];
 			}
 		}
 
@@ -102,7 +101,7 @@ define([
 	};
 
 
-	cache.clear = function () { // W.CLEARCACHE = 
+	storage.clear = function () { // W.CLEARCACHE = 
 		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
 			var rem = localStorage.removeItem;
 			var k = $localstorage; //M.$localstorage;
@@ -113,53 +112,17 @@ define([
 		return this;
 	};
 
-	cache.getPageData = function(key) {
-		return page[key];
-	};
 
-	cache.setPageData = function(key,value) {
-		page[key] = value;
-		return this;
-	};
-
-	cache.clearPageData = function() {
-
-		if (!arguments.length) {
-			page = {};
-			return;
-		}
-
-		var keys = langx.keys(page);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			var remove = false;
-			var a = arguments;
-
-			for (var j = 0; j < a.length; j++) {
-				if (key.substring(0, a[j].length) !== a[j]) {
-					continue;
-				}
-				remove = true;
-				break;
-			}
-
-			if (remove) {
-				delete page[key];
-			}
-		}
-	};
-
-	cache.getSessionData = function(key) {
+	storage.getSessionData = function(key) {
 		return session[key];
 	};
 
-	cache.setSessionData = function(key,value) {
+	storage.setSessionData = function(key,value) {
 		session[key] = value;
 		return this;
 	};
 
-	cache.clearSessionData = function() {
+	storage.clearSessionData = function() {
 
 		if (!arguments.length) {
 			session = {};
@@ -188,16 +151,16 @@ define([
 	};
 
 
-	cache.getStorageData = function(key) {
+	storage.getStorageData = function(key) {
 		return session[key];
 	};
 
-	cache.setStorageData = function(key,value) {
+	storage.setStorageData = function(key,value) {
 		session[key] = value;
 		return this;
 	};
 
-	cache.clearStorageData = function() {
+	storage.clearStorageData = function() {
 
 		if (!arguments.length) {
 			session = {};
@@ -226,21 +189,21 @@ define([
 
 	};
 
-	cache.load = function () {
+	storage.load = function () {
 		clearTimeout($ready);
 		if (MD.localstorage) {
 			var cache;
 			try {
 				cache = localStorage.getItem(M.$localstorage + '.cache');
 				if (cache && langx.isString(cache)) {
-					storage = langx.parse(cache); // PARSE
+					localData = langx.parse(cache); // PARSE
 				}
 			} catch (e) {}
 
 		}
 
-		if (storage) {
-			var obj = storage['$jcpath'];
+		if (localData) {
+			var obj = localData['$jcpath'];
 			obj && Object.keys(obj.value).forEach(function(key) {
 				immSetx(key, obj.value[key], true);
 			});
@@ -254,5 +217,5 @@ define([
 
 	}
 
-	return cache;
+	return storage;
 });

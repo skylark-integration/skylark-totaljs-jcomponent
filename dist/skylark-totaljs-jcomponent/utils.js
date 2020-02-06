@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["./jc","./utils/blocks","./utils/cache","./utils/cookies","./utils/domx","./utils/envs","./utils/http","./utils/localStorage","./utils/logs","./utils/query"],function(l,s,t,o,i,u,e,c,a,n){return l.utils={blocks:s,cache:t,cookies:o,domx:i,envs:u,http:e,localStorage:c,logs:a,query:n}});
+define(["./jc","./utils/blocks","./utils/storage","./utils/cookies","./utils/domx","./utils/envs","./utils/http","./utils/localStorage","./utils/logs","./utils/query"],function(s,t,l,o,i,u,e,c,r,a){return s.utils={blocks:t,storage:l,cookies:o,domx:i,envs:u,http:e,localStorage:c,logs:r,query:a}});
 //# sourceMappingURL=sourcemaps/utils.js.map

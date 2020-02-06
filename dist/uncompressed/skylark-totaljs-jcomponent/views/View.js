@@ -3,13 +3,14 @@ define([
 	"../utils/domx",
 	"../utils/query",
 	"./binding",
+	"./cache",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, componenter, eventer,compiler, helper,scoper,storing){
 
 
 
@@ -46,6 +47,9 @@ define([
 			this.storing = storing(this);
 			this.componenter = componenter(this);
 			this.compiler = compiler(this);
+			this.cache = cache(this);
+			
+			this.ready = [];
 		},
 
 	   /**

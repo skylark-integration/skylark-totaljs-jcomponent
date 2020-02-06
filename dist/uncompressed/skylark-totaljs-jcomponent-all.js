@@ -8158,312 +8158,10 @@ define('skylark-totaljs-jcomponent/plugins/_registry',[],function(){
 	return registry;
 });
 
-define('skylark-totaljs-jcomponent/utils/localStorage',[
-	"../langx"
-],function(langx){
-
-	var $localstorage = 'jc.'; //M.$localstorage
-
-
-	function get(key) {
-		var value = localStorage.getItem($localstorage + key);
-		if (value && langx.isString(value)) {
-			value = langx.parse(value); // PARSE
-		}
-		return value;
-	}
-
-	function set(key,value) {
-		localStorage.setItem($localstorage + key, JSON.stringify(value)); // M.$localstorage
-		return this;
-	}
-
-	function remove(key) {
-		localStorage.removeItem($localstorage + key);
-	}
-
-	function clear() {
-		var keys = [];
-	  	for (var i = 0; i < localStorage.length; i++) {
-    		var key = localStorage.key(i);
-    		if (key.indexOf($localstorage) == 0)  {
-    			keys.push(key);
-    		}
-  		}
-  		for (var i=0;i<keys.length;i++) {
-  			localStorage.removeItem(keys[i]);
-  		}
-	}
-	return  {
-		"clear" : clear,
-		"get" : get,
-		"remove": remove,
-		"set" : set
-	};
-});
-define('skylark-totaljs-jcomponent/utils/cache',[
-	"../langx",
-	"./localStorage"
-],function(langx, localStorage){
-	//var M = jc,
-	//	MD = defaults;
-
-	var page = {},
-		session = {} ,
-		storage = {};
-
-	function save() {
-		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
-		localStorage.setItem('cache', storage); // M.$localstorage
-		//}
-	}
-
-
-	function cache(key, value, expire) {  //W.CACHE = 
-
-		if (value !== undefined) {
-			return cache.set(key,value,expire)
-		} else {
-			return cache.get(key);
-		}
-
-	}
-
-	function save() {
-		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
-		//	localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
-		//}
-		localStorage.set('cache', storage);
-	}
-
-	cache.get = function (key,expire) {
-		var checkSession = !expire || expire == "session",
-			checkStorage = !expire  || expire != "session",
-			value;
-
-		if (checkSession) {
-			value = session[key];
-		}
-
-		if (value === undefined && checkStorage) {
-			var item = storage[key];
-			if (item && item.expire > langx.now()) {
-				value = item.value;
-			}
-		}
-
-		return value;
-	};
-
-	cache.set = function (key, value, expire) { 
-		if (!expire || expire === 'session') {
-			session[key] = value;
-			return this;
-		}
-
-		if (langx.isString(expire)) {
-			expire = expire.parseExpire();
-		}
-
-		var now = Date.now();
-
-		storage[key] = { 
-			expire: now + expire, 
-			value: value 
-		};
-
-		save();
-		return this;
-
-	};
-
-	cache.remove = function (key, isSearching) { // W.REMOVECACHE = 
-		if (isSearching) {
-			for (var m in storage) {
-				if (m.indexOf(key) !== -1)
-					delete storage[key];
-			}
-		} else {
-			delete storage[key];
-		}
-		save();
-		return this;
-	};
-
-
-	cache.clean = function () { 
-		for (var key in storage) {
-			var item = storage[key];
-			if (!item.expire || item.expire <= now) {
-				delete storage[key];
-			}
-		}
-
-		save();		
-
-		return this;
-	};
-
-
-	cache.clear = function () { // W.CLEARCACHE = 
-		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
-			var rem = localStorage.removeItem;
-			var k = $localstorage; //M.$localstorage;
-			rem(k); 
-			rem(k + '.cache');
-			rem(k + '.blocked');
-		//}
-		return this;
-	};
-
-	cache.getPageData = function(key) {
-		return page[key];
-	};
-
-	cache.setPageData = function(key,value) {
-		page[key] = value;
-		return this;
-	};
-
-	cache.clearPageData = function() {
-
-		if (!arguments.length) {
-			page = {};
-			return;
-		}
-
-		var keys = langx.keys(page);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			var remove = false;
-			var a = arguments;
-
-			for (var j = 0; j < a.length; j++) {
-				if (key.substring(0, a[j].length) !== a[j]) {
-					continue;
-				}
-				remove = true;
-				break;
-			}
-
-			if (remove) {
-				delete page[key];
-			}
-		}
-	};
-
-	cache.getSessionData = function(key) {
-		return session[key];
-	};
-
-	cache.setSessionData = function(key,value) {
-		session[key] = value;
-		return this;
-	};
-
-	cache.clearSessionData = function() {
-
-		if (!arguments.length) {
-			session = {};
-			return;
-		}
-
-		var keys = langx.keys(page);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			var remove = false;
-			var a = arguments;
-
-			for (var j = 0; j < a.length; j++) {
-				if (key.substring(0, a[j].length) !== a[j]) {
-					continue;
-				}
-				remove = true;
-				break;
-			}
-
-			if (remove) {
-				delete session[key];
-			}
-		}
-	};
-
-
-	cache.getStorageData = function(key) {
-		return session[key];
-	};
-
-	cache.setStorageData = function(key,value) {
-		session[key] = value;
-		return this;
-	};
-
-	cache.clearStorageData = function() {
-
-		if (!arguments.length) {
-			session = {};
-		} else {
-			var keys = langx.keys(page);
-
-			for (var i = 0, length = keys.length; i < length; i++) {
-				var key = keys[i];
-				var remove = false;
-				var a = arguments;
-
-				for (var j = 0; j < a.length; j++) {
-					if (key.substring(0, a[j].length) !== a[j]) {
-						continue;
-					}
-					remove = true;
-					break;
-				}
-
-				if (remove) {
-					delete session[key];
-				}
-			}
-		}
-		save();
-
-	};
-
-	cache.load = function () {
-		clearTimeout($ready);
-		if (MD.localstorage) {
-			var cache;
-			try {
-				cache = localStorage.getItem(M.$localstorage + '.cache');
-				if (cache && langx.isString(cache)) {
-					storage = langx.parse(cache); // PARSE
-				}
-			} catch (e) {}
-
-		}
-
-		if (storage) {
-			var obj = storage['$jcpath'];
-			obj && Object.keys(obj.value).forEach(function(key) {
-				immSetx(key, obj.value[key], true);
-			});
-		}
-
-		M.loaded = true;
-	}
-
-
-	function clean() {
-
-	}
-
-	return cache;
-});
 define('skylark-totaljs-jcomponent/plugins/Plugin',[
 	"../utils/query",
-	"../utils/cache",
 	"./_registry"
-],function($, caches, registry){
+],function($, registry){
 	
 	function Plugin(name, fn) {
 		if ((/\W/).test(name)) {
@@ -8926,12 +8624,276 @@ define('skylark-net-http/Xhr',[
 
 	return http.Xhr = Xhr;	
 });
+define('skylark-totaljs-jcomponent/utils/localStorage',[
+	"../langx"
+],function(langx){
+
+	var $localstorage = 'jc.'; //M.$localstorage
+
+
+	function get(key) {
+		var value = localStorage.getItem($localstorage + key);
+		if (value && langx.isString(value)) {
+			value = langx.parse(value); // PARSE
+		}
+		return value;
+	}
+
+	function set(key,value) {
+		localStorage.setItem($localstorage + key, JSON.stringify(value)); // M.$localstorage
+		return this;
+	}
+
+	function remove(key) {
+		localStorage.removeItem($localstorage + key);
+	}
+
+	function clear() {
+		var keys = [];
+	  	for (var i = 0; i < localStorage.length; i++) {
+    		var key = localStorage.key(i);
+    		if (key.indexOf($localstorage) == 0)  {
+    			keys.push(key);
+    		}
+  		}
+  		for (var i=0;i<keys.length;i++) {
+  			localStorage.removeItem(keys[i]);
+  		}
+	}
+	return  {
+		"clear" : clear,
+		"get" : get,
+		"remove": remove,
+		"set" : set
+	};
+});
+define('skylark-totaljs-jcomponent/utils/storage',[
+	"../langx",
+	"./localStorage"
+],function(langx, localStorage){
+	//var M = jc,
+	//	MD = defaults;
+
+	var	sessionData = {} ,
+		localData= {};
+
+	function save() {
+		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
+		localStorage.setItem('cache', localData); // M.$localstorage
+		//}
+	}
+
+
+	function storage(key, value, expire) { //cachestorage //W.CACHE =  
+
+		if (value !== undefined) {
+			return storage.set(key,value,expire)
+		} else {
+			return storage.get(key);
+		}
+
+	}
+
+	function save() {
+		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
+		//	localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
+		//}
+		localStorage.set('cache', localData);
+	}
+
+	storage.get = function (key,expire) {
+		var checkSession = !expire || expire == "session",
+			checkStorage = !expire  || expire != "session",
+			value;
+
+		if (checkSession) {
+			value = session[key];
+		}
+
+		if (value === undefined && checkStorage) {
+			var item = localData[key];
+			if (item && item.expire > langx.now()) {
+				value = item.value;
+			}
+		}
+
+		return value;
+	};
+
+	storage.set = function (key, value, expire) { 
+		if (!expire || expire === 'session') {
+			session[key] = value;
+			return this;
+		}
+
+		if (langx.isString(expire)) {
+			expire = expire.parseExpire();
+		}
+
+		var now = Date.now();
+
+		localData[key] = { 
+			expire: now + expire, 
+			value: value 
+		};
+
+		save();
+		return this;
+
+	};
+
+	storage.remove = function (key, isSearching) { // W.REMOVECACHE = 
+		if (isSearching) {
+			for (var m in localData) {
+				if (m.indexOf(key) !== -1)
+					delete localData[key];
+			}
+		} else {
+			delete localData[key];
+		}
+		save();
+		return this;
+	};
+
+
+	storage.clean = function () { 
+		for (var key in localData) {
+			var item = localData[key];
+			if (!item.expire || item.expire <= now) {
+				delete localData[key];
+			}
+		}
+
+		save();		
+
+		return this;
+	};
+
+
+	storage.clear = function () { // W.CLEARCACHE = 
+		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
+			var rem = localStorage.removeItem;
+			var k = $localstorage; //M.$localstorage;
+			rem(k); 
+			rem(k + '.cache');
+			rem(k + '.blocked');
+		//}
+		return this;
+	};
+
+
+	storage.getSessionData = function(key) {
+		return session[key];
+	};
+
+	storage.setSessionData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	storage.clearSessionData = function() {
+
+		if (!arguments.length) {
+			session = {};
+			return;
+		}
+
+		var keys = langx.keys(page);
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i];
+			var remove = false;
+			var a = arguments;
+
+			for (var j = 0; j < a.length; j++) {
+				if (key.substring(0, a[j].length) !== a[j]) {
+					continue;
+				}
+				remove = true;
+				break;
+			}
+
+			if (remove) {
+				delete session[key];
+			}
+		}
+	};
+
+
+	storage.getStorageData = function(key) {
+		return session[key];
+	};
+
+	storage.setStorageData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	storage.clearStorageData = function() {
+
+		if (!arguments.length) {
+			session = {};
+		} else {
+			var keys = langx.keys(page);
+
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				var remove = false;
+				var a = arguments;
+
+				for (var j = 0; j < a.length; j++) {
+					if (key.substring(0, a[j].length) !== a[j]) {
+						continue;
+					}
+					remove = true;
+					break;
+				}
+
+				if (remove) {
+					delete session[key];
+				}
+			}
+		}
+		save();
+
+	};
+
+	storage.load = function () {
+		clearTimeout($ready);
+		if (MD.localstorage) {
+			var cache;
+			try {
+				cache = localStorage.getItem(M.$localstorage + '.cache');
+				if (cache && langx.isString(cache)) {
+					localData = langx.parse(cache); // PARSE
+				}
+			} catch (e) {}
+
+		}
+
+		if (localData) {
+			var obj = localData['$jcpath'];
+			obj && Object.keys(obj.value).forEach(function(key) {
+				immSetx(key, obj.value[key], true);
+			});
+		}
+
+		M.loaded = true;
+	}
+
+
+	function clean() {
+
+	}
+
+	return storage;
+});
 define('skylark-totaljs-jcomponent/utils/http',[
 	"../jc",
 	"../langx",
 	"skylark-net-http/Xhr",
-	"./cache"
-],function(jc,langx,Xhr,cache){
+	"./storage"
+],function(jc,langx,Xhr,storage){
 	var statics = langx.statics;
 	
 	/* TODo
@@ -9009,7 +8971,7 @@ define('skylark-totaljs-jcomponent/utils/http',[
 
 		params = langx.stringify(params);
 		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
-		return cache.set(key, value, expire);
+		return storage.set(key, value, expire);
 	}
 	
 
@@ -16516,7 +16478,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		self.path = path;
 		self.$path = arr;
 		
-		if (type !== 1 && C.ready) {
+		if (type !== 1 && self.view.ready) {//C.ready
 			refresh(); // TODO
 		}
 		return self;
@@ -17300,7 +17262,6 @@ define('skylark-totaljs-jcomponent/components',[
 	"./langx",
 	"./utils/domx",
 	"./utils/query",
-	"./utils/cache",
 	"./components/Component",
 	"./components/configs",
 	"./components/configure",
@@ -17310,7 +17271,7 @@ define('skylark-totaljs-jcomponent/components',[
 	"./components/register",
 	"./components/Usage",
 	"./components/versions"
-],function(jc, langx, domx, $, cache, Component,configs,configure,extensions,extend,registry,register,Usage,versions){
+],function(jc, langx, domx, $, Component,configs,configure,extensions,extend,registry,register,Usage,versions){
 
 
 //	var components = {};
@@ -17684,7 +17645,7 @@ define('skylark-totaljs-jcomponent/utils/logs',[
 define('skylark-totaljs-jcomponent/utils',[
 	"./jc",
 	"./utils/blocks",
-	"./utils/cache",
+	"./utils/storage",
 	"./utils/cookies",
 	"./utils/domx",
 	"./utils/envs",
@@ -17692,11 +17653,11 @@ define('skylark-totaljs-jcomponent/utils',[
 	"./utils/localStorage",
 	"./utils/logs",
 	"./utils/query"
-],function(jc,blocks,cache,cookies,domx,envs,http,localStorage,logs,query){
+],function(jc,blocks,storage,cookies,domx,envs,http,localStorage,logs,query){
 	
 	return jc.utils = {
 		blocks : blocks,
-		cache : cache,
+		storage : storage,
 		cookies : cookies,
 		domx : domx,
 		envs : envs,
@@ -17800,6 +17761,58 @@ define('skylark-totaljs-jcomponent/views/binding',[
 	}
 
 	return binding;
+});
+define('skylark-totaljs-jcomponent/views/cache',[
+],function(){
+	function cache(view) {	
+		var page = {};
+
+		function getPageData(key) {
+			return page[key];
+		}
+
+		function setPageData(key,value) {
+			page[key] = value;
+			return this;
+		}
+
+		function clearPageData() {
+
+			if (!arguments.length) {
+				page = {};
+				return;
+			}
+
+			var keys = langx.keys(page);
+
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				var remove = false;
+				var a = arguments;
+
+				for (var j = 0; j < a.length; j++) {
+					if (key.substring(0, a[j].length) !== a[j]) {
+						continue;
+					}
+					remove = true;
+					break;
+				}
+
+				if (remove) {
+					delete page[key];
+				}
+			}
+		}
+
+		return {
+			"get" : getPageData,
+			"set" : setPageData,
+			"clear" : clearPageData
+		}
+
+	}
+
+	return cache;
 });
 define('skylark-totaljs-jcomponent/views/componenter',[
 	"../langx",
@@ -18999,12 +19012,11 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../utils/domx",
 	"../utils/http",
 	"../utils/logs",
-	"../utils/cache",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,cache,registry,configs,versions,plugins){
+],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -19017,69 +19029,68 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 	var fallback = { $: 0 }; // $ === count of new items in fallback
 
-	setInterval(function() {
-		temp = {};
-//		paths = {};
-//		cleaner();
-	}, (1000 * 60) * 5);	
-
-	function clean2() {
-		cache.clear();
-		clean();
-	}
-
-	function clean() {
-		var is = false;
-		var index;
-
-
-
-		cache.clear('find');
-
-
-		//W.DATETIME = W.NOW = new Date();
-		//var now = W.NOW.getTime();
-		var is2 = false;
-		var is3 = false;
-
-
-
-
-		if (is) {
-			refresh();
-			setTimeout(compile, 2000);
-		}
-	}
-
-
-	setInterval(function() {
-//		temp = {};
-//		paths = {};
-		clean();
-	}, (1000 * 60) * 5);
-
-
-    /*
-    for (var i = 0, length = all.length; i < length; i++) { // M.components.length
-        var m = all[i]; // M.components[i];
-        if (!m.$removed || name === m.name){
-            config && m.reconfigure(config, undefined, true);
-            declaration.call(m, m, m.config);
-        }
-    }
-
-    RECOMPILE();
-    */
-
-
-
 	function compiler(view) {
 		var helper = view.helper,
 			eventer = view.eventer,
 			storing = view.storing,
 			scoper = view.scoper,
 			binding = view.binding,
+			cache = view.cache,
 			componenter = view.componenter;
+
+		setInterval(function() {
+			temp = {};
+	//		paths = {};
+	//		cleaner();
+		}, (1000 * 60) * 5);	
+
+		function clean2() {
+			cache.clear();
+			clean();
+		}
+
+		function clean() {
+			var is = false;
+			var index;
+
+
+
+			cache.clear('find');
+
+
+			//W.DATETIME = W.NOW = new Date();
+			//var now = W.NOW.getTime();
+			var is2 = false;
+			var is3 = false;
+
+
+
+
+			if (is) {
+				refresh();
+				setTimeout(compile, 2000);
+			}
+		}
+
+
+		setInterval(function() {
+	//		temp = {};
+	//		paths = {};
+			clean();
+		}, (1000 * 60) * 5);
+
+
+	    /*
+	    for (var i = 0, length = all.length; i < length; i++) { // M.components.length
+	        var m = all[i]; // M.components[i];
+	        if (!m.$removed || name === m.name){
+	            config && m.reconfigure(config, undefined, true);
+	            declaration.call(m, m, m.config);
+	        }
+	    }
+
+	    RECOMPILE();
+	    */
     
 		var 
 			importing = 0,
@@ -19087,7 +19098,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			initing = [],
 			imports = {},
 			toggles = [],
-			ready = [],
+			//ready = [], // view.ready
 			cache = {
 				current : {}
 			},
@@ -19226,7 +19237,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			if (next) {
 				next();
 			} else { //if ($domready) {
-				if (ready) {
+				if (view.ready) {
 					compiles.is = false;
 				}
 
@@ -19844,7 +19855,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				function initialize() {
 					var item = initing.pop();
 					if (item === undefined)
-						!ready && compile();
+						!view.ready && compile();
 					else {
 						if (!item.$removed) {
 							componenter.prepare(item);
@@ -19891,11 +19902,11 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 					compile();
 				}
 
-				if (ready) {
-					var arr = ready;
+				if (view.ready) {
+					var arr = view.ready;
 					for (var i = 0, length = arr.length; i < length; i++)
 						arr[i](count);
-					ready = undefined;
+					view.ready = undefined;
 					compile();
 					setTimeout(compile, 3000);
 					setTimeout(compile, 6000);
@@ -20544,24 +20555,23 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 });
 define('skylark-totaljs-jcomponent/views/storing',[
 	"../langx",
+	"../utils/storage",
 	"../binding/pathmaker"
-],function(langx,pathmaker){
+],function(langx,storage,pathmaker){
 	var	SELINPUT = 'input,textarea,select';
 	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
 	
 	var REGISARR = /\[\d+\]$/;
 	
 	function storing (view) {
-		var cache = {}; // lwf
 
 		var skipproxy = '';
 
 		var eventer = view.eventer,
-			binding = view.binding;
+			binding = view.binding,
+			cache = view.cache;
 
 		var store = view.option("store");
-
-
 
 		function parsepath(path) {
 			var arr = path.split('.');
@@ -20707,21 +20717,21 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 
 	 	//cache
-		function cache(path, expire, rebind) { // W.CACHEPATH = 
+		function cachePath(path, expire, rebind) { // W.CACHEPATH = 
 			var key = '$jcpath';
 			WATCH(path, function(p, value) {
-				var obj = storages.get(key); // cachestorage(key);
+				var obj = storage(key); // cachestorage(key);
 				if (obj) {
 					obj[path] = value;
 				}else {
 					obj = {};
 					obj[path] = value;
 				}
-				storages.put(key, obj, expire); // cachestorage(key, obj, expire);
+				storage(key, obj, expire); // cachestorage(key, obj, expire);
 			});
 
 			if (rebind === undefined || rebind) {
-				var cache = storages.get(key); // cachestorage(key);
+				var cache = storage(key); // cachestorage(key);
 				if (cache && cache[path] !== undefined && cache[path] !== get(path)){
 					setx(path, cache[path], true);	
 				} 
@@ -20992,7 +21002,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			}
 
 			if (reset) {
-				caches.clear('dirty', 'valid');
+				cache.clear('dirty', 'valid');
 			}
 
 			for (var i = 0, length = state.length; i < length; i++) {
@@ -21166,7 +21176,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			}
 
 			if (reset) {
-				clear('dirty', 'valid');
+				cache.clear('dirty', 'valid');
 			}
 
 			for (var i = 0, length = state.length; i < length; i++) {
@@ -21299,7 +21309,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 	   * @param  {Function} fn 
 	   * @param  {Boolean} update Optional Optional, default "true"
 	   */
-		function make(obj, fn, update) { // W.MAKE
+		function make(obj, fn, needsUpdate) { // W.MAKE
 
 			switch (typeof(obj)) {
 				case 'function':
@@ -21317,10 +21327,10 @@ define('skylark-totaljs-jcomponent/views/storing',[
 					fn.call(obj, obj, p, function(path, value) {
 						setx(obj, path, value);
 					});
-					if (is && (update === undefined || update === true))
+					if (is && (needsUpdate === undefined || needsUpdate === true))
 						update(p, true);
 					else {
-						if (C.ready) {
+						if (view.ready) {
 							set(p, obj);
 						} else {
 							setx(p, obj, true);
@@ -21555,7 +21565,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 				}
 			}
 
-			clear('valid', 'dirty');
+			cache.clear('valid', 'dirty');
 			state(arr, 1, 3);
 			return this;
 		}
@@ -21780,7 +21790,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 		return {
 			"bind"  : bind,
-			"cache" : cache,
+			"cachePath" : cachePath,
 			"can" : can,
 			"change" : change,
 			"changed" : changed,
@@ -21821,13 +21831,14 @@ define('skylark-totaljs-jcomponent/views/View',[
 	"../utils/domx",
 	"../utils/query",
 	"./binding",
+	"./cache",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, componenter, eventer,compiler, helper,scoper,storing){
 
 
 
@@ -21864,6 +21875,9 @@ define('skylark-totaljs-jcomponent/views/View',[
 			this.storing = storing(this);
 			this.componenter = componenter(this);
 			this.compiler = compiler(this);
+			this.cache = cache(this);
+			
+			this.ready = [];
 		},
 
 	   /**
@@ -22075,7 +22089,7 @@ define('skylark-totaljs-jcomponent/globals',[
 ],function(jc, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
 	var $ = utils.query,
 	    blocks = utils.blocks,
-		cache = utils.cache,
+		storage = utils.storage,
 		cookies = utils.cookies,
 		domx = utils.domx;
 		envs = utils.envs,
@@ -22189,8 +22203,8 @@ define('skylark-totaljs-jcomponent/globals',[
 			AJAXCACHEREVIEW: http.ajaxCacheReview,
 
 			clearTimeout2: langx.clearTimeout2,
-			CACHE : cache,
-			CLEARCACHE : cache.clear,
+			CACHE : storage,
+			CLEARCACHE : storage.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
 			ENV: envs.variant,
@@ -22218,7 +22232,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			PING: http.ping,
 
 			READPARAMS: http.parseQuery,
-			REMOVECACHE : cache.remove,
+			REMOVECACHE : storage.remove,
 
 			PARSE: langx.parse,
 
@@ -22531,7 +22545,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			}, 700);
 		};
 
-		W.REMOVECACHE = cache.remove;
+		W.REMOVECACHE = storage.remove;
 
 		W.RESET = function(path, timeout, onlyComponent) {
 			return gs.reset(path,timeout,onlyComponent);

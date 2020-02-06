@@ -12,7 +12,7 @@ define([
 ],function(jc, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
 	var $ = utils.query,
 	    blocks = utils.blocks,
-		cache = utils.cache,
+		storage = utils.storage,
 		cookies = utils.cookies,
 		domx = utils.domx;
 		envs = utils.envs,
@@ -126,8 +126,8 @@ define([
 			AJAXCACHEREVIEW: http.ajaxCacheReview,
 
 			clearTimeout2: langx.clearTimeout2,
-			CACHE : cache,
-			CLEARCACHE : cache.clear,
+			CACHE : storage,
+			CLEARCACHE : storage.clear,
 			CLEARSCHEDULE : schedulers.clear,
 			CLONE: langx.clone,
 			ENV: envs.variant,
@@ -155,7 +155,7 @@ define([
 			PING: http.ping,
 
 			READPARAMS: http.parseQuery,
-			REMOVECACHE : cache.remove,
+			REMOVECACHE : storage.remove,
 
 			PARSE: langx.parse,
 
@@ -468,7 +468,7 @@ define([
 			}, 700);
 		};
 
-		W.REMOVECACHE = cache.remove;
+		W.REMOVECACHE = storage.remove;
 
 		W.RESET = function(path, timeout, onlyComponent) {
 			return gs.reset(path,timeout,onlyComponent);

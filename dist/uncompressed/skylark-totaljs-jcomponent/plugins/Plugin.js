@@ -1,8 +1,7 @@
 define([
 	"../utils/query",
-	"../utils/cache",
 	"./_registry"
-],function($, caches, registry){
+],function($, registry){
 	
 	function Plugin(name, fn) {
 		if ((/\W/).test(name)) {
