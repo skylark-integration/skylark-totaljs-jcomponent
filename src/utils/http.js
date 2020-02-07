@@ -2,8 +2,11 @@ define([
 	"../jc",
 	"../langx",
 	"skylark-net-http/Xhr",
+  "./domx",
 	"./storage"
-],function(jc,langx,Xhr,storage){
+],function(jc,langx,Xhr,domx,storage){
+	var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind)=|COMPONENT\(/; //TODO
+
 	var statics = langx.statics;
 	
 	var ajaxconfig = {};
@@ -427,7 +430,7 @@ define([
 					response = preparator(response, output);
 
 				var is = REGCOM.test(response);
-				response = importscripts(importstyles(response, id)).trim();
+				response = domx.importscripts(domx.importstyles(response, id)).trim();
 				target = $(target);
 
 				if (response) {

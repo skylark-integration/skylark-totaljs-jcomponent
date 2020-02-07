@@ -2,8 +2,9 @@ define([
 	"../langx",
 	"../binding/findFormat",
 	"../utils/domx",
+	"../utils/http",
 	"./Usage"
-],function(langx, findFormat, domx,Usage){
+],function(langx, findFormat, domx, http, Usage){
 	var temp = {},
 		statics = {},
 		$ =domx.$;
@@ -462,7 +463,7 @@ define([
 	 */
 	PPC.import = function(url, callback, insert, preparator) {
 		var self = this;
-		this.view.import(url, self.element, callback, insert, preparator);
+		http.import2(url, self.element, callback, insert, preparator);
 		return self;
 	};
 

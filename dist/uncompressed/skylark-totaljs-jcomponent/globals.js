@@ -200,6 +200,14 @@ define([
 				data = url;
 				url = location.pathname;
 			}
+
+		    if (!callback && (langx.isFunction(data) || langx.isString(data))) {
+		        timeout = callback;
+		        callback = data;
+		        data = undefined;
+		    }
+
+			
 			if (langx.isString(callback)) {
 				var path = callback;
 				callback = function(output) {
