@@ -32,7 +32,7 @@ define([
 
 		if (value !== undefined) {
 			topic.publish(KEY_ENV, name, value); // EMIT
-			//ENV[name] = value;
+			vars[name]= value; ////ENV[name] = value;
 			return value;
 		}
 

@@ -121,7 +121,7 @@ define([
 		// langx
 		langx.mixin(W,{
 			AJAXCONFIG: http.configure,
-			AJAX: http.ajax,
+			//AJAX: http.ajax,
 			AJAXCACHE: http.ajaxCache,
 			AJAXCACHEREVIEW: http.ajaxCacheReview,
 
@@ -192,6 +192,24 @@ define([
 		});
 
 		W.ADD = gv.add;
+
+		W.AJAX = function(url, data, callback, timeout) {
+			if (langx.isFunction(url) ) {
+				timeout = callback;
+				callback = data;
+				data = url;
+				url = location.pathname;
+			}
+			if (langx.isString(callback)) {
+				var path = callback;
+				callback = function(output) {
+					return gs.remap(path,output);
+				};
+			}
+
+			return http.ajax(url,data,callback,timeout);
+
+		};
 
 		W.BIND = function(path) {
 			return gs.bind(path);

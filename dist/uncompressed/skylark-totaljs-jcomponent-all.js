@@ -8896,20 +8896,6 @@ define('skylark-totaljs-jcomponent/utils/http',[
 ],function(jc,langx,Xhr,storage){
 	var statics = langx.statics;
 	
-	/* TODo
-	function remap(path, value) {
-
-		var index = path.replace('-->', '->').indexOf('->');
-
-		if (index !== -1) {
-			value = value[path.substring(0, index).trim()];
-			path = path.substring(index + 3).trim();
-		}
-
-		immSetx(path, value);
-	}
-	*/
-
 	var ajaxconfig = {};
 	var defaults = {
 
@@ -17581,7 +17567,7 @@ define('skylark-totaljs-jcomponent/utils/envs',[
 
 		if (value !== undefined) {
 			topic.publish(KEY_ENV, name, value); // EMIT
-			//ENV[name] = value;
+			vars[name]= value; ////ENV[name] = value;
 			return value;
 		}
 
@@ -20574,6 +20560,19 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 		var store = view.option("store");
 
+		function remap(path, value) {
+
+			var index = path.replace('-->', '->').indexOf('->');
+
+			if (index !== -1) {
+				value = value[path.substring(0, index).trim()];
+				path = path.substring(index + 3).trim();
+			}
+
+			setx(path, value);
+		}
+
+
 		function parsepath(path) {
 			var arr = path.split('.');
 			var builder = [];
@@ -21814,6 +21813,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			"paths" : paths,
 			"push" : push,
 			"reset" : reset,
+			"remap" : remap,
 			"rewrite" : rewrite,
 			"set"  : set,
 			"set2" : set2,
@@ -22199,7 +22199,7 @@ define('skylark-totaljs-jcomponent/globals',[
 		// langx
 		langx.mixin(W,{
 			AJAXCONFIG: http.configure,
-			AJAX: http.ajax,
+			//AJAX: http.ajax,
 			AJAXCACHE: http.ajaxCache,
 			AJAXCACHEREVIEW: http.ajaxCacheReview,
 
@@ -22270,6 +22270,24 @@ define('skylark-totaljs-jcomponent/globals',[
 		});
 
 		W.ADD = gv.add;
+
+		W.AJAX = function(url, data, callback, timeout) {
+			if (langx.isFunction(url) ) {
+				timeout = callback;
+				callback = data;
+				data = url;
+				url = location.pathname;
+			}
+			if (langx.isString(callback)) {
+				var path = callback;
+				callback = function(output) {
+					return gs.remap(path,output);
+				};
+			}
+
+			return http.ajax(url,data,callback,timeout);
+
+		};
 
 		W.BIND = function(path) {
 			return gs.bind(path);

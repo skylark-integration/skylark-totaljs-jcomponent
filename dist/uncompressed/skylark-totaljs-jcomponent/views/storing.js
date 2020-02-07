@@ -19,6 +19,19 @@ define([
 
 		var store = view.option("store");
 
+		function remap(path, value) {
+
+			var index = path.replace('-->', '->').indexOf('->');
+
+			if (index !== -1) {
+				value = value[path.substring(0, index).trim()];
+				path = path.substring(index + 3).trim();
+			}
+
+			setx(path, value);
+		}
+
+
 		function parsepath(path) {
 			var arr = path.split('.');
 			var builder = [];
@@ -1259,6 +1272,7 @@ define([
 			"paths" : paths,
 			"push" : push,
 			"reset" : reset,
+			"remap" : remap,
 			"rewrite" : rewrite,
 			"set"  : set,
 			"set2" : set2,

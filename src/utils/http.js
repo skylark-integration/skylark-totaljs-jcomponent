@@ -6,20 +6,6 @@ define([
 ],function(jc,langx,Xhr,storage){
 	var statics = langx.statics;
 	
-	/* TODo
-	function remap(path, value) {
-
-		var index = path.replace('-->', '->').indexOf('->');
-
-		if (index !== -1) {
-			value = value[path.substring(0, index).trim()];
-			path = path.substring(index + 3).trim();
-		}
-
-		immSetx(path, value);
-	}
-	*/
-
 	var ajaxconfig = {};
 	var defaults = {
 
