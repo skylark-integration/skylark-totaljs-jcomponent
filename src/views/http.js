@@ -179,7 +179,7 @@ define([
 			output.method = method;
 			output.data = data;
 
-			topic.emit('request', output);
+			view.eventer.emit('request', output);
 
 			if (output.cancel)
 				return;
@@ -217,7 +217,7 @@ define([
 					output.error = self.status > 399;
 					output.headers = parseHeaders(self.getAllResponseHeaders());
 
-					topic.emit('response', output);
+					view.eventer.emit('response', output);
 
 					if (!output.process || output.cancel)
 						return;
@@ -228,7 +228,7 @@ define([
 					if (!output.error || defaults.ajaxerrors) {
 						langx.isString(callback)  ? remap(callback.env(), r) : (callback && callback(r, null, output));
 					} else {
-						topic.emit('error', output);
+						view.eventer.emit('error', output);
 						output.process && langx.isFunction(callback)  && callback({}, r, output);
 					}
 
@@ -395,7 +395,7 @@ define([
 				};
 				scr.src = makeurl(url, true);
 				d.getElementsByTagName('head')[0].appendChild(scr);
-				topic.emit('import', url, $(scr));
+				view.eventer.emit('import', url, $(scr));
 				return this;
 			}
 
@@ -407,7 +407,7 @@ define([
 				d.getElementsByTagName('head')[0].appendChild(stl);
 				statics[url] = 2;
 				callback && setTimeout(callback, 200, 1);
-				topic.emit('import', url, $(stl));
+				view.eventer.emit('import', url, $(stl));
 				return this;
 			}
 
@@ -449,11 +449,11 @@ define([
 						// because of paths
 						is && view.compiler.compile();
 						callback && langx.wait(function() {
-							return C.is == false;
+							return view.compiler.is == false;
 						}, function() {
 							callback(1);
 						});
-						topic.emit('import', url, target);
+						view.eventer.emit('import', url, target);
 					}, 10);
 				};
 
@@ -499,7 +499,7 @@ define([
 			}
 
 			var dt = new Date().add(period);
-			topic.on('knockknock', function() {
+			view.eventer.on('knockknock', function() {
 				if (dt > langx.now()) //W.NOW)
 					return;
 				if (!condition || !condition())
@@ -696,7 +696,7 @@ define([
 				if (!options.url)
 					options.url = url;
 
-				//topic.emit('request', options); //TODO
+				view.eventer.emit('request', options); 
 
 				if (options.cancel)
 					return;
@@ -719,7 +719,7 @@ define([
 					output.status = req.status || 999;
 					output.text = s;
 					output.headers = parseHeaders(req.getAllResponseHeaders());
-					//topic.emit('response', output); TODO
+					view.eventer.emit('response', output);
 					if (output.process && !output.cancel) {
 						/* TODO
 						if (typeof(callback) === TYPE_S)
@@ -758,7 +758,7 @@ define([
 						} catch (e) {}
 					}
 
-					//topic.emit('response', output); TODO
+					view.eventer.emit('response', output);
 
 					if (output.cancel || !output.process)
 						return;
@@ -772,7 +772,7 @@ define([
 						*/
 						callback && callback.call(output, output.response, output.status, output);
 					} else {
-						//topic.emit('error', output); TODO
+						view.eventer.emit('error', output);
 						if (langx.isFunction(callback)) 
 						callback.call(output, output.response, output.status, output);
 					}
