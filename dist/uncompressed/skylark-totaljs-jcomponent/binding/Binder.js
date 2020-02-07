@@ -1,6 +1,5 @@
 define([
 	"../utils/query",
-	"../utils/http",
 	"../langx"
 ],function($, langx){
 
@@ -136,11 +135,11 @@ define([
 			if (langx.isFunction(item.import)) {
 				if (value) {
 					!item.$ic && (item.$ic = {});
-					!item.$ic[value] && http.import('ONCE ' + value, el); //IMPORT
+					!item.$ic[value] && http.import('ONCE ' + value, el); //IMPORT TODO
 					item.$ic[value] = 1;
 				}
 			} else {
-				http.import(item.import, el); //IMPORT
+				http.import(item.import, el); //IMPORT TODO
 				delete item.import;
 			}
 		}

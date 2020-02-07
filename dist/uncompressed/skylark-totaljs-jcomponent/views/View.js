@@ -4,13 +4,14 @@ define([
 	"../utils/query",
 	"./binding",
 	"./cache",
+	"./http",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, cache, componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, http,componenter, eventer,compiler, helper,scoper,storing){
 
 
 
@@ -41,6 +42,7 @@ define([
 			domx.Plugin.prototype._construct.apply(this,arguments);
 
 			this.cache = cache(this);
+			this.http = http(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);

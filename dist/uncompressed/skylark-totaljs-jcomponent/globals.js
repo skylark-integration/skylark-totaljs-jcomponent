@@ -16,7 +16,6 @@ define([
 		cookies = utils.cookies,
 		domx = utils.domx;
 		envs = utils.envs,
-		http = utils.http,
 		localStorage = utils.localStorage,
 		logs = utils.logs;
 		W = window,
@@ -88,6 +87,7 @@ define([
 			gm = gv.componenter,
 			gl = gv.compiler,
 			ge = gv.eventer,
+			gt = gv.http,
 			gb = gv.binding;
 
 		gv.start();
@@ -120,10 +120,10 @@ define([
 
 		// langx
 		langx.mixin(W,{
-			AJAXCONFIG: http.configure,
-			//AJAX: http.ajax,
-			AJAXCACHE: http.ajaxCache,
-			AJAXCACHEREVIEW: http.ajaxCacheReview,
+			AJAXCONFIG: gt.configure,
+			//AJAX: gt.ajax,
+			AJAXCACHE: gt.ajaxCache,
+			AJAXCACHEREVIEW: gt.ajaxCacheReview,
 
 			clearTimeout2: langx.clearTimeout2,
 			CACHE : storage,
@@ -144,17 +144,17 @@ define([
 			HASH: langx.hashCode,
 
 			LCOMPARER : langx.localCompare,
-			IMPORTCACHE: http.importCache,
-			IMPORT: http.import,
+			IMPORTCACHE: gt.importCache,
+			IMPORT: gt.import,
 
-			MAKEPARAMS: http.makeParams,
+			MAKEPARAMS: gt.makeParams,
 			MEDIAQUERY : domx.watchMedia,
 
 			NOOP : langx.empties.fn,
 
-			PING: http.ping,
+			PING: gt.ping,
 
-			READPARAMS: http.parseQuery,
+			READPARAMS: gt.parseQuery,
 			REMOVECACHE : storage.remove,
 
 			PARSE: langx.parse,
@@ -166,8 +166,8 @@ define([
 			STRINGIFY: langx.stringify,
 			STYLE: domx.style,
 
-			UPLOAD: http.upload,
-			UPTODATE: http.uptodate,
+			UPLOAD: gt.upload,
+			UPTODATE: gt.uptodate,
 
 			WAIT : langx.wait,
 
@@ -215,7 +215,7 @@ define([
 				};
 			}
 
-			return http.ajax(url,data,callback,timeout);
+			return gt.ajax(url,data,callback,timeout);
 
 		};
 

@@ -2,13 +2,12 @@ define([
 	"../langx",
 	"../utils/query",
 	"../utils/domx",
-	"../utils/http",
 	"../utils/logs",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
+],function(langx, $, domx, logs,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -28,6 +27,7 @@ define([
 			scoper = view.scoper,
 			binding = view.binding,
 			cache = view.cache,
+			http = view.http,
 			componenter = view.componenter;
 
 		setInterval(function() {

@@ -5,11 +5,10 @@ define([
 	"./utils/cookies",
 	"./utils/domx",
 	"./utils/envs",
-	"./utils/http",
 	"./utils/localStorage",
 	"./utils/logs",
 	"./utils/query"
-],function(jc,blocks,storage,cookies,domx,envs,http,localStorage,logs,query){
+],function(jc,blocks,storage,cookies,domx,envs,localStorage,logs,query){
 	
 	return jc.utils = {
 		blocks : blocks,
@@ -17,7 +16,6 @@ define([
 		cookies : cookies,
 		domx : domx,
 		envs : envs,
-		http : http,
 		localStorage : localStorage,
 		logs : logs,
 		query : query

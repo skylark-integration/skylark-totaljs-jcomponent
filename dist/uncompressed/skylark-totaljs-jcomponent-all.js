@@ -8258,372 +8258,929 @@ define('skylark-totaljs-jcomponent/plugins',[
 		"find" : find
 	};
 });
-define('skylark-net-http/http',[
-  "skylark-langx-ns/ns",
-],function(skylark){
-	return skylark.attach("net.http",{});
+define('skylark-totaljs-jcomponent/binding/Binder',[
+	"../utils/query",
+	"../langx"
+],function($, langx){
+
+	var DEFMODEL = { value: null };
+	/*
+	 * A binder declaration:
+	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
+	 */
+	function jBinder() {
+		//this.path = null;
+		//this.format = null;
+		//this.virtual = null;
+		//this.com = null; 
+		//this.child = null;
+
+	}
+
+	var JBP = jBinder.prototype;
+
+	JBP.exec = function(value, path, index, wakeup, can) {
+
+		var item = this;
+		var el = item.el;
+		if (index != null) {
+			if (item.child == null)
+				return;
+			item = item.child[index];
+			if (item == null) {
+				return;
+			}
+		}
+
+		if (item.notnull && value == null) {
+			return;
+		}
+
+		if (item.selector) {
+			if (item.cache) {
+				el = item.cache;
+			} else {
+				el = el.find(item.selector);
+				if (el.length) {
+					item.cache = el;
+				}
+			}
+		}
+
+		if (!el.length) {
+			return;
+		}
+
+		if (!wakeup && item.delay) {
+			item.$delay && clearTimeout(item.$delay);
+			item.$delay = setTimeout(function(obj, value, path, index, can) {
+				obj.$delay = null;
+				obj.exec(value, path, index, true, can);
+			}, item.delay, item, value, path, index, can);
+			return;
+		}
+
+		if (item.init) {
+			if (item.strict && item.path !== path)
+				return;
+			if (item.track && item.path !== path) {
+				var can = false;
+				for (var i = 0; i < item.track.length; i++) {
+					if (item.track[i] === path) {
+						can = true;
+						break;
+					}
+				}
+				if (!can) {
+					return;
+				}
+			}
+		} else {
+			item.init = 1;
+		}
+
+		if (item.def && value == null) {
+			value = item.def;
+		}
+
+		if (item.format) {
+			value = item.format(value, path);
+		}
+
+		var tmp = null;
+
+		can = can !== false;
+
+		if (item.show && (value != null || !item.show.$nn)) {
+			tmp = item.show.call(item.el, value, path, item.el);
+			el.tclass('hidden', !tmp);
+			if (!tmp) {
+				can = false;
+			}
+		}
+
+		if (item.hide && (value != null || !item.hide.$nn)) {
+			tmp = item.hide.call(el, value, path, el);
+			el.tclass('hidden', tmp);
+			if (tmp) {
+				can = false;
+			}
+		}
+
+		if (item.invisible && (value != null || !item.invisible.$nn)) {
+			tmp = item.invisible.call(item.el, value, path, item.el);
+			el.tclass('invisible', tmp);
+			if (!tmp) {
+				can = false;
+			}
+		}
+
+		if (item.visible && (value != null || !item.visible.$nn)) {
+			tmp = item.visible.call(item.el, value, path, item.el);
+			el.tclass('invisible', !tmp);
+			if (!tmp) {
+				can = false;
+			}
+		}
+
+		if (item.classes) {
+			for (var i = 0; i < item.classes.length; i++) {
+				var cls = item.classes[i];
+				if (!cls.fn.$nn || value != null)
+					el.tclass(cls.name, !!cls.fn.call(el, value, path, el));
+			}
+		}
+
+		if (can && item.import) {
+			if (langx.isFunction(item.import)) {
+				if (value) {
+					!item.$ic && (item.$ic = {});
+					!item.$ic[value] && http.import('ONCE ' + value, el); //IMPORT TODO
+					item.$ic[value] = 1;
+				}
+			} else {
+				http.import(item.import, el); //IMPORT TODO
+				delete item.import;
+			}
+		}
+
+		if (item.config && (can || item.config.$nv)) {
+			if (value != null || !item.config.$nn) {
+				tmp = item.config.call(el, value, path, el);
+				if (tmp) {
+					for (var i = 0; i < el.length; i++) {
+						var c = el[i].$com;
+						c && c.$ready && c.reconfigure(tmp);
+					}
+				}
+			}
+		}
+
+		if (item.html && (can || item.html.$nv)) {
+			if (value != null || !item.html.$nn) {
+				tmp = item.html.call(el, value, path, el);
+				el.html(tmp == null ? (item.htmlbk || '') : tmp);
+			} else
+				el.html(item.htmlbk || '');
+		}
+
+		if (item.text && (can || item.text.$nv)) {
+			if (value != null || !item.text.$nn) {
+				tmp = item.text.call(el, value, path, el);
+				el.text(tmp == null ? (item.htmlbk || '') : tmp);
+			} else
+				el.html(item.htmlbk || '');
+		}
+
+		if (item.val && (can || item.val.$nv)) {
+			if (value != null || !item.val.$nn) {
+				tmp = item.val.call(el, value, path, el);
+				el.val(tmp == null ? (item.valbk || '') : tmp);
+			} else
+				el.val(item.valbk || '');
+		}
+
+		if (item.template && (can || item.template.$nv) && (value != null || !item.template.$nn)) {
+			DEFMODEL.value = value;
+			DEFMODEL.path = path;
+			el.html(item.template(DEFMODEL));
+		}
+
+		if (item.disabled && (can || item.disabled.$nv)) {
+			if (value != null || !item.disabled.$nn) {
+				tmp = item.disabled.call(el, value, path, el);
+				el.prop('disabled', tmp == true);
+			} else
+				el.prop('disabled', item.disabledbk == true);
+		}
+
+		if (item.enabled && (can || item.enabled.$nv)) {
+			if (value != null || !item.enabled.$nn) {
+				tmp = item.enabled.call(el, value, path, el);
+				el.prop('disabled', !tmp);
+			} else {
+				el.prop('disabled', item.enabledbk == false);
+			}
+		}
+
+		if (item.checked && (can || item.checked.$nv)) {
+			if (value != null || !item.checked.$nn) {
+				tmp = item.checked.call(el, value, path, el);
+				el.prop('checked', tmp == true);
+			} else {
+				el.prop('checked', item.checkedbk == true);
+			}
+		}
+
+		if (item.title && (can || item.title.$nv)) {
+			if (value != null || !item.title.$nn) {
+				tmp = item.title.call(el, value, path, el);
+				el.attr('title', tmp == null ? (item.titlebk || '') : tmp);
+			} else {
+				el.attr('title', item.titlebk || '');
+			}
+		}
+
+		if (item.href && (can || item.href.$nv)) {
+			if (value != null || !item.href.$nn) {
+				tmp = item.href.call(el, value, path, el);
+				el.attr('href', tmp == null ? (item.hrefbk || '') : tmp);
+			} else {
+				el.attr(item.hrefbk || '');
+			}
+		}
+
+		if (item.src && (can || item.src.$nv)) {
+			if (value != null || !item.src.$nn) {
+				tmp = item.src.call(el, value, path, el);
+				el.attr('src', tmp == null ? (item.srcbk || '') : tmp);
+			} else {
+				el.attr('src', item.srcbk || '');
+			}
+		}
+
+		if (item.setter && (can || item.setter.$nv) && (value != null || !item.setter.$nn))
+			item.setter.call(el, value, path, el);
+
+		if (item.change && (value != null || !item.change.$nn)) {
+			item.change.call(el, value, path, el);
+		}
+
+		if (can && index == null && item.child) {
+			for (var i = 0; i < item.child.length; i++)
+				item.exec(value, path, i, undefined, can);
+		}
+
+		if (item.tclass) {
+			el.tclass(item.tclass);
+			delete item.tclass;
+		}
+	};
+
+	return jBinder;
 });
-define('skylark-net-http/Xhr',[
-  "skylark-langx-ns/ns",
-  "skylark-langx-types",
-  "skylark-langx-objects",
-  "skylark-langx-arrays",
-  "skylark-langx-funcs",
-  "skylark-langx-async/Deferred",
-  "skylark-langx-emitter/Evented",
-  "./http"
-],function(skylark,types,objects,arrays,funcs,Deferred,Evented,http){
+define('skylark-totaljs-jcomponent/binding/pathmaker',[
+	"../plugins"
+],function(plugins){
 
-    var each = objects.each,
-        mixin = objects.mixin,
-        noop = funcs.noop,
-        isArray = types.isArray,
-        isFunction = types.isFunction,
-        isPlainObject = types.isPlainObject,
-        type = types.type;
- 
-     var getAbsoluteUrl = (function() {
-        var a;
+	function pathmaker(path, clean) {
 
-        return function(url) {
-            if (!a) a = document.createElement('a');
-            a.href = url;
+		if (!path) {
+			return path;
+		}
 
-            return a.href;
-        };
-    })();
-   
-    var Xhr = (function(){
-        var jsonpID = 0,
-            key,
-            name,
-            rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-            scriptTypeRE = /^(?:text|application)\/javascript/i,
-            xmlTypeRE = /^(?:text|application)\/xml/i,
-            jsonType = 'application/json',
-            htmlType = 'text/html',
-            blankRE = /^\s*$/;
+		var tmp = '';
 
-        var XhrDefaultOptions = {
-            async: true,
+		if (clean) {
+			var index = path.indexOf(' ');
+			if (index !== -1) {
+				tmp = path.substring(index);
+				path = path.substring(0, index);
+			}
+		}
 
-            // Default type of request
-            type: 'GET',
-            // Callback that is executed before request
-            beforeSend: noop,
-            // Callback that is executed if the request succeeds
-            success: noop,
-            // Callback that is executed the the server drops error
-            error: noop,
-            // Callback that is executed on request complete (both: error and success)
-            complete: noop,
-            // The context for the callbacks
-            context: null,
-            // Whether to trigger "global" Ajax events
-            global: true,
+		// temporary
+		if (path.charCodeAt(0) === 37)  { // % 
+			return 'jctmp.' + path.substring(1) + tmp;
+		}
+		
+		if (path.charCodeAt(0) === 64) { // @
+			// parent component.data()
+			return path;
+		}
 
-            // MIME types mapping
-            // IIS returns Javascript as "application/x-javascript"
-            accepts: {
-                script: 'text/javascript, application/javascript, application/x-javascript',
-                json: 'application/json',
-                xml: 'application/xml, text/xml',
-                html: 'text/html',
-                text: 'text/plain'
-            },
-            // Whether the request is to another domain
-            crossDomain: false,
-            // Default timeout
-            timeout: 0,
-            // Whether data should be serialized to string
-            processData: false,
-            // Whether the browser should be allowed to cache GET responses
-            cache: true,
+		var index = path.indexOf('/');
 
-            traditional : false,
-            
-            xhrFields : {
-                withCredentials : false
-            }
-        };
+		if (index === -1) {
+			return path + tmp;
+		}
 
-        function mimeToDataType(mime) {
-            if (mime) {
-                mime = mime.split(';', 2)[0];
-            }
-            if (mime) {
-                if (mime == htmlType) {
-                    return "html";
-                } else if (mime == jsonType) {
-                    return "json";
-                } else if (scriptTypeRE.test(mime)) {
-                    return "script";
-                } else if (xmlTypeRE.test(mime)) {
-                    return "xml";
-                }
-            }
-            return "text";
-        }
+		var p = path.substring(0, index);
+		var rem = plugins.find(p); //W.PLUGINS[p];
+		return ((rem ? ('PLUGINS.' + p) : (p + '_plugin_not_found')) + '.' + path.substring(index + 1)) + tmp;
+	}
 
-        function appendQuery(url, query) {
-            if (query == '') return url
-            return (url + '&' + query).replace(/[&?]{1,2}/, '?')
-        }
+	return pathmaker;
 
-        // serialize payload and append it to the URL for GET requests
-        function serializeData(options) {
-            options.data = options.data || options.query;
-            if (options.processData && options.data && type(options.data) != "string") {
-                options.data = param(options.data, options.traditional);
-            }
-            if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
-                options.url = appendQuery(options.url, options.data);
-                options.data = undefined;
-            }
-        }
-
-        function serialize(params, obj, traditional, scope) {
-            var t, array = isArray(obj),
-                hash = isPlainObject(obj)
-            each(obj, function(key, value) {
-                t =type(value);
-                if (scope) key = traditional ? scope :
-                    scope + '[' + (hash || t == 'object' || t == 'array' ? key : '') + ']'
-                // handle data in serializeArray() format
-                if (!scope && array) params.add(value.name, value.value)
-                // recurse into nested objects
-                else if (t == "array" || (!traditional && t == "object"))
-                    serialize(params, value, traditional, key)
-                else params.add(key, value)
-            })
-        }
-
-        var param = function(obj, traditional) {
-            var params = []
-            params.add = function(key, value) {
-                if (isFunction(value)) {
-                  value = value();
-                }
-                if (value == null) {
-                  value = "";
-                }
-                this.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
-            };
-            serialize(params, obj, traditional)
-            return params.join('&').replace(/%20/g, '+')
-        };
-
-        var Xhr = Evented.inherit({
-            klassName : "Xhr",
-
-            _request  : function(args) {
-                var _ = this._,
-                    self = this,
-                    options = mixin({},XhrDefaultOptions,_.options,args),
-                    xhr = _.xhr = new XMLHttpRequest();
-
-                serializeData(options)
-
-                if (options.beforeSend) {
-                    options.beforeSend.call(this, xhr, options);
-                }                
-
-                var dataType = options.dataType || options.handleAs,
-                    mime = options.mimeType || options.accepts[dataType],
-                    headers = options.headers,
-                    xhrFields = options.xhrFields,
-                    isFormData = options.data && options.data instanceof FormData,
-                    basicAuthorizationToken = options.basicAuthorizationToken,
-                    type = options.type,
-                    url = options.url,
-                    async = options.async,
-                    user = options.user , 
-                    password = options.password,
-                    deferred = new Deferred(),
-                    contentType = isFormData ? false : 'application/x-www-form-urlencoded';
-
-                if (xhrFields) {
-                    for (name in xhrFields) {
-                        xhr[name] = xhrFields[name];
-                    }
-                }
-
-                if (mime && mime.indexOf(',') > -1) {
-                    mime = mime.split(',', 2)[0];
-                }
-                if (mime && xhr.overrideMimeType) {
-                    xhr.overrideMimeType(mime);
-                }
-
-                //if (dataType) {
-                //    xhr.responseType = dataType;
-                //}
-
-                var finish = function() {
-                    xhr.onloadend = noop;
-                    xhr.onabort = noop;
-                    xhr.onprogress = noop;
-                    xhr.ontimeout = noop;
-                    xhr = null;
-                }
-                var onloadend = function() {
-                    var result, error = false
-                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && getAbsoluteUrl(url).startsWith('file:'))) {
-                        dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
-
-                        result = xhr.responseText;
-                        try {
-                            if (dataType == 'script') {
-                                eval(result);
-                            } else if (dataType == 'xml') {
-                                result = xhr.responseXML;
-                            } else if (dataType == 'json') {
-                                result = blankRE.test(result) ? null : JSON.parse(result);
-                            } else if (dataType == "blob") {
-                                result = Blob([xhrObj.response]);
-                            } else if (dataType == "arraybuffer") {
-                                result = xhr.reponse;
-                            }
-                        } catch (e) { 
-                            error = e;
-                        }
-
-                        if (error) {
-                            deferred.reject(error,xhr.status,xhr);
-                        } else {
-                            deferred.resolve(result,xhr.status,xhr);
-                        }
-                    } else {
-                        deferred.reject(new Error(xhr.statusText),xhr.status,xhr);
-                    }
-                    finish();
-                };
-
-                var onabort = function() {
-                    if (deferred) {
-                        deferred.reject(new Error("abort"),xhr.status,xhr);
-                    }
-                    finish();                 
-                }
- 
-                var ontimeout = function() {
-                    if (deferred) {
-                        deferred.reject(new Error("timeout"),xhr.status,xhr);
-                    }
-                    finish();                 
-                }
-
-                var onprogress = function(evt) {
-                    if (deferred) {
-                        deferred.notify(evt,xhr.status,xhr);
-                    }
-                }
-
-                xhr.onloadend = onloadend;
-                xhr.onabort = onabort;
-                xhr.ontimeout = ontimeout;
-                xhr.onprogress = onprogress;
-
-                xhr.open(type, url, async, user, password);
-               
-                if (headers) {
-                    for ( var key in headers) {
-                        var value = headers[key];
- 
-                        if(key.toLowerCase() === 'content-type'){
-                            contentType = value;
-                        } else {
-                           xhr.setRequestHeader(key, value);
-                        }
-                    }
-                }   
-
-                if  (contentType && contentType !== false){
-                    xhr.setRequestHeader('Content-Type', contentType);
-                }
-
-                if(!headers || !('X-Requested-With' in headers)){
-                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                }
-
-
-                //If basicAuthorizationToken is defined set its value into "Authorization" header
-                if (basicAuthorizationToken) {
-                    xhr.setRequestHeader("Authorization", basicAuthorizationToken);
-                }
-
-                xhr.send(options.data ? options.data : null);
-
-                return deferred.promise;
-
-            },
-
-            "abort": function() {
-                var _ = this._,
-                    xhr = _.xhr;
-
-                if (xhr) {
-                    xhr.abort();
-                }    
-            },
-
-
-            "request": function(args) {
-                return this._request(args);
-            },
-
-            get : function(args) {
-                args = args || {};
-                args.type = "GET";
-                return this._request(args);
-            },
-
-            post : function(args) {
-                args = args || {};
-                args.type = "POST";
-                return this._request(args);
-            },
-
-            patch : function(args) {
-                args = args || {};
-                args.type = "PATCH";
-                return this._request(args);
-            },
-
-            put : function(args) {
-                args = args || {};
-                args.type = "PUT";
-                return this._request(args);
-            },
-
-            del : function(args) {
-                args = args || {};
-                args.type = "DELETE";
-                return this._request(args);
-            },
-
-            "init": function(options) {
-                this._ = {
-                    options : options || {}
-                };
-            }
-        });
-
-        ["request","get","post","put","del","patch"].forEach(function(name){
-            Xhr[name] = function(url,args) {
-                var xhr = new Xhr({"url" : url});
-                return xhr[name](args);
-            };
-        });
-
-        Xhr.defaultOptions = XhrDefaultOptions;
-        Xhr.param = param;
-
-        return Xhr;
-    })();
-
-	return http.Xhr = Xhr;	
 });
+define('skylark-totaljs-jcomponent/binding/func',[
+	"./pathmaker",
+],function(pathmaker){
+
+	//'PLUGIN/method_name' or '@PLUGIN.method_name'
+	var REGFNPLUGIN = /[a-z0-9_-]+\/[a-z0-9_]+\(|(^|(?=[^a-z0-9]))@[a-z0-9-_]+\./i;
+
+
+	var regfnplugin = function(v) {
+		var l = v.length;
+		return pathmaker(v.substring(0, l - 1)) + v.substring(l - 1);
+	};
+
+	function rebinddecode(val) {
+		return val.replace(/&#39;/g, '\'');
+	}
+
+	function isValue(val) {
+		var index = val.indexOf('value');
+		return index !== -1 ? (((/\W/).test(val)) || val === 'value') : false;
+	}
+
+
+   /**
+   * Generates Function from expression of arrow function.
+   * @example var fn = func('n => n.toUpperCase()');
+   *          console.log(fn('peter')); //Output: PETER
+   * @param  {String} exp 
+   * @return {Function} 
+   */
+	function func(exp, notrim) {  // W.FN = 
+
+		exp = exp.replace(REGFNPLUGIN, regfnplugin);
+
+		var index = exp.indexOf('=>');
+		if (index === -1) {
+			if (isValue(exp))  {
+				// func("value.toUpperCase()") --> func("value=>value.toUpperCase()")
+				// func("plugin/method(value)") --> func("value=>plugin/method(value)")
+			  	return func('value=>' + rebinddecode(exp), true) 
+			} else {
+				// func("plugin/method(value)")
+		      	return new Function('return ' + (exp.indexOf('(') === -1 ? 'typeof({0})==\'function\'?{0}.apply(this,arguments):{0}'.format(exp) : exp));
+			}
+		}
+
+		var arg = exp.substring(0, index).trim();
+		var val = exp.substring(index + 2).trim();
+		var is = false;
+
+		arg = arg.replace(/\(|\)|\s/g, '').trim();
+		if (arg) {
+			arg = arg.split(',');
+		}
+
+		if (val.charCodeAt(0) === 123 && !notrim) {  // "{"
+			is = true;
+			val = val.substring(1, val.length - 1).trim();
+		}
+
+
+		var output = (is ? '' : 'return ') + val;
+		switch (arg.length) {
+			case 1:
+				return new Function(arg[0], output);
+			case 2:
+				return new Function(arg[0], arg[1], output);
+			case 3:
+				return new Function(arg[0], arg[1], arg[2], output);
+			case 4:
+				return new Function(arg[0], arg[1], arg[2], arg[3], output);
+			case 0:
+			default:
+				return new Function(output);
+		}
+	};
+
+	func.rebinddecode = rebinddecode;
+	func.isValue = isValue;
+
+	return func;
+});
+define('skylark-totaljs-jcomponent/binding/findFormat',[
+	"./func",
+	"./pathmaker"
+],function(func, pathmaker){
+
+	/**
+	 * A inline helper example:
+	 * 1. Direct assignment
+	 *  <div data-bind="form.name --> (value || '').toUpperCase()__html:value"></div>
+	 * 2. With arrow function
+	 *  <div data-bind="form.name --> n => (n || '').toUpperCase()__html:value"></div>
+	 * 3. Plugins
+	 *  <div data-bind="form.name --> plugin/method(value)__html:value"></div>
+	 */
+	function findFormat(val) {
+		var a = val.indexOf('-->');
+		var s = 3;
+
+		if (a === -1) {
+			a = val.indexOf('->');
+			s = 2;
+		}
+
+		if (a !== -1) {
+			if (val.indexOf('/') !== -1 && val.indexOf('(') === -1) {
+				//plugin/method --> plugin/method(value)
+				val += '(value)';
+			}
+		}
+
+		if (a === -1) {
+			return null;
+		} else {
+			return  { 
+				path: val.substring(0, a).trim(), 
+				fn: func(val.substring(a + s).trim()) 
+			};			
+		}
+	}
+
+	return findFormat;
+});
+define('skylark-totaljs-jcomponent/binding/parse',[
+	"../langx",
+	"../utils/query",
+	"./func",
+	"./pathmaker",
+	"./findFormat",
+	"./Binder"
+],function(langx, $,func,pathmaker,findFormat,jBinder){
+	
+
+
+	function parsebinderskip(str) {
+		var a = arguments;
+		for (var i = 1; i < a.length; i++) {
+			if (str.indexOf(a[i]) !== -1) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/*
+	 * A binder declaration:
+	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
+	 */
+	function parsebinder(el, b, scopes, options,r) {
+		var binders = options.binders,
+			bindersnew = options.bindersnew;
+		
+		var meta = b.split(/_{2,}/);
+		if (meta.indexOf('|') !== -1) {
+			//Multiple watchers (__|__)
+			if (!r) {
+				var tmp = [];
+				var output = [];
+				for (var i = 0; i < meta.length; i++) {
+					var m = meta[i];
+					if (m === '|') {
+						if (tmp.length) {
+							output.push(parsebinder(el, tmp.join('__'), scopes,options));
+						} 
+						tmp = [];
+						continue;
+					}
+					if (m) {
+						tmp.push(m);
+					}
+				}
+				if (tmp.length) {
+					output.push(parsebinder(el, tmp.join('__'), scopes, options,true));
+				} 
+			}
+			return output;
+		}
+
+		var path = null;
+		var index = null;
+		var obj = new jBinder();
+		var cls = [];
+		var sub = {};
+		var e = obj.el = $(el);
+
+		for (var i = 0; i < meta.length; i++) {
+			var item = meta[i].trim();
+			if (item) {
+				if (i) {
+					//command
+
+					var k, // command 
+						v; // expression
+
+					if (item !== 'template' && item !== '!template' && item !== 'strict') {
+
+						index = item.indexOf(':');
+
+						if (index === -1) {
+							index = item.length;
+							item += ':value';
+						}
+
+						k = item.substring(0, index).trim();
+						v = item.substring(index + 1).trim();
+					} else {
+						k = item;
+					}
+
+					if (k === 'selector') {
+						obj[k] = v;
+						continue;
+					}
+
+					var rki = k.indexOf(' ');
+					var rk = rki === -1 ? k : k.substring(0, rki);
+					var fn;
+
+					if ( (parsebinderskip(rk, 'setter', 'strict', 'track', 'delay', 'import', 'class', 'template')) && (k.substring(0, 3) !== 'def') ) {
+					   if (v.indexOf('=>') !== -1 ) {
+					       fn = func( func.rebinddecode(v)); 
+					   } else {   
+					       if (func.isValue(v) ) {
+					          fn = func('(value,path,el)=>' + func.rebinddecode(v), true) ;
+					       } else { 
+					          if (v.substring(0, 1) === '@' ) {
+					          	  // binding component method
+					              fn = obj.com[v.substring(1)] ;
+					          } else {
+					          	  fn = GET(v) ;
+					          } 
+					        }
+					    }
+					} else {
+						fn = 1;
+					}
+
+
+					if (!fn) {
+						return null;
+					}
+
+					var keys = k.split('+'); // commands to same expression with help of + char with spaces on both sides.
+					for (var j = 0; j < keys.length; j++) {
+
+						k = keys[j].trim();
+
+						var s = '';
+						var notvisible = false;
+						var notnull = false;
+						var backup = false;
+
+						index = k.indexOf(' ');
+						if (index !== -1) {
+							s = k.substring(index + 1); // selector
+							k = k.substring(0, index);
+						}
+
+						k = k.replace(/^(~!|!~|!|~)/, function(text) { 
+							if (text.indexOf('!') !== -1) {
+								notnull = true; // !command 
+							}
+							if (text.indexOf('~') !== -1) { 
+								notvisible = true; // ~command
+							}
+							return '';
+						});
+
+						var c = k.substring(0, 1);
+
+						if (k === 'class') {
+							k = 'tclass';
+						}
+
+						if (c === '.') { // command: .class_name
+							if (notnull) {
+								fn.$nn = 1;
+							}
+							cls.push({ 
+								name: k.substring(1), 
+								fn: fn 
+							});
+							k = 'class';
+						}
+
+						if (langx.isFunction(fn)) {
+							if (notnull) {
+								fn.$nn = 1;
+							}
+							if (notvisible) {
+								fn.$nv = 1;
+							}
+						}
+
+						switch (k) {
+							case 'track':
+								obj[k] = v.split(',').trim();
+								continue;
+							case 'strict':
+								obj[k] = true;
+								continue;
+							case 'hidden':
+								k = 'hide';
+								break;
+							case 'exec':
+								k = 'change';
+								break;
+							case 'disable':
+								k = 'disabled';
+								backup = true;
+								break;
+							case 'value':
+								k = 'val';
+								backup = true;
+								break;
+							case 'default':
+								k = 'def';
+								break;
+							case 'delay':
+								fn = +v;
+								break;
+							case 'href':
+							case 'src':
+							case 'val':
+							case 'title':
+							case 'html':
+							case 'text':
+							case 'disabled':
+							case 'enabled':
+							case 'checked':
+								backup = true;
+								break;
+
+							case 'setter':
+								fn = langx.fn('(value,path,el)=>el.SETTER(' + v + ')');
+								if (notnull)
+									fn.$nn = 1;
+								if (notvisible)
+									fn.$nv =1;
+								break;
+							case 'import':
+								var c = v.substring(0, 1);
+								if ((/^(https|http):\/\//).test(v) || c === '/' || c === '.') {
+									if (c === '.') {
+										fn = v.substring(1);
+									} else {
+										fn = v;
+									}
+								} else {
+									fn = func(func.rebinddecode(v));
+								}
+								break;
+							case 'tclass':
+								fn = v;
+								break;
+							case 'template':
+								var scr = e.find('script');
+								if (!scr.length) {
+									scr = e;
+								}
+								fn = Tangular.compile(scr.html());
+								if (notnull) {
+									fn.$nn = 1;
+								}
+								if (notvisible) {
+									fn.$nv = 1;
+								}
+								break;
+						}
+
+						if (k === 'def') {
+							fn = new Function('return ' + v)();
+						}
+
+						if (backup && notnull) {
+							obj[k + 'bk'] = (k == 'src' || k == 'href' || k == 'title') ? e.attr(k) : (k == 'html' || k == 'text') ? e.html() : k == 'val' ? e.val() : (k == 'disabled' || k == 'checked') ? e.prop(k) : '';
+						}
+
+						if (s) {
+
+							if (!sub[s]) {
+								sub[s] = {};
+							}
+
+							if (k !== 'class') {
+								sub[s][k] = fn;
+							} else {
+								var p = cls.pop();
+								if (sub[s].cls) {
+									sub[s].cls.push(p);
+								} else {
+									sub[s].cls = [p];
+								}
+							}
+						} else {
+							if (k !== 'class') {
+								obj[k] = fn;
+							}
+						}
+					}
+
+				} else {
+					// path
+					path = item;
+
+					var c = path.substring(0, 1);
+
+					if (c === '!') {
+						path = path.substring(1);
+						obj.notnull = true;
+					}
+
+					if (meta.length === 1) {
+						var fn = GET(path);
+						fn && fn.call(obj.el, obj.el);
+						return fn ? fn : null;
+					}
+
+					var tmp = findFormat(path);
+					if (tmp) {
+						path = tmp.path;
+						obj.format = tmp.fn;
+					}
+
+					// Is virtual path?
+					if (c === '.') {
+						obj.virtual = true;
+						path = path.substring(1);
+						continue;
+					}
+
+					if (path.substring(path.length - 1) === '.') {
+						path = path.substring(0, path.length - 1);
+					}
+
+					if (path.substring(0, 1) === '@') {
+						//component scope
+						path = path.substring(1);
+
+						var isCtrl = false;
+						if (path.substring(0, 1) === '@') {
+							isCtrl = true;
+							path = path.substring(1);
+						}
+
+						if (!path) {
+							path = '@';
+						}
+
+						var parent = el.parentNode;
+						while (parent) {
+							if (isCtrl) {
+								if (parent.$ctrl) {
+									obj.com = parent.$ctrl;
+									if (path === '@' && !obj.com.$dataw) {
+										obj.com.$dataw = 1;
+										obj.com.watch(function(path, value) {
+											obj.com.data('@', value);
+										});
+									}
+									break;
+								}
+							} else {
+								if (parent.$com) {
+									obj.com = parent.$com;
+									break;
+								}
+							}
+							parent = parent.parentNode;
+						}
+
+						if (!obj.com) {
+							return null;
+						}
+					}
+				}
+			}
+		}
+
+		var keys = Object.keys(sub);
+		for (var i = 0; i < keys.length; i++) {
+			var key = keys[i];
+			if (!obj.child) {
+				obj.child = [];
+			}
+			var o = sub[key];
+			o.selector = key;
+			obj.child.push(o);
+		}
+
+		if (cls.length) {
+			obj.classes = cls;
+		}
+
+		if (obj.virtual) {
+			path = pathmaker(path);
+		} else {
+
+			var bj = obj.com && path.substring(0, 1) === '@';
+			path = bj ? path : pathmaker(path);
+
+			if (path.indexOf('?') !== -1) {
+				// jComponent scopes
+				// You can use data-bind in jComponent scopes, but you need to defined ? (question mark) 
+				// on the start of data-bind path. Question mark ? will be replaced for a scope path.
+				var scope = initscopes(scopes);
+				if (scope) {
+					path = path.replace(/\?/g, scope.path);
+				} else {
+					return;
+				}
+			}
+
+			var arr = path.split('.');
+			var p = '';
+
+			if (obj.com) {
+				!obj.com.$data[path] && (obj.com.$data[path] = { value: null, items: [] });
+				obj.com.$data[path].items.push(obj);
+			} else {
+				for (var i = 0, length = arr.length; i < length; i++) {
+					p += (p ? '.' : '') + arr[i];
+					var k = i === length - 1 ? p : '!' + p;
+					if (binders[k]) {
+						binders[k].push(obj);
+					} else {
+						binders[k] = [obj];
+					}
+				}
+			}
+		}
+
+		obj.path = path;
+
+		if (obj.track) {
+			for (var i = 0; i < obj.track.length; i++) {
+				obj.track[i] = path + '.' + obj.track[i];
+			}
+		}
+
+		obj.init = 0; 
+		if(!obj.virtual) {
+			bindersnew.push(obj);
+		}
+		return obj;
+	}
+
+	return parsebinder;
+});
+define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
+	"../langx",
+	"../utils/query",
+	"./parse"
+],function(langx, $, parsebinder){
+	var ATTRBIND = '[data-bind],[bind],[data-vbind]';
+	
+	function VBinder(html) {
+		var t = this;
+		var e = t.element = $(html);
+		t.binders = [];
+		var fn = function() {
+			var dom = this;
+			var el = $(dom);
+			var b = el.attrd('bind') || el.attr('bind') || el.attrd('vbind');
+			dom.$jcbind = parsebinder(dom, b, langx.empties.array,t.binders); //EMPTYARRAY);
+			//if(dom.$jcbind) {
+			//   t.binders.push(dom.$jcbind);
+			//}
+		};
+		e.filter(ATTRBIND).each(fn);
+		e.find(ATTRBIND).each(fn);
+	}
+
+	var VBP = VBinder.prototype;
+
+	VBP.on = function() {
+		var t = this;
+		t.element.on.apply(t.element, arguments);
+		return t;
+	};
+
+	VBP.remove = function() {
+		var t = this;
+		var e = t.element;
+		e.find('*').off();
+		e.off().remove();
+		t.element = null;
+		t.binders = null;
+		t = null;
+		return t;
+	};
+
+	VBP.set = function(path, model) {
+
+		var t = this;
+
+		if (model == null) {
+			model = path;
+			path = '';
+		}
+
+		for (var i = 0; i < t.binders.length; i++) {
+			var b = t.binders[i];
+			if (!path || path === b.path) {
+				var val = path || !b.path ? model : langx.result(model,b.path); // get(b.path, model)
+				t.binders[i].exec(val, b.path);
+			}
+		}
+
+		return t;
+	};
+
+	return VBinder;
+
+});
+
+
 define('skylark-domx-data/data',[
     "skylark-langx/skylark",
     "skylark-langx/langx",
@@ -13166,2075 +13723,6 @@ define('skylark-totaljs-jcomponent/utils/domx',[
 	}
 
 });
-define('skylark-totaljs-jcomponent/utils/localStorage',[
-	"../langx"
-],function(langx){
-
-	var $localstorage = 'jc.'; //M.$localstorage
-
-
-	function get(key) {
-		var value = localStorage.getItem($localstorage + key);
-		if (value && langx.isString(value)) {
-			value = langx.parse(value); // PARSE
-		}
-		return value;
-	}
-
-	function set(key,value) {
-		localStorage.setItem($localstorage + key, JSON.stringify(value)); // M.$localstorage
-		return this;
-	}
-
-	function remove(key) {
-		localStorage.removeItem($localstorage + key);
-	}
-
-	function clear() {
-		var keys = [];
-	  	for (var i = 0; i < localStorage.length; i++) {
-    		var key = localStorage.key(i);
-    		if (key.indexOf($localstorage) == 0)  {
-    			keys.push(key);
-    		}
-  		}
-  		for (var i=0;i<keys.length;i++) {
-  			localStorage.removeItem(keys[i]);
-  		}
-	}
-	return  {
-		"clear" : clear,
-		"get" : get,
-		"remove": remove,
-		"set" : set
-	};
-});
-define('skylark-totaljs-jcomponent/utils/storage',[
-	"../langx",
-	"./localStorage"
-],function(langx, localStorage){
-	//var M = jc,
-	//	MD = defaults;
-
-	var	sessionData = {} ,
-		localData= {};
-
-	function save() {
-		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
-		localStorage.setItem('cache', localData); // M.$localstorage
-		//}
-	}
-
-
-	function storage(key, value, expire) { //cachestorage //W.CACHE =  
-
-		if (value !== undefined) {
-			return storage.set(key,value,expire)
-		} else {
-			return storage.get(key);
-		}
-
-	}
-
-	function save() {
-		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
-		//	localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
-		//}
-		localStorage.set('cache', localData);
-	}
-
-	storage.get = function (key,expire) {
-		var checkSession = !expire || expire == "session",
-			checkStorage = !expire  || expire != "session",
-			value;
-
-		if (checkSession) {
-			value = session[key];
-		}
-
-		if (value === undefined && checkStorage) {
-			var item = localData[key];
-			if (item && item.expire > langx.now()) {
-				value = item.value;
-			}
-		}
-
-		return value;
-	};
-
-	storage.set = function (key, value, expire) { 
-		if (!expire || expire === 'session') {
-			session[key] = value;
-			return this;
-		}
-
-		if (langx.isString(expire)) {
-			expire = expire.parseExpire();
-		}
-
-		var now = Date.now();
-
-		localData[key] = { 
-			expire: now + expire, 
-			value: value 
-		};
-
-		save();
-		return this;
-
-	};
-
-	storage.remove = function (key, isSearching) { // W.REMOVECACHE = 
-		if (isSearching) {
-			for (var m in localData) {
-				if (m.indexOf(key) !== -1)
-					delete localData[key];
-			}
-		} else {
-			delete localData[key];
-		}
-		save();
-		return this;
-	};
-
-
-	storage.clean = function () { 
-		for (var key in localData) {
-			var item = localData[key];
-			if (!item.expire || item.expire <= now) {
-				delete localData[key];
-			}
-		}
-
-		save();		
-
-		return this;
-	};
-
-
-	storage.clear = function () { // W.CLEARCACHE = 
-		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
-			var rem = localStorage.removeItem;
-			var k = $localstorage; //M.$localstorage;
-			rem(k); 
-			rem(k + '.cache');
-			rem(k + '.blocked');
-		//}
-		return this;
-	};
-
-
-	storage.getSessionData = function(key) {
-		return session[key];
-	};
-
-	storage.setSessionData = function(key,value) {
-		session[key] = value;
-		return this;
-	};
-
-	storage.clearSessionData = function() {
-
-		if (!arguments.length) {
-			session = {};
-			return;
-		}
-
-		var keys = langx.keys(page);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			var remove = false;
-			var a = arguments;
-
-			for (var j = 0; j < a.length; j++) {
-				if (key.substring(0, a[j].length) !== a[j]) {
-					continue;
-				}
-				remove = true;
-				break;
-			}
-
-			if (remove) {
-				delete session[key];
-			}
-		}
-	};
-
-
-	storage.getStorageData = function(key) {
-		return session[key];
-	};
-
-	storage.setStorageData = function(key,value) {
-		session[key] = value;
-		return this;
-	};
-
-	storage.clearStorageData = function() {
-
-		if (!arguments.length) {
-			session = {};
-		} else {
-			var keys = langx.keys(page);
-
-			for (var i = 0, length = keys.length; i < length; i++) {
-				var key = keys[i];
-				var remove = false;
-				var a = arguments;
-
-				for (var j = 0; j < a.length; j++) {
-					if (key.substring(0, a[j].length) !== a[j]) {
-						continue;
-					}
-					remove = true;
-					break;
-				}
-
-				if (remove) {
-					delete session[key];
-				}
-			}
-		}
-		save();
-
-	};
-
-	storage.load = function () {
-		clearTimeout($ready);
-		if (MD.localstorage) {
-			var cache;
-			try {
-				cache = localStorage.getItem(M.$localstorage + '.cache');
-				if (cache && langx.isString(cache)) {
-					localData = langx.parse(cache); // PARSE
-				}
-			} catch (e) {}
-
-		}
-
-		if (localData) {
-			var obj = localData['$jcpath'];
-			obj && Object.keys(obj.value).forEach(function(key) {
-				immSetx(key, obj.value[key], true);
-			});
-		}
-
-		M.loaded = true;
-	}
-
-
-	function clean() {
-
-	}
-
-	return storage;
-});
-define('skylark-totaljs-jcomponent/utils/http',[
-	"../jc",
-	"../langx",
-	"skylark-net-http/Xhr",
-  "./domx",
-	"./storage"
-],function(jc,langx,Xhr,domx,storage){
-	var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind)=|COMPONENT\(/; //TODO
-
-	var statics = langx.statics;
-	
-	var ajaxconfig = {};
-	var defaults = {
-
-	};
-	defaults.ajaxerrors = false;
-	defaults.pingdata = {};
-	defaults.baseurl = ''; // String or Function
-	defaults.makeurl = null; // Function
-	defaults.delayrepeat = 2000;
-	defaults.jsondate = true;
-	defaults.jsonconverter = {
-		'text json': function(text) {
-			return PARSE(text);
-		}
-	};
-	defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
-
-	function request(url,options) {
-		options.url = url;
-        function ajaxSuccess() {
-            if (options.success) {
-                options.success.apply(this,arguments);
-            }
-        }
-
-        function ajaxError() {
-            if (options.error) {
-                options.error.apply(this,arguments);
-            }
-        }
-
-        var p = Xhr.request(options.url,options);
-        p = p.then(ajaxSuccess,ajaxError);
-        p.success = p.done;
-        p.error = p.fail;
-        p.complete = p.always;
-        
-        return p;		
-	}
-
-	function parseHeaders(val) {
-		var h = {};
-		val.split('\n').forEach(function(line) {
-			var index = line.indexOf(':');
-			if (index !== -1) {
-				h[line.substring(0, index).toLowerCase()] = line.substring(index + 1).trim();
-			}
-		});
-		return h;
-	}
-
-	function cacherest(method, url, params, value, expire) {
-
-		if (params && !params.version && M.$version)
-			params.version = M.$version;
-
-		if (params && !params.language && M.$language)
-			params.language = M.$language;
-
-		params = langx.stringify(params);
-		var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
-		return storage.set(key, value, expire);
-	}
-	
-
-
-	function makeParams(url, values, type) { //W.MAKEPARAMS = 
-
-		var l = location;
-
-		if (langx.isObject(url)) {
-			type = values;
-			values = url;
-			url = l.pathname + l.search;
-		}
-
-		var query;
-		var index = url.indexOf('?');
-		if (index !== -1) {
-			query = M.parseQuery(url.substring(index + 1));
-			url = url.substring(0, index);
-		} else
-			query = {};
-
-		var keys = Object.keys(values);
-
-		for (var i = 0, length = keys.length; i < length; i++) {
-			var key = keys[i];
-			query[key] = values[key];
-		}
-
-		var val = Xhr.param(query, type == null || type === true);
-		return url + (val ? '?' + val : '');
-	}
-
-	function makeurl(url, make) {
-
-		// TODO
-		//defaults.makeurl && (url = defaults.makeurl(url));
-		//
-		//if (make)
-		//	return url;
-
-		var builder = [];
-		var en = encodeURIComponent;
-
-		//M.$version && builder.push('version=' + en(M.$version));
-		//M.$language && builder.push('language=' + en(M.$language));
-
-		if (!builder.length)
-			return url;
-
-		var index = url.indexOf('?');
-		if (index == -1)
-			url += '?';
-		else
-			url += '&';
-
-		return url + builder.join('&');
-	}
-
-	function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
-
-		if (!langx.isNumber(timeout) && progress == null) {
-			progress = timeout;
-			timeout = null;
-		}
-
-		if (!url)
-			url = location.pathname;
-
-		var method = 'POST';
-		var index = url.indexOf(' ');
-		var tmp = null;
-
-		if (index !== -1) {
-			method = url.substring(0, index).toUpperCase();
-		}
-
-		var isCredentials = method.substring(0, 1) === '!';
-		if (isCredentials) {
-			method = method.substring(1);
-		}
-
-		var headers = {};
-		tmp = url.match(/\{.*?\}/g);
-
-		if (tmp) {
-			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
-			tmp = (new Function('return ' + tmp))();
-			if (langx.isObject(tmp))
-				headers = tmp;
-		}
-
-		url = url.substring(index).trim().$env();
-
-		if (langx.isNumber(callback)) {
-			timeout = callback;
-			callback = undefined;
-		}
-
-		var output = {};
-		output.url = url;
-		output.process = true;
-		output.error = false;
-		output.upload = true;
-		output.method = method;
-		output.data = data;
-
-		topic.emit('request', output);
-
-		if (output.cancel)
-			return;
-
-		setTimeout(function() {
-
-			var xhr = new XMLHttpRequest();
-
-			if (isCredentials) {
-				xhr.withCredentials = true;
-			}
-
-			xhr.addEventListener('load', function() {
-
-				var self = this;
-				var r = self.responseText;
-				try {
-					r = PARSE(r, defaults.jsondate);
-				} catch (e) {}
-
-				if (progress) {
-					/* TODO
-					if (typeof(progress) === TYPE_S) {
-						remap(progress, 100);
-					} else {
-						progress(100);
-					}
-					*/
-					progress(100);
-				}
-
-				output.response = r;
-				output.status = self.status;
-				output.text = self.statusText;
-				output.error = self.status > 399;
-				output.headers = parseHeaders(self.getAllResponseHeaders());
-
-				topic.emit('response', output);
-
-				if (!output.process || output.cancel)
-					return;
-
-				if (!r && output.error)
-					r = output.response = self.status + ': ' + self.statusText;
-
-				if (!output.error || defaults.ajaxerrors) {
-					langx.isString(callback)  ? remap(callback.env(), r) : (callback && callback(r, null, output));
-				} else {
-					topic.emit('error', output);
-					output.process && langx.isFunction(callback)  && callback({}, r, output);
-				}
-
-			}, false);
-
-			xhr.upload.onprogress = function(evt) {
-				if (!progress) {
-					return;
-				}
-				var percentage = 0;
-				if (evt.lengthComputable) {
-					percentage = Math.round(evt.loaded * 100 / evt.total);
-				}
-				/* TODO
-				if (langx.isString(progress)) {
-					remap(progress.env(), percentage);
-				} else {
-					progress(percentage, evt.transferSpeed, evt.timeRemaining);
-				}
-				*/
-				progress(percentage, evt.transferSpeed, evt.timeRemaining);
-			};
-
-			xhr.open(method, makeurl(output.url));
-
-			var keys = Object.keys(defaults.headers);
-			for (var i = 0; i < keys.length; i++) {
-				xhr.setRequestHeader(keys[i].env(), defaults.headers[keys[i]].env());
-			}
-
-			if (headers) {
-				var keys = Object.keys(headers);
-				for (var i = 0; i < keys.length; i++) {
-					xhr.setRequestHeader(keys[i], headers[keys[i]]);
-				}
-			}
-
-			xhr.send(data);
-
-		}, timeout || 0);
-
-		return W;
-	}
-
-
-	function importCache(url, expire, target, callback, insert, preparator) { // W.IMPORTCACHE = 
-
-		var w;
-
-		url = url.$env().replace(/<.*?>/, function(text) {
-			w = text.substring(1, text.length - 1).trim();
-			return '';
-		}).trim();
-
-		// unique
-		var first = url.substring(0, 1);
-		var once = url.substring(0, 5).toLowerCase() === 'once ';
-
-		if (langx.isFunction(target)) {
-
-			if (langx.isFunction(callback)) {
-				preparator = callback;
-				insert = true;
-			} else if (langx.isFunction(insert) ) {
-				preparator = insert;
-				insert = true;
-			}
-
-			callback = target;
-			target = 'body';
-		} else if (langx.isFunction(insert)) {
-			preparator = insert;
-			insert = true;
-		}
-
-		if (w) {
-
-			var wf = w.substring(w.length - 2) === '()';
-			if (wf) {
-				w = w.substring(0, w.length - 2);
-			}
-
-			var wo = GET(w);
-			if (wf && langx.isFunction(wo)) {
-				if (wo()) {
-					callback && callback(0);
-					return;
-				}
-			} else if (wo) {
-				callback && callback(0);
-				return;
-			}
-		}
-
-		if (url.substring(0, 2) === '//') {
-			url = location.protocol + url;
-		}
-
-		var index = url.lastIndexOf(' .');
-		var ext = '';
-
-		if (index !== -1) {
-			ext = url.substring(index).trim().toLowerCase();
-			url = url.substring(0, index).trim();
-		}
-
-		if (first === '!' || once) {
-
-			if (once) {
-				url = url.substring(5);
-			} else {
-				url = url.substring(1);
-			}
-
-			if (statics[url]) {
-				if (callback) {
-					if (statics[url] === 2)
-						callback(0);
-					else {
-						langx.wait(function() {
-							return statics[url] === 2;
-						}, function() {
-							callback(0);
-						});
-					}
-				}
-				return W;
-			}
-
-			statics[url] = 1;
-		}
-
-		if (target && target.setPath)
-			target = target.element;
-
-		if (!target) {
-			target = 'body';
-		}
-
-		if (!ext) {
-			index = url.lastIndexOf('?');
-			if (index !== -1) {
-				var index2 = url.lastIndexOf('.', index);
-				if (index2 !== -1) {
-					ext = url.substring(index2, index).toLowerCase();
-				}
-			} else {
-				index = url.lastIndexOf('.');
-				if (index !== -1) {
-					ext = url.substring(index).toLowerCase();
-				}
-			}
-		}
-
-		var d = document;
-		if (ext === '.js') {
-			var scr = d.createElement('script');
-			scr.type = 'text/javascript';
-			scr.async = false;
-			scr.onload = function() {
-				statics[url] = 2;
-				callback && callback(1);
-				setTimeout(compile, 300);//W.jQuery && 
-			};
-			scr.src = makeurl(url, true);
-			d.getElementsByTagName('head')[0].appendChild(scr);
-			topic.emit('import', url, $(scr));
-			return this;
-		}
-
-		if (ext === '.css') {
-			var stl = d.createElement('link');
-			stl.type = 'text/css';
-			stl.rel = 'stylesheet';
-			stl.href = makeurl(url, true);
-			d.getElementsByTagName('head')[0].appendChild(stl);
-			statics[url] = 2;
-			callback && setTimeout(callback, 200, 1);
-			topic.emit('import', url, $(stl));
-			return this;
-		}
-
-		langx.wait(function() {
-			return !!W.jQuery;
-		}, function() {
-
-			statics[url] = 2;
-			var id = 'import' + langx.hashCode(url); // HASH
-
-			var cb = function(response, code, output) {
-
-				if (!response) {
-					callback && callback(0);
-					return;
-				}
-
-				url = '$import' + url;
-
-				if (preparator)
-					response = preparator(response, output);
-
-				var is = REGCOM.test(response);
-				response = domx.importscripts(domx.importstyles(response, id)).trim();
-				target = $(target);
-
-				if (response) {
-					//caches.current.element = target[0];
-					if (insert === false) {
-						target.html(response);
-					} else {
-						target.append(response);
-					}
-					//caches.current.element = null;
-				}
-
-				setTimeout(function() {
-					// is && compile(response ? target : null);
-					// because of paths
-					is && compile();
-					callback && langx.wait(function() {
-						return C.is == false;
-					}, function() {
-						callback(1);
-					});
-					topic.emit('import', url, target);
-				}, 10);
-			};
-
-			if (expire) {
-				ajaxCache('GET ' + url, null, cb, expire);
-			}else {
-				ajax('GET ' + url, cb);
-			}
-		});
-
-		return W;
-	}
-
-	function import2(url, target, callback, insert, preparator) { //W.IMPORT = M.import = 
-		if (url instanceof Array) {
-
-			if (langx.isFunction(target)) {
-				preparator = insert;
-				insert = callback;
-				callback = target;
-				target = null;
-			}
-
-			url.wait(function(url, next) {
-				importCache(url, null, target, next, insert, preparator);
-			}, function() {
-				callback && callback();
-			});
-		} else {
-			importCache(url, null, target, callback, insert, preparator);
-		}
-
-		return this;
-	}
-
-	/* 
-	function uptodate(period, url, callback, condition) { // W.UPTODATE = 
-
-		if (langx.isFunction(url)) {
-			condition = callback;
-			callback = url;
-			url = '';
-		}
-
-		var dt = new Date().add(period);
-		topic.on('knockknock', function() {
-			if (dt > langx.now()) //W.NOW)
-				return;
-			if (!condition || !condition())
-				return;
-			var id = setTimeout(function() {
-				var l = window.location;
-				if (url)
-					l.href = url.$env();
-				else
-					l.reload(true);
-			}, 5000);
-			callback && callback(id);
-		});
-	}
-	*/
-
-	function ping(url, timeout, execute) { // W.PING = 
-
-		if (navigator.onLine != null && !navigator.onLine)
-			return;
-
-		if (typeof(timeout) === 'boolean') {
-			execute = timeout;
-			timeout = 0;
-		}
-
-		url = url.$env();
-
-		var index = url.indexOf(' ');
-		var method = 'GET';
-
-		if (index !== -1) {
-			method = url.substring(0, index).toUpperCase();
-			url = url.substring(index).trim();
-		}
-
-		var options = {};
-		var data = $langx.Xhr.param(defaults.pingdata);
-
-		if (data) {
-			index = url.lastIndexOf('?');
-			if (index === -1)
-				url += '?' + data;
-			else
-				url += '&' + data;
-		}
-
-		options.type = method;
-		options.headers = { 'x-ping': location.pathname, 'x-cookies': navigator.cookieEnabled ? '1' : '0', 'x-referrer': document.referrer };
-
-		options.success = function(r) {
-			if (r) {
-				try {
-					(new Function(r))();
-				} catch (e) {}
-			}
-		};
-
-		execute && request(makeurl(url), options);
-
-		return setInterval(function() {
-			request(makeurl(url), options);
-		}, timeout || 30000);
-	}
-
-	function parseQuery(value) { //M.parseQuery = W.READPARAMS = 
-
-		if (!value)
-			value = location.search;
-
-		if (!value)
-			return {};
-
-		var index = value.indexOf('?');
-		if (index !== -1)
-			value = value.substring(index + 1);
-
-		var arr = value.split('&');
-		var obj = {};
-		for (var i = 0, length = arr.length; i < length; i++) {
-			var sub = arr[i].split('=');
-			var key = sub[0];
-			var val = decodeURIComponent((sub[1] || '').replace(/\+/g, '%20'));
-
-			if (!obj[key]) {
-				obj[key] = val;
-				continue;
-			}
-
-			if (!(obj[key] instanceof Array))
-				obj[key] = [obj[key]];
-			obj[key].push(val);
-		}
-		return obj;
-	}
-
-	function configure(name, fn) {  // W.AJAXCONFIG = 
-		ajaxconfig[name] = fn;  
-		return this;
-	}
-
-	function ajax(url, data, callback, timeout) { // W.AJAX = 
-
-		if (langx.isFunction(url) ) {
-			timeout = callback;
-			callback = data;
-			data = url;
-			url = location.pathname;
-		}
-
-		var td = typeof(data);
-		var arg = EMPTYARRAY;
-		var tmp;
-
-		if (!callback && (td === 'function' || td === 'string')) {
-			timeout = callback;
-			callback = data;
-			data = undefined;
-		}
-
-		var index = url.indexOf(' ');
-		if (index === -1)
-			return W;
-
-		var repeat = false;
-
-		url = url.replace(/\srepeat/i, function() {
-			repeat = true;
-			return '';
-		});
-
-		if (repeat)
-			arg = [url, data, callback, timeout];
-
-		var method = url.substring(0, index).toUpperCase();
-		var isCredentials = method.substring(0, 1) === '!';
-		if (isCredentials)
-			method = method.substring(1);
-
-		var headers = {};
-		tmp = url.match(/\{.*?\}/g);
-
-		if (tmp) {
-			url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
-			tmp = (new Function('return ' + tmp))();
-			if (langx.isObject(tmp) )
-				headers = tmp;
-		}
-
-		url = url.substring(index).trim().$env();
-
-		setTimeout(function() {
-
-			if (method === 'GET' && data) {
-				var qs = (langx.isString(data)  ? data : jQuery.param(data, true));
-				if (qs)
-					url += '?' + qs;
-			}
-
-			var options = {};
-			options.method = method;
-			options.converters = defaults.jsonconverter;
-
-			if (method !== 'GET') {
-				if (langx.isString(data) ) {
-					options.data = data;
-				} else {
-					options.contentType = 'application/json; charset=utf-8';
-					options.data = STRINGIFY(data);
-				}
-			}
-
-			options.headers = langx.extend(headers, defaults.headers);
-
-			if (url.match(/http:\/\/|https:\/\//i)) {
-				options.crossDomain = true;
-				delete options.headers['X-Requested-With'];
-				if (isCredentials)
-					options.xhrFields = { withCredentials: true };
-			} else
-				url = url.ROOT();
-
-			var custom = url.match(/\([a-z0-9\-.,]+\)/i);
-			if (custom) {
-				url = url.replace(custom, '').replace(/\s+/g, '');
-				options.url = url;
-				custom = custom.toString().replace(/\(|\)/g, '').split(',');
-				for (var i = 0; i < custom.length; i++) {
-					var opt = ajaxconfig[custom[i].trim()];
-					opt && opt(options);
-				}
-			}
-
-			if (!options.url)
-				options.url = url;
-
-			//topic.emit('request', options); //TODO
-
-			if (options.cancel)
-				return;
-
-			options.type = options.method;
-			delete options.method;
-
-			var output = {};
-			output.url = options.url;
-			output.process = true;
-			output.error = false;
-			output.upload = false;
-			output.method = method;
-			output.data = data;
-
-			delete options.url;
-
-			options.success = function(r, s, req) {
-				output.response = r;
-				output.status = req.status || 999;
-				output.text = s;
-				output.headers = parseHeaders(req.getAllResponseHeaders());
-				//topic.emit('response', output); TODO
-				if (output.process && !output.cancel) {
-					/* TODO
-					if (typeof(callback) === TYPE_S)
-						remap(callback, output.response);
-					else
-						callback && callback.call(output, output.response, undefined, output);
-					*/
-					callback && callback.call(output, output.response, undefined, output);
-				}
-			};
-
-			options.error = function(req, s) {
-
-				var code = req.status;
-
-				if (repeat && (!code || code === 408 || code === 502 || code === 503 || code === 504 || code === 509)) {
-					// internal error
-					// internet doesn't work
-					setTimeout(function() {
-						arg[0] += ' REPEAT';
-						W.AJAX.apply(M, arg);
-					}, defaults.delayrepeat);
-					return;
-				}
-
-				output.response = req.responseText;
-				output.status = code || 999;
-				output.text = s;
-				output.error = true;
-				output.headers = parseHeaders(req.getAllResponseHeaders());
-				var ct = output.headers['content-type'];
-
-				if (ct && ct.indexOf('/json') !== -1) {
-					try {
-						output.response = PARSE(output.response, defaults.jsondate);
-					} catch (e) {}
-				}
-
-				//topic.emit('response', output); TODO
-
-				if (output.cancel || !output.process)
-					return;
-
-				if (defaults.ajaxerrors) {
-					/* TODO
-					if (typeof(callback) === TYPE_S)
-						remap(callback, output.response);
-					else
-						callback && callback.call(output, output.response, output.status, output);
-					*/
-					callback && callback.call(output, output.response, output.status, output);
-				} else {
-					//topic.emit('error', output); TODO
-					if (langx.isFunction(callback)) 
-					callback.call(output, output.response, output.status, output);
-				}
-			};
-
-			request(makeurl(output.url), options);
-
-		}, timeout || 0);
-
-		return this;
-	}
-
-	function ajaxCacheReview(url, data, callback, expire, timeout, clear) { //W.AJAXCACHEREVIEW = 
-		return ajaxCache(url, data, callback, expire, timeout, clear, true);
-	}
-
-	function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
-
-
-		if (langx.isFunction(data) || (langx.isString(data) && langx.isString(callback)  && !langx.isString(expire))) {
-			clear = timeout;
-			timeout = expire;
-			expire = callback;
-			callback = data;
-			data = null;
-		}
-
-		if (langx.isBoolean(timeout)) {
-			clear = timeout === true;
-			timeout = 0;
-		}
-
-		var index = url.indexOf(' ');
-		if (index === -1)
-			return W;
-
-		var method = url.substring(0, index).toUpperCase();
-		var uri = url.substring(index).trim().$env();
-
-		setTimeout(function() {
-			var value = clear ? undefined : cacherest(method, uri, data, undefined, expire);
-			if (value !== undefined) {
-
-				var diff = review ? STRINGIFY(value) : null;
-
-				/* TODO
-				if (typeof(callback) === TYPE_S)
-					remap(callback, value);
-				else
-					callback(value, true);
-				*/
-				callback(value, true);
-
-				if (!review)
-					return;
-
-				ajax(url, data, function(r, err) {
-					if (err)
-						r = err;
-					// Is same?
-					if (diff !== STRINGIFY(r)) {
-						cacherest(method, uri, data, r, expire);
-						/* TODO
-						if (typeof(callback) === TYPE_S)
-							remap(callback, r);
-						else
-							callback(r, false, true);
-						*/
-						callback(r, false, true);
-					}
-				});
-				return;
-			}
-
-			ajax(url, data, function(r, err) {
-				if (err)
-					r = err;
-				cacherest(method, uri, data, r, expire);
-				/* TODO
-				if (typeof(callback) === TYPE_S)
-					remap(callback, r);
-				else
-					callback(r, false);
-				*/
-				callback(r, false);
-			});
-		}, timeout || 1);
-
-		return this;
-	}
-
-	return jc.http = {
-		defaults,
-		ajax,
-		ajaxCache,
-		ajaxCacheReview,
-		configure,
-		"import" : import2,
-		importCache,
-		makeParams,
-		makeurl,
-		ping,
-		parseQuery,
-		upload
-	};
-
-});
-define('skylark-totaljs-jcomponent/binding/Binder',[
-	"../utils/query",
-	"../utils/http",
-	"../langx"
-],function($, langx){
-
-	var DEFMODEL = { value: null };
-	/*
-	 * A binder declaration:
-	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
-	 */
-	function jBinder() {
-		//this.path = null;
-		//this.format = null;
-		//this.virtual = null;
-		//this.com = null; 
-		//this.child = null;
-
-	}
-
-	var JBP = jBinder.prototype;
-
-	JBP.exec = function(value, path, index, wakeup, can) {
-
-		var item = this;
-		var el = item.el;
-		if (index != null) {
-			if (item.child == null)
-				return;
-			item = item.child[index];
-			if (item == null) {
-				return;
-			}
-		}
-
-		if (item.notnull && value == null) {
-			return;
-		}
-
-		if (item.selector) {
-			if (item.cache) {
-				el = item.cache;
-			} else {
-				el = el.find(item.selector);
-				if (el.length) {
-					item.cache = el;
-				}
-			}
-		}
-
-		if (!el.length) {
-			return;
-		}
-
-		if (!wakeup && item.delay) {
-			item.$delay && clearTimeout(item.$delay);
-			item.$delay = setTimeout(function(obj, value, path, index, can) {
-				obj.$delay = null;
-				obj.exec(value, path, index, true, can);
-			}, item.delay, item, value, path, index, can);
-			return;
-		}
-
-		if (item.init) {
-			if (item.strict && item.path !== path)
-				return;
-			if (item.track && item.path !== path) {
-				var can = false;
-				for (var i = 0; i < item.track.length; i++) {
-					if (item.track[i] === path) {
-						can = true;
-						break;
-					}
-				}
-				if (!can) {
-					return;
-				}
-			}
-		} else {
-			item.init = 1;
-		}
-
-		if (item.def && value == null) {
-			value = item.def;
-		}
-
-		if (item.format) {
-			value = item.format(value, path);
-		}
-
-		var tmp = null;
-
-		can = can !== false;
-
-		if (item.show && (value != null || !item.show.$nn)) {
-			tmp = item.show.call(item.el, value, path, item.el);
-			el.tclass('hidden', !tmp);
-			if (!tmp) {
-				can = false;
-			}
-		}
-
-		if (item.hide && (value != null || !item.hide.$nn)) {
-			tmp = item.hide.call(el, value, path, el);
-			el.tclass('hidden', tmp);
-			if (tmp) {
-				can = false;
-			}
-		}
-
-		if (item.invisible && (value != null || !item.invisible.$nn)) {
-			tmp = item.invisible.call(item.el, value, path, item.el);
-			el.tclass('invisible', tmp);
-			if (!tmp) {
-				can = false;
-			}
-		}
-
-		if (item.visible && (value != null || !item.visible.$nn)) {
-			tmp = item.visible.call(item.el, value, path, item.el);
-			el.tclass('invisible', !tmp);
-			if (!tmp) {
-				can = false;
-			}
-		}
-
-		if (item.classes) {
-			for (var i = 0; i < item.classes.length; i++) {
-				var cls = item.classes[i];
-				if (!cls.fn.$nn || value != null)
-					el.tclass(cls.name, !!cls.fn.call(el, value, path, el));
-			}
-		}
-
-		if (can && item.import) {
-			if (langx.isFunction(item.import)) {
-				if (value) {
-					!item.$ic && (item.$ic = {});
-					!item.$ic[value] && http.import('ONCE ' + value, el); //IMPORT
-					item.$ic[value] = 1;
-				}
-			} else {
-				http.import(item.import, el); //IMPORT
-				delete item.import;
-			}
-		}
-
-		if (item.config && (can || item.config.$nv)) {
-			if (value != null || !item.config.$nn) {
-				tmp = item.config.call(el, value, path, el);
-				if (tmp) {
-					for (var i = 0; i < el.length; i++) {
-						var c = el[i].$com;
-						c && c.$ready && c.reconfigure(tmp);
-					}
-				}
-			}
-		}
-
-		if (item.html && (can || item.html.$nv)) {
-			if (value != null || !item.html.$nn) {
-				tmp = item.html.call(el, value, path, el);
-				el.html(tmp == null ? (item.htmlbk || '') : tmp);
-			} else
-				el.html(item.htmlbk || '');
-		}
-
-		if (item.text && (can || item.text.$nv)) {
-			if (value != null || !item.text.$nn) {
-				tmp = item.text.call(el, value, path, el);
-				el.text(tmp == null ? (item.htmlbk || '') : tmp);
-			} else
-				el.html(item.htmlbk || '');
-		}
-
-		if (item.val && (can || item.val.$nv)) {
-			if (value != null || !item.val.$nn) {
-				tmp = item.val.call(el, value, path, el);
-				el.val(tmp == null ? (item.valbk || '') : tmp);
-			} else
-				el.val(item.valbk || '');
-		}
-
-		if (item.template && (can || item.template.$nv) && (value != null || !item.template.$nn)) {
-			DEFMODEL.value = value;
-			DEFMODEL.path = path;
-			el.html(item.template(DEFMODEL));
-		}
-
-		if (item.disabled && (can || item.disabled.$nv)) {
-			if (value != null || !item.disabled.$nn) {
-				tmp = item.disabled.call(el, value, path, el);
-				el.prop('disabled', tmp == true);
-			} else
-				el.prop('disabled', item.disabledbk == true);
-		}
-
-		if (item.enabled && (can || item.enabled.$nv)) {
-			if (value != null || !item.enabled.$nn) {
-				tmp = item.enabled.call(el, value, path, el);
-				el.prop('disabled', !tmp);
-			} else {
-				el.prop('disabled', item.enabledbk == false);
-			}
-		}
-
-		if (item.checked && (can || item.checked.$nv)) {
-			if (value != null || !item.checked.$nn) {
-				tmp = item.checked.call(el, value, path, el);
-				el.prop('checked', tmp == true);
-			} else {
-				el.prop('checked', item.checkedbk == true);
-			}
-		}
-
-		if (item.title && (can || item.title.$nv)) {
-			if (value != null || !item.title.$nn) {
-				tmp = item.title.call(el, value, path, el);
-				el.attr('title', tmp == null ? (item.titlebk || '') : tmp);
-			} else {
-				el.attr('title', item.titlebk || '');
-			}
-		}
-
-		if (item.href && (can || item.href.$nv)) {
-			if (value != null || !item.href.$nn) {
-				tmp = item.href.call(el, value, path, el);
-				el.attr('href', tmp == null ? (item.hrefbk || '') : tmp);
-			} else {
-				el.attr(item.hrefbk || '');
-			}
-		}
-
-		if (item.src && (can || item.src.$nv)) {
-			if (value != null || !item.src.$nn) {
-				tmp = item.src.call(el, value, path, el);
-				el.attr('src', tmp == null ? (item.srcbk || '') : tmp);
-			} else {
-				el.attr('src', item.srcbk || '');
-			}
-		}
-
-		if (item.setter && (can || item.setter.$nv) && (value != null || !item.setter.$nn))
-			item.setter.call(el, value, path, el);
-
-		if (item.change && (value != null || !item.change.$nn)) {
-			item.change.call(el, value, path, el);
-		}
-
-		if (can && index == null && item.child) {
-			for (var i = 0; i < item.child.length; i++)
-				item.exec(value, path, i, undefined, can);
-		}
-
-		if (item.tclass) {
-			el.tclass(item.tclass);
-			delete item.tclass;
-		}
-	};
-
-	return jBinder;
-});
-define('skylark-totaljs-jcomponent/binding/pathmaker',[
-	"../plugins"
-],function(plugins){
-
-	function pathmaker(path, clean) {
-
-		if (!path) {
-			return path;
-		}
-
-		var tmp = '';
-
-		if (clean) {
-			var index = path.indexOf(' ');
-			if (index !== -1) {
-				tmp = path.substring(index);
-				path = path.substring(0, index);
-			}
-		}
-
-		// temporary
-		if (path.charCodeAt(0) === 37)  { // % 
-			return 'jctmp.' + path.substring(1) + tmp;
-		}
-		
-		if (path.charCodeAt(0) === 64) { // @
-			// parent component.data()
-			return path;
-		}
-
-		var index = path.indexOf('/');
-
-		if (index === -1) {
-			return path + tmp;
-		}
-
-		var p = path.substring(0, index);
-		var rem = plugins.find(p); //W.PLUGINS[p];
-		return ((rem ? ('PLUGINS.' + p) : (p + '_plugin_not_found')) + '.' + path.substring(index + 1)) + tmp;
-	}
-
-	return pathmaker;
-
-});
-define('skylark-totaljs-jcomponent/binding/func',[
-	"./pathmaker",
-],function(pathmaker){
-
-	//'PLUGIN/method_name' or '@PLUGIN.method_name'
-	var REGFNPLUGIN = /[a-z0-9_-]+\/[a-z0-9_]+\(|(^|(?=[^a-z0-9]))@[a-z0-9-_]+\./i;
-
-
-	var regfnplugin = function(v) {
-		var l = v.length;
-		return pathmaker(v.substring(0, l - 1)) + v.substring(l - 1);
-	};
-
-	function rebinddecode(val) {
-		return val.replace(/&#39;/g, '\'');
-	}
-
-	function isValue(val) {
-		var index = val.indexOf('value');
-		return index !== -1 ? (((/\W/).test(val)) || val === 'value') : false;
-	}
-
-
-   /**
-   * Generates Function from expression of arrow function.
-   * @example var fn = func('n => n.toUpperCase()');
-   *          console.log(fn('peter')); //Output: PETER
-   * @param  {String} exp 
-   * @return {Function} 
-   */
-	function func(exp, notrim) {  // W.FN = 
-
-		exp = exp.replace(REGFNPLUGIN, regfnplugin);
-
-		var index = exp.indexOf('=>');
-		if (index === -1) {
-			if (isValue(exp))  {
-				// func("value.toUpperCase()") --> func("value=>value.toUpperCase()")
-				// func("plugin/method(value)") --> func("value=>plugin/method(value)")
-			  	return func('value=>' + rebinddecode(exp), true) 
-			} else {
-				// func("plugin/method(value)")
-		      	return new Function('return ' + (exp.indexOf('(') === -1 ? 'typeof({0})==\'function\'?{0}.apply(this,arguments):{0}'.format(exp) : exp));
-			}
-		}
-
-		var arg = exp.substring(0, index).trim();
-		var val = exp.substring(index + 2).trim();
-		var is = false;
-
-		arg = arg.replace(/\(|\)|\s/g, '').trim();
-		if (arg) {
-			arg = arg.split(',');
-		}
-
-		if (val.charCodeAt(0) === 123 && !notrim) {  // "{"
-			is = true;
-			val = val.substring(1, val.length - 1).trim();
-		}
-
-
-		var output = (is ? '' : 'return ') + val;
-		switch (arg.length) {
-			case 1:
-				return new Function(arg[0], output);
-			case 2:
-				return new Function(arg[0], arg[1], output);
-			case 3:
-				return new Function(arg[0], arg[1], arg[2], output);
-			case 4:
-				return new Function(arg[0], arg[1], arg[2], arg[3], output);
-			case 0:
-			default:
-				return new Function(output);
-		}
-	};
-
-	func.rebinddecode = rebinddecode;
-	func.isValue = isValue;
-
-	return func;
-});
-define('skylark-totaljs-jcomponent/binding/findFormat',[
-	"./func",
-	"./pathmaker"
-],function(func, pathmaker){
-
-	/**
-	 * A inline helper example:
-	 * 1. Direct assignment
-	 *  <div data-bind="form.name --> (value || '').toUpperCase()__html:value"></div>
-	 * 2. With arrow function
-	 *  <div data-bind="form.name --> n => (n || '').toUpperCase()__html:value"></div>
-	 * 3. Plugins
-	 *  <div data-bind="form.name --> plugin/method(value)__html:value"></div>
-	 */
-	function findFormat(val) {
-		var a = val.indexOf('-->');
-		var s = 3;
-
-		if (a === -1) {
-			a = val.indexOf('->');
-			s = 2;
-		}
-
-		if (a !== -1) {
-			if (val.indexOf('/') !== -1 && val.indexOf('(') === -1) {
-				//plugin/method --> plugin/method(value)
-				val += '(value)';
-			}
-		}
-
-		if (a === -1) {
-			return null;
-		} else {
-			return  { 
-				path: val.substring(0, a).trim(), 
-				fn: func(val.substring(a + s).trim()) 
-			};			
-		}
-	}
-
-	return findFormat;
-});
-define('skylark-totaljs-jcomponent/binding/parse',[
-	"../langx",
-	"../utils/query",
-	"./func",
-	"./pathmaker",
-	"./findFormat",
-	"./Binder"
-],function(langx, $,func,pathmaker,findFormat,jBinder){
-	
-
-
-	function parsebinderskip(str) {
-		var a = arguments;
-		for (var i = 1; i < a.length; i++) {
-			if (str.indexOf(a[i]) !== -1) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	/*
-	 * A binder declaration:
-	 * <div data-bind="path.to.property__command1:exp__command2:exp__commandN:exp"></div>
-	 */
-	function parsebinder(el, b, scopes, options,r) {
-		var binders = options.binders,
-			bindersnew = options.bindersnew;
-		
-		var meta = b.split(/_{2,}/);
-		if (meta.indexOf('|') !== -1) {
-			//Multiple watchers (__|__)
-			if (!r) {
-				var tmp = [];
-				var output = [];
-				for (var i = 0; i < meta.length; i++) {
-					var m = meta[i];
-					if (m === '|') {
-						if (tmp.length) {
-							output.push(parsebinder(el, tmp.join('__'), scopes,options));
-						} 
-						tmp = [];
-						continue;
-					}
-					if (m) {
-						tmp.push(m);
-					}
-				}
-				if (tmp.length) {
-					output.push(parsebinder(el, tmp.join('__'), scopes, options,true));
-				} 
-			}
-			return output;
-		}
-
-		var path = null;
-		var index = null;
-		var obj = new jBinder();
-		var cls = [];
-		var sub = {};
-		var e = obj.el = $(el);
-
-		for (var i = 0; i < meta.length; i++) {
-			var item = meta[i].trim();
-			if (item) {
-				if (i) {
-					//command
-
-					var k, // command 
-						v; // expression
-
-					if (item !== 'template' && item !== '!template' && item !== 'strict') {
-
-						index = item.indexOf(':');
-
-						if (index === -1) {
-							index = item.length;
-							item += ':value';
-						}
-
-						k = item.substring(0, index).trim();
-						v = item.substring(index + 1).trim();
-					} else {
-						k = item;
-					}
-
-					if (k === 'selector') {
-						obj[k] = v;
-						continue;
-					}
-
-					var rki = k.indexOf(' ');
-					var rk = rki === -1 ? k : k.substring(0, rki);
-					var fn;
-
-					if ( (parsebinderskip(rk, 'setter', 'strict', 'track', 'delay', 'import', 'class', 'template')) && (k.substring(0, 3) !== 'def') ) {
-					   if (v.indexOf('=>') !== -1 ) {
-					       fn = func( func.rebinddecode(v)); 
-					   } else {   
-					       if (func.isValue(v) ) {
-					          fn = func('(value,path,el)=>' + func.rebinddecode(v), true) ;
-					       } else { 
-					          if (v.substring(0, 1) === '@' ) {
-					          	  // binding component method
-					              fn = obj.com[v.substring(1)] ;
-					          } else {
-					          	  fn = GET(v) ;
-					          } 
-					        }
-					    }
-					} else {
-						fn = 1;
-					}
-
-
-					if (!fn) {
-						return null;
-					}
-
-					var keys = k.split('+'); // commands to same expression with help of + char with spaces on both sides.
-					for (var j = 0; j < keys.length; j++) {
-
-						k = keys[j].trim();
-
-						var s = '';
-						var notvisible = false;
-						var notnull = false;
-						var backup = false;
-
-						index = k.indexOf(' ');
-						if (index !== -1) {
-							s = k.substring(index + 1); // selector
-							k = k.substring(0, index);
-						}
-
-						k = k.replace(/^(~!|!~|!|~)/, function(text) { 
-							if (text.indexOf('!') !== -1) {
-								notnull = true; // !command 
-							}
-							if (text.indexOf('~') !== -1) { 
-								notvisible = true; // ~command
-							}
-							return '';
-						});
-
-						var c = k.substring(0, 1);
-
-						if (k === 'class') {
-							k = 'tclass';
-						}
-
-						if (c === '.') { // command: .class_name
-							if (notnull) {
-								fn.$nn = 1;
-							}
-							cls.push({ 
-								name: k.substring(1), 
-								fn: fn 
-							});
-							k = 'class';
-						}
-
-						if (langx.isFunction(fn)) {
-							if (notnull) {
-								fn.$nn = 1;
-							}
-							if (notvisible) {
-								fn.$nv = 1;
-							}
-						}
-
-						switch (k) {
-							case 'track':
-								obj[k] = v.split(',').trim();
-								continue;
-							case 'strict':
-								obj[k] = true;
-								continue;
-							case 'hidden':
-								k = 'hide';
-								break;
-							case 'exec':
-								k = 'change';
-								break;
-							case 'disable':
-								k = 'disabled';
-								backup = true;
-								break;
-							case 'value':
-								k = 'val';
-								backup = true;
-								break;
-							case 'default':
-								k = 'def';
-								break;
-							case 'delay':
-								fn = +v;
-								break;
-							case 'href':
-							case 'src':
-							case 'val':
-							case 'title':
-							case 'html':
-							case 'text':
-							case 'disabled':
-							case 'enabled':
-							case 'checked':
-								backup = true;
-								break;
-
-							case 'setter':
-								fn = langx.fn('(value,path,el)=>el.SETTER(' + v + ')');
-								if (notnull)
-									fn.$nn = 1;
-								if (notvisible)
-									fn.$nv =1;
-								break;
-							case 'import':
-								var c = v.substring(0, 1);
-								if ((/^(https|http):\/\//).test(v) || c === '/' || c === '.') {
-									if (c === '.') {
-										fn = v.substring(1);
-									} else {
-										fn = v;
-									}
-								} else {
-									fn = func(func.rebinddecode(v));
-								}
-								break;
-							case 'tclass':
-								fn = v;
-								break;
-							case 'template':
-								var scr = e.find('script');
-								if (!scr.length) {
-									scr = e;
-								}
-								fn = Tangular.compile(scr.html());
-								if (notnull) {
-									fn.$nn = 1;
-								}
-								if (notvisible) {
-									fn.$nv = 1;
-								}
-								break;
-						}
-
-						if (k === 'def') {
-							fn = new Function('return ' + v)();
-						}
-
-						if (backup && notnull) {
-							obj[k + 'bk'] = (k == 'src' || k == 'href' || k == 'title') ? e.attr(k) : (k == 'html' || k == 'text') ? e.html() : k == 'val' ? e.val() : (k == 'disabled' || k == 'checked') ? e.prop(k) : '';
-						}
-
-						if (s) {
-
-							if (!sub[s]) {
-								sub[s] = {};
-							}
-
-							if (k !== 'class') {
-								sub[s][k] = fn;
-							} else {
-								var p = cls.pop();
-								if (sub[s].cls) {
-									sub[s].cls.push(p);
-								} else {
-									sub[s].cls = [p];
-								}
-							}
-						} else {
-							if (k !== 'class') {
-								obj[k] = fn;
-							}
-						}
-					}
-
-				} else {
-					// path
-					path = item;
-
-					var c = path.substring(0, 1);
-
-					if (c === '!') {
-						path = path.substring(1);
-						obj.notnull = true;
-					}
-
-					if (meta.length === 1) {
-						var fn = GET(path);
-						fn && fn.call(obj.el, obj.el);
-						return fn ? fn : null;
-					}
-
-					var tmp = findFormat(path);
-					if (tmp) {
-						path = tmp.path;
-						obj.format = tmp.fn;
-					}
-
-					// Is virtual path?
-					if (c === '.') {
-						obj.virtual = true;
-						path = path.substring(1);
-						continue;
-					}
-
-					if (path.substring(path.length - 1) === '.') {
-						path = path.substring(0, path.length - 1);
-					}
-
-					if (path.substring(0, 1) === '@') {
-						//component scope
-						path = path.substring(1);
-
-						var isCtrl = false;
-						if (path.substring(0, 1) === '@') {
-							isCtrl = true;
-							path = path.substring(1);
-						}
-
-						if (!path) {
-							path = '@';
-						}
-
-						var parent = el.parentNode;
-						while (parent) {
-							if (isCtrl) {
-								if (parent.$ctrl) {
-									obj.com = parent.$ctrl;
-									if (path === '@' && !obj.com.$dataw) {
-										obj.com.$dataw = 1;
-										obj.com.watch(function(path, value) {
-											obj.com.data('@', value);
-										});
-									}
-									break;
-								}
-							} else {
-								if (parent.$com) {
-									obj.com = parent.$com;
-									break;
-								}
-							}
-							parent = parent.parentNode;
-						}
-
-						if (!obj.com) {
-							return null;
-						}
-					}
-				}
-			}
-		}
-
-		var keys = Object.keys(sub);
-		for (var i = 0; i < keys.length; i++) {
-			var key = keys[i];
-			if (!obj.child) {
-				obj.child = [];
-			}
-			var o = sub[key];
-			o.selector = key;
-			obj.child.push(o);
-		}
-
-		if (cls.length) {
-			obj.classes = cls;
-		}
-
-		if (obj.virtual) {
-			path = pathmaker(path);
-		} else {
-
-			var bj = obj.com && path.substring(0, 1) === '@';
-			path = bj ? path : pathmaker(path);
-
-			if (path.indexOf('?') !== -1) {
-				// jComponent scopes
-				// You can use data-bind in jComponent scopes, but you need to defined ? (question mark) 
-				// on the start of data-bind path. Question mark ? will be replaced for a scope path.
-				var scope = initscopes(scopes);
-				if (scope) {
-					path = path.replace(/\?/g, scope.path);
-				} else {
-					return;
-				}
-			}
-
-			var arr = path.split('.');
-			var p = '';
-
-			if (obj.com) {
-				!obj.com.$data[path] && (obj.com.$data[path] = { value: null, items: [] });
-				obj.com.$data[path].items.push(obj);
-			} else {
-				for (var i = 0, length = arr.length; i < length; i++) {
-					p += (p ? '.' : '') + arr[i];
-					var k = i === length - 1 ? p : '!' + p;
-					if (binders[k]) {
-						binders[k].push(obj);
-					} else {
-						binders[k] = [obj];
-					}
-				}
-			}
-		}
-
-		obj.path = path;
-
-		if (obj.track) {
-			for (var i = 0; i < obj.track.length; i++) {
-				obj.track[i] = path + '.' + obj.track[i];
-			}
-		}
-
-		obj.init = 0; 
-		if(!obj.virtual) {
-			bindersnew.push(obj);
-		}
-		return obj;
-	}
-
-	return parsebinder;
-});
-define('skylark-totaljs-jcomponent/binding/VirtualBinder',[
-	"../langx",
-	"../utils/query",
-	"./parse"
-],function(langx, $, parsebinder){
-	var ATTRBIND = '[data-bind],[bind],[data-vbind]';
-	
-	function VBinder(html) {
-		var t = this;
-		var e = t.element = $(html);
-		t.binders = [];
-		var fn = function() {
-			var dom = this;
-			var el = $(dom);
-			var b = el.attrd('bind') || el.attr('bind') || el.attrd('vbind');
-			dom.$jcbind = parsebinder(dom, b, langx.empties.array,t.binders); //EMPTYARRAY);
-			//if(dom.$jcbind) {
-			//   t.binders.push(dom.$jcbind);
-			//}
-		};
-		e.filter(ATTRBIND).each(fn);
-		e.find(ATTRBIND).each(fn);
-	}
-
-	var VBP = VBinder.prototype;
-
-	VBP.on = function() {
-		var t = this;
-		t.element.on.apply(t.element, arguments);
-		return t;
-	};
-
-	VBP.remove = function() {
-		var t = this;
-		var e = t.element;
-		e.find('*').off();
-		e.off().remove();
-		t.element = null;
-		t.binders = null;
-		t = null;
-		return t;
-	};
-
-	VBP.set = function(path, model) {
-
-		var t = this;
-
-		if (model == null) {
-			model = path;
-			path = '';
-		}
-
-		for (var i = 0; i < t.binders.length; i++) {
-			var b = t.binders[i];
-			if (!path || path === b.path) {
-				var val = path || !b.path ? model : langx.result(model,b.path); // get(b.path, model)
-				t.binders[i].exec(val, b.path);
-			}
-		}
-
-		return t;
-	};
-
-	return VBinder;
-
-});
-
-
 define('skylark-totaljs-jcomponent/binding/vbind',[
 	"../utils/domx",
 	"../utils/query",
@@ -15472,9 +13960,8 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	"../langx",
 	"../binding/findFormat",
 	"../utils/domx",
-	"../utils/http",
 	"./Usage"
-],function(langx, findFormat, domx, http, Usage){
+],function(langx, findFormat, domx, Usage){
 	var temp = {},
 		statics = {},
 		$ =domx.$;
@@ -15933,7 +14420,7 @@ define('skylark-totaljs-jcomponent/components/Component',[
 	 */
 	PPC.import = function(url, callback, insert, preparator) {
 		var self = this;
-		http.import2(url, self.element, callback, insert, preparator);
+		this.view.http.import(url, self.element, callback, insert, preparator);
 		return self;
 	};
 
@@ -17434,6 +15921,49 @@ define('skylark-totaljs-jcomponent/stores',[
 		"Store" : Store
 	}
 });
+define('skylark-totaljs-jcomponent/utils/localStorage',[
+	"../langx"
+],function(langx){
+
+	var $localstorage = 'jc.'; //M.$localstorage
+
+
+	function get(key) {
+		var value = localStorage.getItem($localstorage + key);
+		if (value && langx.isString(value)) {
+			value = langx.parse(value); // PARSE
+		}
+		return value;
+	}
+
+	function set(key,value) {
+		localStorage.setItem($localstorage + key, JSON.stringify(value)); // M.$localstorage
+		return this;
+	}
+
+	function remove(key) {
+		localStorage.removeItem($localstorage + key);
+	}
+
+	function clear() {
+		var keys = [];
+	  	for (var i = 0; i < localStorage.length; i++) {
+    		var key = localStorage.key(i);
+    		if (key.indexOf($localstorage) == 0)  {
+    			keys.push(key);
+    		}
+  		}
+  		for (var i=0;i<keys.length;i++) {
+  			localStorage.removeItem(keys[i]);
+  		}
+	}
+	return  {
+		"clear" : clear,
+		"get" : get,
+		"remove": remove,
+		"set" : set
+	};
+});
 define('skylark-totaljs-jcomponent/utils/blocks',[
 	"./localStorage"
 ],function(localStorage){
@@ -17493,6 +16023,227 @@ define('skylark-totaljs-jcomponent/utils/blocks',[
 
 	return blocks;
 
+});
+define('skylark-totaljs-jcomponent/utils/storage',[
+	"../langx",
+	"./localStorage"
+],function(langx, localStorage){
+	//var M = jc,
+	//	MD = defaults;
+
+	var	sessionData = {} ,
+		localData= {};
+
+	function save() {
+		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
+		localStorage.setItem('cache', localData); // M.$localstorage
+		//}
+	}
+
+
+	function storage(key, value, expire) { //cachestorage //W.CACHE =  
+
+		if (value !== undefined) {
+			return storage.set(key,value,expire)
+		} else {
+			return storage.get(key);
+		}
+
+	}
+
+	function save() {
+		//if(!M.isPRIVATEMODE && MD.localstorage){ // !W.isPRIVATEMODE && MD.localstorage
+		//	localStorage.setItem($localstorage + '.cache', JSON.stringify(storage)); // M.$localstorage
+		//}
+		localStorage.set('cache', localData);
+	}
+
+	storage.get = function (key,expire) {
+		var checkSession = !expire || expire == "session",
+			checkStorage = !expire  || expire != "session",
+			value;
+
+		if (checkSession) {
+			value = session[key];
+		}
+
+		if (value === undefined && checkStorage) {
+			var item = localData[key];
+			if (item && item.expire > langx.now()) {
+				value = item.value;
+			}
+		}
+
+		return value;
+	};
+
+	storage.set = function (key, value, expire) { 
+		if (!expire || expire === 'session') {
+			session[key] = value;
+			return this;
+		}
+
+		if (langx.isString(expire)) {
+			expire = expire.parseExpire();
+		}
+
+		var now = Date.now();
+
+		localData[key] = { 
+			expire: now + expire, 
+			value: value 
+		};
+
+		save();
+		return this;
+
+	};
+
+	storage.remove = function (key, isSearching) { // W.REMOVECACHE = 
+		if (isSearching) {
+			for (var m in localData) {
+				if (m.indexOf(key) !== -1)
+					delete localData[key];
+			}
+		} else {
+			delete localData[key];
+		}
+		save();
+		return this;
+	};
+
+
+	storage.clean = function () { 
+		for (var key in localData) {
+			var item = localData[key];
+			if (!item.expire || item.expire <= now) {
+				delete localData[key];
+			}
+		}
+
+		save();		
+
+		return this;
+	};
+
+
+	storage.clear = function () { // W.CLEARCACHE = 
+		//if (!M.isPRIVATEMODE) { // !W.isPRIVATEMODE
+			var rem = localStorage.removeItem;
+			var k = $localstorage; //M.$localstorage;
+			rem(k); 
+			rem(k + '.cache');
+			rem(k + '.blocked');
+		//}
+		return this;
+	};
+
+
+	storage.getSessionData = function(key) {
+		return session[key];
+	};
+
+	storage.setSessionData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	storage.clearSessionData = function() {
+
+		if (!arguments.length) {
+			session = {};
+			return;
+		}
+
+		var keys = langx.keys(page);
+
+		for (var i = 0, length = keys.length; i < length; i++) {
+			var key = keys[i];
+			var remove = false;
+			var a = arguments;
+
+			for (var j = 0; j < a.length; j++) {
+				if (key.substring(0, a[j].length) !== a[j]) {
+					continue;
+				}
+				remove = true;
+				break;
+			}
+
+			if (remove) {
+				delete session[key];
+			}
+		}
+	};
+
+
+	storage.getStorageData = function(key) {
+		return session[key];
+	};
+
+	storage.setStorageData = function(key,value) {
+		session[key] = value;
+		return this;
+	};
+
+	storage.clearStorageData = function() {
+
+		if (!arguments.length) {
+			session = {};
+		} else {
+			var keys = langx.keys(page);
+
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				var remove = false;
+				var a = arguments;
+
+				for (var j = 0; j < a.length; j++) {
+					if (key.substring(0, a[j].length) !== a[j]) {
+						continue;
+					}
+					remove = true;
+					break;
+				}
+
+				if (remove) {
+					delete session[key];
+				}
+			}
+		}
+		save();
+
+	};
+
+	storage.load = function () {
+		clearTimeout($ready);
+		if (MD.localstorage) {
+			var cache;
+			try {
+				cache = localStorage.getItem(M.$localstorage + '.cache');
+				if (cache && langx.isString(cache)) {
+					localData = langx.parse(cache); // PARSE
+				}
+			} catch (e) {}
+
+		}
+
+		if (localData) {
+			var obj = localData['$jcpath'];
+			obj && Object.keys(obj.value).forEach(function(key) {
+				immSetx(key, obj.value[key], true);
+			});
+		}
+
+		M.loaded = true;
+	}
+
+
+	function clean() {
+
+	}
+
+	return storage;
 });
 define('skylark-totaljs-jcomponent/utils/cookies',[
 	"../langx"
@@ -17639,11 +16390,10 @@ define('skylark-totaljs-jcomponent/utils',[
 	"./utils/cookies",
 	"./utils/domx",
 	"./utils/envs",
-	"./utils/http",
 	"./utils/localStorage",
 	"./utils/logs",
 	"./utils/query"
-],function(jc,blocks,storage,cookies,domx,envs,http,localStorage,logs,query){
+],function(jc,blocks,storage,cookies,domx,envs,localStorage,logs,query){
 	
 	return jc.utils = {
 		blocks : blocks,
@@ -17651,7 +16401,6 @@ define('skylark-totaljs-jcomponent/utils',[
 		cookies : cookies,
 		domx : domx,
 		envs : envs,
-		http : http,
 		localStorage : localStorage,
 		logs : logs,
 		query : query
@@ -17805,6 +16554,1257 @@ define('skylark-totaljs-jcomponent/views/cache',[
 	}
 
 	return cache;
+});
+define('skylark-net-http/http',[
+  "skylark-langx-ns/ns",
+],function(skylark){
+	return skylark.attach("net.http",{});
+});
+define('skylark-net-http/Xhr',[
+  "skylark-langx-ns/ns",
+  "skylark-langx-types",
+  "skylark-langx-objects",
+  "skylark-langx-arrays",
+  "skylark-langx-funcs",
+  "skylark-langx-async/Deferred",
+  "skylark-langx-emitter/Evented",
+  "./http"
+],function(skylark,types,objects,arrays,funcs,Deferred,Evented,http){
+
+    var each = objects.each,
+        mixin = objects.mixin,
+        noop = funcs.noop,
+        isArray = types.isArray,
+        isFunction = types.isFunction,
+        isPlainObject = types.isPlainObject,
+        type = types.type;
+ 
+     var getAbsoluteUrl = (function() {
+        var a;
+
+        return function(url) {
+            if (!a) a = document.createElement('a');
+            a.href = url;
+
+            return a.href;
+        };
+    })();
+   
+    var Xhr = (function(){
+        var jsonpID = 0,
+            key,
+            name,
+            rscript = /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
+            scriptTypeRE = /^(?:text|application)\/javascript/i,
+            xmlTypeRE = /^(?:text|application)\/xml/i,
+            jsonType = 'application/json',
+            htmlType = 'text/html',
+            blankRE = /^\s*$/;
+
+        var XhrDefaultOptions = {
+            async: true,
+
+            // Default type of request
+            type: 'GET',
+            // Callback that is executed before request
+            beforeSend: noop,
+            // Callback that is executed if the request succeeds
+            success: noop,
+            // Callback that is executed the the server drops error
+            error: noop,
+            // Callback that is executed on request complete (both: error and success)
+            complete: noop,
+            // The context for the callbacks
+            context: null,
+            // Whether to trigger "global" Ajax events
+            global: true,
+
+            // MIME types mapping
+            // IIS returns Javascript as "application/x-javascript"
+            accepts: {
+                script: 'text/javascript, application/javascript, application/x-javascript',
+                json: 'application/json',
+                xml: 'application/xml, text/xml',
+                html: 'text/html',
+                text: 'text/plain'
+            },
+            // Whether the request is to another domain
+            crossDomain: false,
+            // Default timeout
+            timeout: 0,
+            // Whether data should be serialized to string
+            processData: false,
+            // Whether the browser should be allowed to cache GET responses
+            cache: true,
+
+            traditional : false,
+            
+            xhrFields : {
+                withCredentials : false
+            }
+        };
+
+        function mimeToDataType(mime) {
+            if (mime) {
+                mime = mime.split(';', 2)[0];
+            }
+            if (mime) {
+                if (mime == htmlType) {
+                    return "html";
+                } else if (mime == jsonType) {
+                    return "json";
+                } else if (scriptTypeRE.test(mime)) {
+                    return "script";
+                } else if (xmlTypeRE.test(mime)) {
+                    return "xml";
+                }
+            }
+            return "text";
+        }
+
+        function appendQuery(url, query) {
+            if (query == '') return url
+            return (url + '&' + query).replace(/[&?]{1,2}/, '?')
+        }
+
+        // serialize payload and append it to the URL for GET requests
+        function serializeData(options) {
+            options.data = options.data || options.query;
+            if (options.processData && options.data && type(options.data) != "string") {
+                options.data = param(options.data, options.traditional);
+            }
+            if (options.data && (!options.type || options.type.toUpperCase() == 'GET')) {
+                options.url = appendQuery(options.url, options.data);
+                options.data = undefined;
+            }
+        }
+
+        function serialize(params, obj, traditional, scope) {
+            var t, array = isArray(obj),
+                hash = isPlainObject(obj)
+            each(obj, function(key, value) {
+                t =type(value);
+                if (scope) key = traditional ? scope :
+                    scope + '[' + (hash || t == 'object' || t == 'array' ? key : '') + ']'
+                // handle data in serializeArray() format
+                if (!scope && array) params.add(value.name, value.value)
+                // recurse into nested objects
+                else if (t == "array" || (!traditional && t == "object"))
+                    serialize(params, value, traditional, key)
+                else params.add(key, value)
+            })
+        }
+
+        var param = function(obj, traditional) {
+            var params = []
+            params.add = function(key, value) {
+                if (isFunction(value)) {
+                  value = value();
+                }
+                if (value == null) {
+                  value = "";
+                }
+                this.push(encodeURIComponent(key) + '=' + encodeURIComponent(value));
+            };
+            serialize(params, obj, traditional)
+            return params.join('&').replace(/%20/g, '+')
+        };
+
+        var Xhr = Evented.inherit({
+            klassName : "Xhr",
+
+            _request  : function(args) {
+                var _ = this._,
+                    self = this,
+                    options = mixin({},XhrDefaultOptions,_.options,args),
+                    xhr = _.xhr = new XMLHttpRequest();
+
+                serializeData(options)
+
+                if (options.beforeSend) {
+                    options.beforeSend.call(this, xhr, options);
+                }                
+
+                var dataType = options.dataType || options.handleAs,
+                    mime = options.mimeType || options.accepts[dataType],
+                    headers = options.headers,
+                    xhrFields = options.xhrFields,
+                    isFormData = options.data && options.data instanceof FormData,
+                    basicAuthorizationToken = options.basicAuthorizationToken,
+                    type = options.type,
+                    url = options.url,
+                    async = options.async,
+                    user = options.user , 
+                    password = options.password,
+                    deferred = new Deferred(),
+                    contentType = isFormData ? false : 'application/x-www-form-urlencoded';
+
+                if (xhrFields) {
+                    for (name in xhrFields) {
+                        xhr[name] = xhrFields[name];
+                    }
+                }
+
+                if (mime && mime.indexOf(',') > -1) {
+                    mime = mime.split(',', 2)[0];
+                }
+                if (mime && xhr.overrideMimeType) {
+                    xhr.overrideMimeType(mime);
+                }
+
+                //if (dataType) {
+                //    xhr.responseType = dataType;
+                //}
+
+                var finish = function() {
+                    xhr.onloadend = noop;
+                    xhr.onabort = noop;
+                    xhr.onprogress = noop;
+                    xhr.ontimeout = noop;
+                    xhr = null;
+                }
+                var onloadend = function() {
+                    var result, error = false
+                    if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304 || (xhr.status == 0 && getAbsoluteUrl(url).startsWith('file:'))) {
+                        dataType = dataType || mimeToDataType(options.mimeType || xhr.getResponseHeader('content-type'));
+
+                        result = xhr.responseText;
+                        try {
+                            if (dataType == 'script') {
+                                eval(result);
+                            } else if (dataType == 'xml') {
+                                result = xhr.responseXML;
+                            } else if (dataType == 'json') {
+                                result = blankRE.test(result) ? null : JSON.parse(result);
+                            } else if (dataType == "blob") {
+                                result = Blob([xhrObj.response]);
+                            } else if (dataType == "arraybuffer") {
+                                result = xhr.reponse;
+                            }
+                        } catch (e) { 
+                            error = e;
+                        }
+
+                        if (error) {
+                            deferred.reject(error,xhr.status,xhr);
+                        } else {
+                            deferred.resolve(result,xhr.status,xhr);
+                        }
+                    } else {
+                        deferred.reject(new Error(xhr.statusText),xhr.status,xhr);
+                    }
+                    finish();
+                };
+
+                var onabort = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("abort"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+ 
+                var ontimeout = function() {
+                    if (deferred) {
+                        deferred.reject(new Error("timeout"),xhr.status,xhr);
+                    }
+                    finish();                 
+                }
+
+                var onprogress = function(evt) {
+                    if (deferred) {
+                        deferred.notify(evt,xhr.status,xhr);
+                    }
+                }
+
+                xhr.onloadend = onloadend;
+                xhr.onabort = onabort;
+                xhr.ontimeout = ontimeout;
+                xhr.onprogress = onprogress;
+
+                xhr.open(type, url, async, user, password);
+               
+                if (headers) {
+                    for ( var key in headers) {
+                        var value = headers[key];
+ 
+                        if(key.toLowerCase() === 'content-type'){
+                            contentType = value;
+                        } else {
+                           xhr.setRequestHeader(key, value);
+                        }
+                    }
+                }   
+
+                if  (contentType && contentType !== false){
+                    xhr.setRequestHeader('Content-Type', contentType);
+                }
+
+                if(!headers || !('X-Requested-With' in headers)){
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+                }
+
+
+                //If basicAuthorizationToken is defined set its value into "Authorization" header
+                if (basicAuthorizationToken) {
+                    xhr.setRequestHeader("Authorization", basicAuthorizationToken);
+                }
+
+                xhr.send(options.data ? options.data : null);
+
+                return deferred.promise;
+
+            },
+
+            "abort": function() {
+                var _ = this._,
+                    xhr = _.xhr;
+
+                if (xhr) {
+                    xhr.abort();
+                }    
+            },
+
+
+            "request": function(args) {
+                return this._request(args);
+            },
+
+            get : function(args) {
+                args = args || {};
+                args.type = "GET";
+                return this._request(args);
+            },
+
+            post : function(args) {
+                args = args || {};
+                args.type = "POST";
+                return this._request(args);
+            },
+
+            patch : function(args) {
+                args = args || {};
+                args.type = "PATCH";
+                return this._request(args);
+            },
+
+            put : function(args) {
+                args = args || {};
+                args.type = "PUT";
+                return this._request(args);
+            },
+
+            del : function(args) {
+                args = args || {};
+                args.type = "DELETE";
+                return this._request(args);
+            },
+
+            "init": function(options) {
+                this._ = {
+                    options : options || {}
+                };
+            }
+        });
+
+        ["request","get","post","put","del","patch"].forEach(function(name){
+            Xhr[name] = function(url,args) {
+                var xhr = new Xhr({"url" : url});
+                return xhr[name](args);
+            };
+        });
+
+        Xhr.defaultOptions = XhrDefaultOptions;
+        Xhr.param = param;
+
+        return Xhr;
+    })();
+
+	return http.Xhr = Xhr;	
+});
+define('skylark-totaljs-jcomponent/views/http',[
+	"skylark-net-http/Xhr",
+	"../jc",
+	"../langx",
+    "../utils/domx",
+	"../utils/storage"
+],function(Xhr,jc,langx,domx,storage){
+	var REGCOM = /(data-jc|data-jc-url|data-jc-import|data-bind|bind)=|COMPONENT\(/; //TODO
+
+	var statics = langx.statics;
+
+	function http(view) {
+		var ajaxconfig = {};
+		var defaults = {
+
+		};
+		defaults.ajaxerrors = false;
+		defaults.pingdata = {};
+		defaults.baseurl = ''; // String or Function
+		defaults.makeurl = null; // Function
+		defaults.delayrepeat = 2000;
+		defaults.jsondate = true;
+		defaults.jsonconverter = {
+			'text json': function(text) {
+				return PARSE(text);
+			}
+		};
+		defaults.headers = { 'X-Requested-With': 'XMLHttpRequest' };
+
+		function request(url,options) {
+			options.url = url;
+	        function ajaxSuccess() {
+	            if (options.success) {
+	                options.success.apply(this,arguments);
+	            }
+	        }
+
+	        function ajaxError() {
+	            if (options.error) {
+	                options.error.apply(this,arguments);
+	            }
+	        }
+
+	        var p = Xhr.request(options.url,options);
+	        p = p.then(ajaxSuccess,ajaxError);
+	        p.success = p.done;
+	        p.error = p.fail;
+	        p.complete = p.always;
+	        
+	        return p;		
+		}
+
+		function parseHeaders(val) {
+			var h = {};
+			val.split('\n').forEach(function(line) {
+				var index = line.indexOf(':');
+				if (index !== -1) {
+					h[line.substring(0, index).toLowerCase()] = line.substring(index + 1).trim();
+				}
+			});
+			return h;
+		}
+
+		function cacherest(method, url, params, value, expire) {
+
+			if (params && !params.version && M.$version)
+				params.version = M.$version;
+
+			if (params && !params.language && M.$language)
+				params.language = M.$language;
+
+			params = langx.stringify(params);
+			var key = langx.hashCode(method + '#' + url.replace(/\//g, '') + params).toString();
+			return storage.set(key, value, expire);
+		}
+		
+
+
+		function makeParams(url, values, type) { //W.MAKEPARAMS = 
+
+			var l = location;
+
+			if (langx.isObject(url)) {
+				type = values;
+				values = url;
+				url = l.pathname + l.search;
+			}
+
+			var query;
+			var index = url.indexOf('?');
+			if (index !== -1) {
+				query = M.parseQuery(url.substring(index + 1));
+				url = url.substring(0, index);
+			} else
+				query = {};
+
+			var keys = Object.keys(values);
+
+			for (var i = 0, length = keys.length; i < length; i++) {
+				var key = keys[i];
+				query[key] = values[key];
+			}
+
+			var val = Xhr.param(query, type == null || type === true);
+			return url + (val ? '?' + val : '');
+		}
+
+		function makeurl(url, make) {
+
+			// TODO
+			//defaults.makeurl && (url = defaults.makeurl(url));
+			//
+			//if (make)
+			//	return url;
+
+			var builder = [];
+			var en = encodeURIComponent;
+
+			//M.$version && builder.push('version=' + en(M.$version));
+			//M.$language && builder.push('language=' + en(M.$language));
+
+			if (!builder.length)
+				return url;
+
+			var index = url.indexOf('?');
+			if (index == -1)
+				url += '?';
+			else
+				url += '&';
+
+			return url + builder.join('&');
+		}
+
+		function upload(url, data, callback, timeout, progress) { //W.UPLOAD = 
+
+			if (!langx.isNumber(timeout) && progress == null) {
+				progress = timeout;
+				timeout = null;
+			}
+
+			if (!url)
+				url = location.pathname;
+
+			var method = 'POST';
+			var index = url.indexOf(' ');
+			var tmp = null;
+
+			if (index !== -1) {
+				method = url.substring(0, index).toUpperCase();
+			}
+
+			var isCredentials = method.substring(0, 1) === '!';
+			if (isCredentials) {
+				method = method.substring(1);
+			}
+
+			var headers = {};
+			tmp = url.match(/\{.*?\}/g);
+
+			if (tmp) {
+				url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
+				tmp = (new Function('return ' + tmp))();
+				if (langx.isObject(tmp))
+					headers = tmp;
+			}
+
+			url = url.substring(index).trim().$env();
+
+			if (langx.isNumber(callback)) {
+				timeout = callback;
+				callback = undefined;
+			}
+
+			var output = {};
+			output.url = url;
+			output.process = true;
+			output.error = false;
+			output.upload = true;
+			output.method = method;
+			output.data = data;
+
+			topic.emit('request', output);
+
+			if (output.cancel)
+				return;
+
+			setTimeout(function() {
+
+				var xhr = new XMLHttpRequest();
+
+				if (isCredentials) {
+					xhr.withCredentials = true;
+				}
+
+				xhr.addEventListener('load', function() {
+
+					var self = this;
+					var r = self.responseText;
+					try {
+						r = PARSE(r, defaults.jsondate);
+					} catch (e) {}
+
+					if (progress) {
+						/* TODO
+						if (typeof(progress) === TYPE_S) {
+							remap(progress, 100);
+						} else {
+							progress(100);
+						}
+						*/
+						progress(100);
+					}
+
+					output.response = r;
+					output.status = self.status;
+					output.text = self.statusText;
+					output.error = self.status > 399;
+					output.headers = parseHeaders(self.getAllResponseHeaders());
+
+					topic.emit('response', output);
+
+					if (!output.process || output.cancel)
+						return;
+
+					if (!r && output.error)
+						r = output.response = self.status + ': ' + self.statusText;
+
+					if (!output.error || defaults.ajaxerrors) {
+						langx.isString(callback)  ? remap(callback.env(), r) : (callback && callback(r, null, output));
+					} else {
+						topic.emit('error', output);
+						output.process && langx.isFunction(callback)  && callback({}, r, output);
+					}
+
+				}, false);
+
+				xhr.upload.onprogress = function(evt) {
+					if (!progress) {
+						return;
+					}
+					var percentage = 0;
+					if (evt.lengthComputable) {
+						percentage = Math.round(evt.loaded * 100 / evt.total);
+					}
+					/* TODO
+					if (langx.isString(progress)) {
+						remap(progress.env(), percentage);
+					} else {
+						progress(percentage, evt.transferSpeed, evt.timeRemaining);
+					}
+					*/
+					progress(percentage, evt.transferSpeed, evt.timeRemaining);
+				};
+
+				xhr.open(method, makeurl(output.url));
+
+				var keys = Object.keys(defaults.headers);
+				for (var i = 0; i < keys.length; i++) {
+					xhr.setRequestHeader(keys[i].env(), defaults.headers[keys[i]].env());
+				}
+
+				if (headers) {
+					var keys = Object.keys(headers);
+					for (var i = 0; i < keys.length; i++) {
+						xhr.setRequestHeader(keys[i], headers[keys[i]]);
+					}
+				}
+
+				xhr.send(data);
+
+			}, timeout || 0);
+
+			return W;
+		}
+
+
+		function importCache(url, expire, target, callback, insert, preparator) { // W.IMPORTCACHE = 
+
+			var w;
+
+			url = url.$env().replace(/<.*?>/, function(text) {
+				w = text.substring(1, text.length - 1).trim();
+				return '';
+			}).trim();
+
+			// unique
+			var first = url.substring(0, 1);
+			var once = url.substring(0, 5).toLowerCase() === 'once ';
+
+			if (langx.isFunction(target)) {
+
+				if (langx.isFunction(callback)) {
+					preparator = callback;
+					insert = true;
+				} else if (langx.isFunction(insert) ) {
+					preparator = insert;
+					insert = true;
+				}
+
+				callback = target;
+				target = 'body';
+			} else if (langx.isFunction(insert)) {
+				preparator = insert;
+				insert = true;
+			}
+
+			if (w) {
+
+				var wf = w.substring(w.length - 2) === '()';
+				if (wf) {
+					w = w.substring(0, w.length - 2);
+				}
+
+				var wo = GET(w);
+				if (wf && langx.isFunction(wo)) {
+					if (wo()) {
+						callback && callback(0);
+						return;
+					}
+				} else if (wo) {
+					callback && callback(0);
+					return;
+				}
+			}
+
+			if (url.substring(0, 2) === '//') {
+				url = location.protocol + url;
+			}
+
+			var index = url.lastIndexOf(' .');
+			var ext = '';
+
+			if (index !== -1) {
+				ext = url.substring(index).trim().toLowerCase();
+				url = url.substring(0, index).trim();
+			}
+
+			if (first === '!' || once) {
+
+				if (once) {
+					url = url.substring(5);
+				} else {
+					url = url.substring(1);
+				}
+
+				if (statics[url]) {
+					if (callback) {
+						if (statics[url] === 2)
+							callback(0);
+						else {
+							langx.wait(function() {
+								return statics[url] === 2;
+							}, function() {
+								callback(0);
+							});
+						}
+					}
+					return W;
+				}
+
+				statics[url] = 1;
+			}
+
+			if (target && target.setPath)
+				target = target.element;
+
+			if (!target) {
+				target = 'body';
+			}
+
+			if (!ext) {
+				index = url.lastIndexOf('?');
+				if (index !== -1) {
+					var index2 = url.lastIndexOf('.', index);
+					if (index2 !== -1) {
+						ext = url.substring(index2, index).toLowerCase();
+					}
+				} else {
+					index = url.lastIndexOf('.');
+					if (index !== -1) {
+						ext = url.substring(index).toLowerCase();
+					}
+				}
+			}
+
+			var d = document;
+			if (ext === '.js') {
+				var scr = d.createElement('script');
+				scr.type = 'text/javascript';
+				scr.async = false;
+				scr.onload = function() {
+					statics[url] = 2;
+					callback && callback(1);
+					setTimeout(view.compiler.compile, 300);//W.jQuery && 
+				};
+				scr.src = makeurl(url, true);
+				d.getElementsByTagName('head')[0].appendChild(scr);
+				topic.emit('import', url, $(scr));
+				return this;
+			}
+
+			if (ext === '.css') {
+				var stl = d.createElement('link');
+				stl.type = 'text/css';
+				stl.rel = 'stylesheet';
+				stl.href = makeurl(url, true);
+				d.getElementsByTagName('head')[0].appendChild(stl);
+				statics[url] = 2;
+				callback && setTimeout(callback, 200, 1);
+				topic.emit('import', url, $(stl));
+				return this;
+			}
+
+			langx.wait(function() {
+				return !!W.jQuery;
+			}, function() {
+
+				statics[url] = 2;
+				var id = 'import' + langx.hashCode(url); // HASH
+
+				var cb = function(response, code, output) {
+
+					if (!response) {
+						callback && callback(0);
+						return;
+					}
+
+					url = '$import' + url;
+
+					if (preparator)
+						response = preparator(response, output);
+
+					var is = REGCOM.test(response);
+					response = domx.importscripts(domx.importstyles(response, id)).trim();
+					target = $(target);
+
+					if (response) {
+						//caches.current.element = target[0];
+						if (insert === false) {
+							target.html(response);
+						} else {
+							target.append(response);
+						}
+						//caches.current.element = null;
+					}
+
+					setTimeout(function() {
+						// is && compile(response ? target : null);
+						// because of paths
+						is && view.compiler.compile();
+						callback && langx.wait(function() {
+							return C.is == false;
+						}, function() {
+							callback(1);
+						});
+						topic.emit('import', url, target);
+					}, 10);
+				};
+
+				if (expire) {
+					ajaxCache('GET ' + url, null, cb, expire);
+				}else {
+					ajax('GET ' + url, cb);
+				}
+			});
+
+			return W;
+		}
+
+		function import2(url, target, callback, insert, preparator) { //W.IMPORT = M.import = 
+			if (url instanceof Array) {
+
+				if (langx.isFunction(target)) {
+					preparator = insert;
+					insert = callback;
+					callback = target;
+					target = null;
+				}
+
+				url.wait(function(url, next) {
+					importCache(url, null, target, next, insert, preparator);
+				}, function() {
+					callback && callback();
+				});
+			} else {
+				importCache(url, null, target, callback, insert, preparator);
+			}
+
+			return this;
+		}
+
+		/* 
+		function uptodate(period, url, callback, condition) { // W.UPTODATE = 
+
+			if (langx.isFunction(url)) {
+				condition = callback;
+				callback = url;
+				url = '';
+			}
+
+			var dt = new Date().add(period);
+			topic.on('knockknock', function() {
+				if (dt > langx.now()) //W.NOW)
+					return;
+				if (!condition || !condition())
+					return;
+				var id = setTimeout(function() {
+					var l = window.location;
+					if (url)
+						l.href = url.$env();
+					else
+						l.reload(true);
+				}, 5000);
+				callback && callback(id);
+			});
+		}
+		*/
+
+		function ping(url, timeout, execute) { // W.PING = 
+
+			if (navigator.onLine != null && !navigator.onLine)
+				return;
+
+			if (typeof(timeout) === 'boolean') {
+				execute = timeout;
+				timeout = 0;
+			}
+
+			url = url.$env();
+
+			var index = url.indexOf(' ');
+			var method = 'GET';
+
+			if (index !== -1) {
+				method = url.substring(0, index).toUpperCase();
+				url = url.substring(index).trim();
+			}
+
+			var options = {};
+			var data = $langx.Xhr.param(defaults.pingdata);
+
+			if (data) {
+				index = url.lastIndexOf('?');
+				if (index === -1)
+					url += '?' + data;
+				else
+					url += '&' + data;
+			}
+
+			options.type = method;
+			options.headers = { 'x-ping': location.pathname, 'x-cookies': navigator.cookieEnabled ? '1' : '0', 'x-referrer': document.referrer };
+
+			options.success = function(r) {
+				if (r) {
+					try {
+						(new Function(r))();
+					} catch (e) {}
+				}
+			};
+
+			execute && request(makeurl(url), options);
+
+			return setInterval(function() {
+				request(makeurl(url), options);
+			}, timeout || 30000);
+		}
+
+		function parseQuery(value) { //M.parseQuery = W.READPARAMS = 
+
+			if (!value)
+				value = location.search;
+
+			if (!value)
+				return {};
+
+			var index = value.indexOf('?');
+			if (index !== -1)
+				value = value.substring(index + 1);
+
+			var arr = value.split('&');
+			var obj = {};
+			for (var i = 0, length = arr.length; i < length; i++) {
+				var sub = arr[i].split('=');
+				var key = sub[0];
+				var val = decodeURIComponent((sub[1] || '').replace(/\+/g, '%20'));
+
+				if (!obj[key]) {
+					obj[key] = val;
+					continue;
+				}
+
+				if (!(obj[key] instanceof Array))
+					obj[key] = [obj[key]];
+				obj[key].push(val);
+			}
+			return obj;
+		}
+
+		function configure(name, fn) {  // W.AJAXCONFIG = 
+			ajaxconfig[name] = fn;  
+			return this;
+		}
+
+		function ajax(url, data, callback, timeout) { // W.AJAX = 
+
+			if (langx.isFunction(url) ) {
+				timeout = callback;
+				callback = data;
+				data = url;
+				url = location.pathname;
+			}
+
+			var td = typeof(data);
+			var arg = EMPTYARRAY;
+			var tmp;
+
+			if (!callback && (td === 'function' || td === 'string')) {
+				timeout = callback;
+				callback = data;
+				data = undefined;
+			}
+
+			var index = url.indexOf(' ');
+			if (index === -1)
+				return W;
+
+			var repeat = false;
+
+			url = url.replace(/\srepeat/i, function() {
+				repeat = true;
+				return '';
+			});
+
+			if (repeat)
+				arg = [url, data, callback, timeout];
+
+			var method = url.substring(0, index).toUpperCase();
+			var isCredentials = method.substring(0, 1) === '!';
+			if (isCredentials)
+				method = method.substring(1);
+
+			var headers = {};
+			tmp = url.match(/\{.*?\}/g);
+
+			if (tmp) {
+				url = url.replace(tmp, '').replace(/\s{2,}/g, ' ');
+				tmp = (new Function('return ' + tmp))();
+				if (langx.isObject(tmp) )
+					headers = tmp;
+			}
+
+			url = url.substring(index).trim().$env();
+
+			setTimeout(function() {
+
+				if (method === 'GET' && data) {
+					var qs = (langx.isString(data)  ? data : jQuery.param(data, true));
+					if (qs)
+						url += '?' + qs;
+				}
+
+				var options = {};
+				options.method = method;
+				options.converters = defaults.jsonconverter;
+
+				if (method !== 'GET') {
+					if (langx.isString(data) ) {
+						options.data = data;
+					} else {
+						options.contentType = 'application/json; charset=utf-8';
+						options.data = STRINGIFY(data);
+					}
+				}
+
+				options.headers = langx.extend(headers, defaults.headers);
+
+				if (url.match(/http:\/\/|https:\/\//i)) {
+					options.crossDomain = true;
+					delete options.headers['X-Requested-With'];
+					if (isCredentials)
+						options.xhrFields = { withCredentials: true };
+				} else
+					url = url.ROOT();
+
+				var custom = url.match(/\([a-z0-9\-.,]+\)/i);
+				if (custom) {
+					url = url.replace(custom, '').replace(/\s+/g, '');
+					options.url = url;
+					custom = custom.toString().replace(/\(|\)/g, '').split(',');
+					for (var i = 0; i < custom.length; i++) {
+						var opt = ajaxconfig[custom[i].trim()];
+						opt && opt(options);
+					}
+				}
+
+				if (!options.url)
+					options.url = url;
+
+				//topic.emit('request', options); //TODO
+
+				if (options.cancel)
+					return;
+
+				options.type = options.method;
+				delete options.method;
+
+				var output = {};
+				output.url = options.url;
+				output.process = true;
+				output.error = false;
+				output.upload = false;
+				output.method = method;
+				output.data = data;
+
+				delete options.url;
+
+				options.success = function(r, s, req) {
+					output.response = r;
+					output.status = req.status || 999;
+					output.text = s;
+					output.headers = parseHeaders(req.getAllResponseHeaders());
+					//topic.emit('response', output); TODO
+					if (output.process && !output.cancel) {
+						/* TODO
+						if (typeof(callback) === TYPE_S)
+							remap(callback, output.response);
+						else
+							callback && callback.call(output, output.response, undefined, output);
+						*/
+						callback && callback.call(output, output.response, undefined, output);
+					}
+				};
+
+				options.error = function(req, s) {
+
+					var code = req.status;
+
+					if (repeat && (!code || code === 408 || code === 502 || code === 503 || code === 504 || code === 509)) {
+						// internal error
+						// internet doesn't work
+						setTimeout(function() {
+							arg[0] += ' REPEAT';
+							W.AJAX.apply(M, arg);
+						}, defaults.delayrepeat);
+						return;
+					}
+
+					output.response = req.responseText;
+					output.status = code || 999;
+					output.text = s;
+					output.error = true;
+					output.headers = parseHeaders(req.getAllResponseHeaders());
+					var ct = output.headers['content-type'];
+
+					if (ct && ct.indexOf('/json') !== -1) {
+						try {
+							output.response = PARSE(output.response, defaults.jsondate);
+						} catch (e) {}
+					}
+
+					//topic.emit('response', output); TODO
+
+					if (output.cancel || !output.process)
+						return;
+
+					if (defaults.ajaxerrors) {
+						/* TODO
+						if (typeof(callback) === TYPE_S)
+							remap(callback, output.response);
+						else
+							callback && callback.call(output, output.response, output.status, output);
+						*/
+						callback && callback.call(output, output.response, output.status, output);
+					} else {
+						//topic.emit('error', output); TODO
+						if (langx.isFunction(callback)) 
+						callback.call(output, output.response, output.status, output);
+					}
+				};
+
+				request(makeurl(output.url), options);
+
+			}, timeout || 0);
+
+			return this;
+		}
+
+		function ajaxCacheReview(url, data, callback, expire, timeout, clear) { //W.AJAXCACHEREVIEW = 
+			return ajaxCache(url, data, callback, expire, timeout, clear, true);
+		}
+
+		function ajaxCache(url, data, callback, expire, timeout, clear, review) { //W.AJAXCACHE = 
+
+
+			if (langx.isFunction(data) || (langx.isString(data) && langx.isString(callback)  && !langx.isString(expire))) {
+				clear = timeout;
+				timeout = expire;
+				expire = callback;
+				callback = data;
+				data = null;
+			}
+
+			if (langx.isBoolean(timeout)) {
+				clear = timeout === true;
+				timeout = 0;
+			}
+
+			var index = url.indexOf(' ');
+			if (index === -1)
+				return W;
+
+			var method = url.substring(0, index).toUpperCase();
+			var uri = url.substring(index).trim().$env();
+
+			setTimeout(function() {
+				var value = clear ? undefined : cacherest(method, uri, data, undefined, expire);
+				if (value !== undefined) {
+
+					var diff = review ? STRINGIFY(value) : null;
+
+					/* TODO
+					if (typeof(callback) === TYPE_S)
+						remap(callback, value);
+					else
+						callback(value, true);
+					*/
+					callback(value, true);
+
+					if (!review)
+						return;
+
+					ajax(url, data, function(r, err) {
+						if (err)
+							r = err;
+						// Is same?
+						if (diff !== STRINGIFY(r)) {
+							cacherest(method, uri, data, r, expire);
+							/* TODO
+							if (typeof(callback) === TYPE_S)
+								remap(callback, r);
+							else
+								callback(r, false, true);
+							*/
+							callback(r, false, true);
+						}
+					});
+					return;
+				}
+
+				ajax(url, data, function(r, err) {
+					if (err)
+						r = err;
+					cacherest(method, uri, data, r, expire);
+					/* TODO
+					if (typeof(callback) === TYPE_S)
+						remap(callback, r);
+					else
+						callback(r, false);
+					*/
+					callback(r, false);
+				});
+			}, timeout || 1);
+
+			return this;
+		}
+
+		return  {
+			defaults,
+			ajax,
+			ajaxCache,
+			ajaxCacheReview,
+			configure,
+			"import" : import2,
+			importCache,
+			makeParams,
+			makeurl,
+			ping,
+			parseQuery,
+			upload
+		};
+
+	}
+	
+	return http;
 });
 define('skylark-totaljs-jcomponent/views/componenter',[
 	"../langx",
@@ -19002,13 +19002,12 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../langx",
 	"../utils/query",
 	"../utils/domx",
-	"../utils/http",
 	"../utils/logs",
 	"../components/registry",
 	"../components/configs",
 	"../components/versions",
 	"../plugins"
-],function(langx, $, domx, http, logs,registry,configs,versions,plugins){
+],function(langx, $, domx, logs,registry,configs,versions,plugins){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -19028,6 +19027,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			scoper = view.scoper,
 			binding = view.binding,
 			cache = view.cache,
+			http = view.http,
 			componenter = view.componenter;
 
 		setInterval(function() {
@@ -21837,13 +21837,14 @@ define('skylark-totaljs-jcomponent/views/View',[
 	"../utils/query",
 	"./binding",
 	"./cache",
+	"./http",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, cache, componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, http,componenter, eventer,compiler, helper,scoper,storing){
 
 
 
@@ -21874,6 +21875,7 @@ define('skylark-totaljs-jcomponent/views/View',[
 			domx.Plugin.prototype._construct.apply(this,arguments);
 
 			this.cache = cache(this);
+			this.http = http(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
@@ -22098,7 +22100,6 @@ define('skylark-totaljs-jcomponent/globals',[
 		cookies = utils.cookies,
 		domx = utils.domx;
 		envs = utils.envs,
-		http = utils.http,
 		localStorage = utils.localStorage,
 		logs = utils.logs;
 		W = window,
@@ -22170,6 +22171,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			gm = gv.componenter,
 			gl = gv.compiler,
 			ge = gv.eventer,
+			gt = gv.http,
 			gb = gv.binding;
 
 		gv.start();
@@ -22202,10 +22204,10 @@ define('skylark-totaljs-jcomponent/globals',[
 
 		// langx
 		langx.mixin(W,{
-			AJAXCONFIG: http.configure,
-			//AJAX: http.ajax,
-			AJAXCACHE: http.ajaxCache,
-			AJAXCACHEREVIEW: http.ajaxCacheReview,
+			AJAXCONFIG: gt.configure,
+			//AJAX: gt.ajax,
+			AJAXCACHE: gt.ajaxCache,
+			AJAXCACHEREVIEW: gt.ajaxCacheReview,
 
 			clearTimeout2: langx.clearTimeout2,
 			CACHE : storage,
@@ -22226,17 +22228,17 @@ define('skylark-totaljs-jcomponent/globals',[
 			HASH: langx.hashCode,
 
 			LCOMPARER : langx.localCompare,
-			IMPORTCACHE: http.importCache,
-			IMPORT: http.import,
+			IMPORTCACHE: gt.importCache,
+			IMPORT: gt.import,
 
-			MAKEPARAMS: http.makeParams,
+			MAKEPARAMS: gt.makeParams,
 			MEDIAQUERY : domx.watchMedia,
 
 			NOOP : langx.empties.fn,
 
-			PING: http.ping,
+			PING: gt.ping,
 
-			READPARAMS: http.parseQuery,
+			READPARAMS: gt.parseQuery,
 			REMOVECACHE : storage.remove,
 
 			PARSE: langx.parse,
@@ -22248,8 +22250,8 @@ define('skylark-totaljs-jcomponent/globals',[
 			STRINGIFY: langx.stringify,
 			STYLE: domx.style,
 
-			UPLOAD: http.upload,
-			UPTODATE: http.uptodate,
+			UPLOAD: gt.upload,
+			UPTODATE: gt.uptodate,
 
 			WAIT : langx.wait,
 
@@ -22297,7 +22299,7 @@ define('skylark-totaljs-jcomponent/globals',[
 				};
 			}
 
-			return http.ajax(url,data,callback,timeout);
+			return gt.ajax(url,data,callback,timeout);
 
 		};
 
