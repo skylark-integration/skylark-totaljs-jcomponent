@@ -1479,7 +1479,6 @@ define('skylark-totaljs-jcomponent/langx',[
 	"./langx/NumberEx",
 	"./langx/StringEx"
 ],function(slangx,jc,localCompare,regexp,now,statics){
-	var waits = {};
 
 	var MD = {
 		jsoncompress : false,
@@ -1593,78 +1592,6 @@ define('skylark-totaljs-jcomponent/langx',[
 			return null;
 		}
 	}
-
-   /**
-   * Wait for a feature
-   * @param  {String|Function} path/fn  
-   * @param  {Function} callback  
-   * @param  {Number} interval  Optional, in milliseconds (default: 500)
-   * @param  {Number} timeout Optional, a timeout (default: 0 - disabled) 
-   * @return {Boolean}  
-   */ 
-	function wait(fn, callback, interval, timeout) { // W.WAIT = 
-		var key = ((Math.random() * 10000) >> 0).toString(16);
-		var tkey = timeout > 0 ? key + '_timeout' : 0;
-
-		if (typeof(callback) === 'number') {
-			var tmp = interval;
-			interval = callback;
-			callback = tmp;
-		}
-
-		var is = typeof(fn) === 'string';
-		var run = false;
-
-		if (is) {
-			var result = get(fn);
-			if (result)
-				run = true;
-		} else if (fn())
-			run = true;
-
-		if (run) {
-			callback(null, function(sleep) {
-				setTimeout(function() {
-					WAIT(fn, callback, interval, timeout);
-				}, sleep || 1);
-			});
-			return;
-		}
-
-		if (tkey) {
-			waits[tkey] = setTimeout(function() {
-				clearInterval(waits[key]);
-				delete waits[tkey];
-				delete waits[key];
-				callback(new Error('Timeout.'));
-			}, timeout);
-		}
-
-		waits[key] = setInterval(function() {
-
-			if (is) {
-				var result = get(fn);
-				if (result == null)
-					return;
-			} else if (!fn())
-				return;
-
-			clearInterval(waits[key]);
-			delete waits[key];
-
-			if (tkey) {
-				clearTimeout(waits[tkey]);
-				delete waits[tkey];
-			}
-
-			callback && callback(null, function(sleep) {
-				setTimeout(function() {
-					WAIT(fn, callback, interval);
-				}, sleep || 1);
-			});
-
-		}, interval || 500);
-	};
 
 
 
@@ -1807,116 +1734,9 @@ define('skylark-totaljs-jcomponent/langx',[
 		setTimeout2:setTimeout2,
 		singleton:singleton,
 		stringify:stringify,
-		statics : statics,
-		wait:wait
+		statics : statics
 	};
 
-});
-define('skylark-totaljs-jcomponent/plugins/_registry',[],function(){
-	var registry = {}; // W.PLUGINS
-
-	return registry;
-});
-
-define('skylark-totaljs-jcomponent/plugins/Plugin',[
-	"../utils/query",
-	"./_registry"
-],function($, registry){
-	
-	function Plugin(name, fn) {
-		if ((/\W/).test(name)) {
-			warn('Plugin name must contain A-Z chars only.');
-		}
-		if (registry[name]) {
-			registry[name].$remove(true);
-		}
-		var t = this;
-		//t.element = $(caches.current.element || document.body); // TODO
-		t.id = 'plug' + name;
-		t.name = name;
-		registry[name] = t;
-		//var a = caches.current.owner;
-		//caches.current.owner = t.id;
-		fn.call(t, t);
-		//caches.current.owner = a;
-		// topic.emit('plugin', t); // EMIT TODO
-	}
-
-	Plugin.prototype.$remove = function() {
-
-		var self = this;
-		if (!self.element) {	
-			return true;
-		}
-
-		/* TODO
-		topic.emit('plugin.destroy', self); // EMIT
-		if (self.destroy) {
-			self.destroy();
-		}
-
-		// Remove all global events
-		Object.keys(events).forEach(function(e) {
-			var evt = events[e];
-			evt = evt.remove('owner', self.id);
-			if (!evt.length) {
-				delete events[e];
-			}
-		});
-
-		watches = watches.remove('owner', self.id);
-
-		// Remove events
-		topic.off(self.id + '#watch'); // OFF 
-		*/
-
-		// Remove schedulers
-		//schedulers = schedulers.remove('owner', self.id);
-		//schedulers.clearAll(self.id);
-
-		// self.element.remove();
-		self.element = null;
-
-		delete registry[self.name];
-		return true;
-	};
-
-
-	return Plugin;
-});
-define('skylark-totaljs-jcomponent/plugins',[
-	"./utils/query",
-	"./jc",
-	"./plugins/_registry",
-	"./plugins/Plugin"
-],function($, jc, registry,Plugin){
-
-	function plugin(name, fn) { //W.PLUGIN = 
-		return fn ? new Plugin(name, fn) : registry[name]; // W.PLUGINS
-	};
-
-	function find(name) {
-		return registry[name];
-	}
-
-	function clean() {
-			// Checks PLUGINS
-			var R = plugins.registry; //W.PLUGINS;
-			Object.keys(R).forEach(function(key) {
-				var a = R[key];
-				if (!inDOM(a.element[0]) || !a.element[0].innerHTML) {
-					a.$remove();
-					delete R[key];
-				}
-			});
-		
-	}
-	
-	return jc.plugins = {
-		"Plugin" : Plugin,
-		"plugin" : plugin,
-		"find" : find
-	};
 });
 define('skylark-totaljs-jcomponent/binding/Binder',[
 	"../utils/query",
@@ -2180,7 +2000,7 @@ define('skylark-totaljs-jcomponent/binding/Binder',[
 	return jBinder;
 });
 define('skylark-totaljs-jcomponent/binding/pathmaker',[
-	"../plugins"
+//	"../plugins" // TODO
 ],function(plugins){
 
 	function pathmaker(path, clean) {
@@ -3545,7 +3365,6 @@ define('skylark-totaljs-jcomponent/binding',[
 	"./utils/query",
 	"./jc",
 	"./langx",
-	"./plugins",
 	"./binding/Binder",
 	"./binding/findFormat",
 	"./binding/func",
@@ -3554,7 +3373,7 @@ define('skylark-totaljs-jcomponent/binding',[
 	"./binding/VirtualBinder",
 	"./binding/vbind",
 	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
+],function($, jc,langx,Binder,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
 
 	var REGCOMMA = /,/g;
 
@@ -4136,10 +3955,10 @@ define('skylark-totaljs-jcomponent/components/Component',[
 		self.attrd('jc-released', value);
 
 		//(container || self.element).find(consts.ATTRCOM).each(function() {
-		self.view.helper.nested(container || self.element).forEach(function(){ 
-			var el = $(this);
+		self.view.helper.nested(container || self.element).forEach(function(com){ 
+			var el = com.element; //var el = $(this);
 			el.attrd('jc-released', value ? 'true' : 'false');
-			var com = el[0].$com;
+			//var com = el[0].$com;
 			if (com instanceof Object) {
 				if (com instanceof Array) {
 					for (var i = 0, length = com.length; i < length; i++) {
@@ -5664,8 +5483,9 @@ define('skylark-totaljs-jcomponent/utils/localStorage',[
 	};
 });
 define('skylark-totaljs-jcomponent/utils/blocks',[
+	"../langx",
 	"./localStorage"
-],function(localStorage){
+],function(langx,localStorage){
 	var blocked = {},
 		blocks = {};
 
@@ -5689,7 +5509,7 @@ define('skylark-totaljs-jcomponent/utils/blocks',[
 			timeout = timeout.env().parseExpire();
 		}
 
-		var local = MD.localstorage && timeout > 10000;
+		var local = timeout > 10000; // MD.localstorage && timeout > 10000;
 		blocked[key] = now + timeout;
 		//if (!M.isPRIVATEMODE && local) { // W.isPRIVATEMODE
 		  //localStorage.setItem(M.$localstorage + '.blocked', JSON.stringify(blocked));
@@ -6692,13 +6512,15 @@ define('skylark-totaljs-jcomponent/views/http',[
 
 					if (response) {
 						//caches.current.element = target[0];
-						if (insert === false) {
-							target.html(response);
-						} else {
-							target.append(response);
-						}
+            			target.addClass("importing");
+						//if (insert === false) { // TODO
+							target.html(response); 
+						//} else {
+						//	target.append(response);
+						//}
 						//caches.current.element = null;
-					}
+            			target.removeClass("importing");
+        			}
 
 					setTimeout(function() {
 						// is && compile(response ? target : null);
@@ -7139,6 +6961,107 @@ define('skylark-totaljs-jcomponent/views/http',[
 	
 	return http;
 });
+define('skylark-totaljs-jcomponent/views/plugins',[
+	"../utils/query",
+	"../jc"
+],function($, jc){
+
+	function plugins() {
+		var registry = {}; // W.PLUGINS
+
+		function Plugin(name, fn) {
+			if ((/\W/).test(name)) {
+				warn('Plugin name must contain A-Z chars only.');
+			}
+			if (registry[name]) {
+				registry[name].$remove(true);
+			}
+			var t = this;
+			//t.element = $(caches.current.element || document.body); // TODO
+			t.element = $(".importing");
+			t.id = 'plug' + name;
+			t.name = name;
+			registry[name] = t;
+			//var a = caches.current.owner;
+			//caches.current.owner = t.id;
+			fn.call(t, t);
+			//caches.current.owner = a;
+			// topic.emit('plugin', t); // EMIT TODO
+		}
+
+		Plugin.prototype.$remove = function() {
+
+			var self = this;
+			if (!self.element) {	
+				return true;
+			}
+
+			/* TODO
+			topic.emit('plugin.destroy', self); // EMIT
+			if (self.destroy) {
+				self.destroy();
+			}
+
+			// Remove all global events
+			Object.keys(events).forEach(function(e) {
+				var evt = events[e];
+				evt = evt.remove('owner', self.id);
+				if (!evt.length) {
+					delete events[e];
+				}
+			});
+
+			watches = watches.remove('owner', self.id);
+
+			// Remove events
+			topic.off(self.id + '#watch'); // OFF 
+			*/
+
+			// Remove schedulers
+			//schedulers = schedulers.remove('owner', self.id);
+			//schedulers.clearAll(self.id);
+
+			// self.element.remove();
+			self.element = null;
+
+			delete registry[self.name];
+			return true;
+		};
+
+
+		function register(name, fn) { //W.PLUGIN = 
+			return fn ? new Plugin(name, fn) : registry[name]; // W.PLUGINS
+		};
+
+		function find(name) {
+			return registry[name];
+		}
+
+		function clean() {
+				// Checks PLUGINS
+				var R = plugins.registry; //W.PLUGINS;
+				Object.keys(R).forEach(function(key) {
+					var a = R[key];
+					if (!inDOM(a.element[0]) || !a.element[0].innerHTML) {
+						a.$remove();
+						delete R[key];
+					}
+				});
+			
+		}
+		
+		return  {
+			"Plugin" : Plugin,
+			"register" : register,
+			"registry" : registry,
+			"find" : find,
+			"clean" : clean
+		};
+
+	}
+
+	return plugins;
+});
 define('skylark-totaljs-jcomponent/views/componenter',[
 	"../langx",
 	"../utils/domx",
@@ -7249,7 +7172,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			}
 
 			cache.clear('valid');
-			langx.state(arr, 1, 1);
+			state(arr, 1, 1);
 			return valid;
 		}
 
@@ -7423,7 +7346,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 
 			cache.clear('valid');
 			cache.set('valid',key, valid) ;
-			langx.state(arr, 1, 1);
+			state(arr, 1, 1);
 			return valid;
 		}
 
@@ -8078,7 +8001,7 @@ define('skylark-totaljs-jcomponent/views/eventer',[
 					watches.unshift(obj);
 				}
 
-				init && fn.call(context || M, path, obj.format ? obj.format(view.storing.get(path), path, 0) : view.storing.get(path), 0);
+				init && fn.call(context || view, path, obj.format ? obj.format(view.storing.get(path), path, 0) : view.storing.get(path), 0); // || M
 			} else {
 				if (events[name]) {
 					if (push) {
@@ -8264,7 +8187,7 @@ define('skylark-totaljs-jcomponent/views/eventer',[
 				push = '^';
 			}
 
-			path = pathmaker(path, true);
+			path = view.binding.pathmaker(path, true);
 			on(push + 'watch', path, fn, init);  // ON
 			return this; //W;
 		}
@@ -8338,9 +8261,8 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 	"../utils/logs",
 	"../components/registry",
 	"../components/configs",
-	"../components/versions",
-	"../plugins"
-],function(langx, $, domx, logs,registry,configs,versions,plugins){
+	"../components/versions"
+],function(langx, $, domx, logs,registry,configs,versions){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -8607,7 +8529,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 				if (langx.isFunction(item)) {
 					item(next);
 				} else {
-					http.import2((item.indexOf('<') === -1 ? 'once ' : '') + item, next);  // IMPORT
+					http.import((item.indexOf('<') === -1 ? 'once ' : '') + item, next);  // IMPORT
 				}
 			}, function() {
 				declaration.importing = false;
@@ -9879,9 +9801,8 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 define('skylark-totaljs-jcomponent/views/storing',[
 	"../langx",
 	"../utils/storage",
-	"../binding/pathmaker",
-	"../plugins"
-],function(langx,storage,pathmaker,plugins){
+	"../binding/pathmaker"
+],function(langx,storage,pathmaker){
 	var	SELINPUT = 'input,textarea,select';
 	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
 	
@@ -9893,6 +9814,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 		var eventer = view.eventer,
 			binding = view.binding,
+			helper = view.helper,
 			cache = view.cache;
 
 		var store = view.option("store");
@@ -10331,7 +10253,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 						}
 					}
 
-					findControl2(com);
+					helper.findControl2(com);
 
 				} else if (com.validate && !com.$valid_disabled) {
 					com.valid(com.validate(result), true);
@@ -10406,7 +10328,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 					return;
 				}
 
-				findControl2(com);
+				helper.findControl2(com);
 
 				if (!com.$dirty_disabled) {
 					com.$dirty = true;
@@ -10423,7 +10345,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 
 			if (reset) {
 				cache.clearPageData('valid', 'dirty');
-				langx.state(arr, 3, 3);
+				view.componenter.state(arr, 3, 3);
 			}
 
 			return this;
@@ -10501,7 +10423,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 						}
 					}
 
-					findControl2(com);
+					helper.findControl2(com);
 
 				} else if (com.validate && !com.$valid_disabled) {
 					com.valid(com.validate(result), true);
@@ -10766,7 +10688,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			if (c === 64) { // @ , ex: EXEC('@PLUGIN.method_name');
 				var index = path.indexOf('.');
 				p = path.substring(1, index);
-				var ctrl = plugins.find(p); //W.PLUGINS[p];
+				var ctrl = view.plugins.find(p); //W.PLUGINS[p];
 				if (ctrl) {
 					var fn = ctrl[path.substring(index + 1)];
 					if (langx.isFunction(fn) ) { // if (typeof(fn) === TYPE_FN) {
@@ -10785,7 +10707,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			var index = path.indexOf('/'); // ex : EXEC('PLUGIN/method_name');
 			if (index !== -1) {
 				p = path.substring(0, index);
-				var ctrl = plugins.find(p); //W.PLUGINS[p];
+				var ctrl = view.plugins.find(p); //W.PLUGINS[p];
 				var fn = path.substring(index + 1);
 				if (ctrl && langx.isFunction(ctrl[fn])) {
 					ctrl[fn].apply(ctx === W ? ctrl : ctx, arg);
@@ -10885,7 +10807,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 					continue;
 				}
 
-				findControl2(com);
+				helper.findControl2(com);
 
 				if (!com.$dirty_disabled) {
 					com.$dirty = true;
@@ -10903,7 +10825,7 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			}
 
 			cache.clear('valid', 'dirty');
-			state(arr, 1, 3);
+			view.componenter.state(arr, 1, 3);
 			return this;
 		}
 
@@ -11125,6 +11047,81 @@ define('skylark-totaljs-jcomponent/views/storing',[
 			paths = {};
 		}
 
+		
+		var waits = {};
+
+	   /**
+	   * Wait for a feature
+	   * @param  {String|Function} path/fn  
+	   * @param  {Function} callback  
+	   * @param  {Number} interval  Optional, in milliseconds (default: 500)
+	   * @param  {Number} timeout Optional, a timeout (default: 0 - disabled) 
+	   * @return {Boolean}  
+	   */ 
+		function wait(fn, callback, interval, timeout) { // W.WAIT = 
+			var key = ((Math.random() * 10000) >> 0).toString(16);
+			var tkey = timeout > 0 ? key + '_timeout' : 0;
+
+			if (typeof(callback) === 'number') {
+				var tmp = interval;
+				interval = callback;
+				callback = tmp;
+			}
+
+			var is = typeof(fn) === 'string';
+			var run = false;
+
+			if (is) {
+				var result = get(fn);
+				if (result)
+					run = true;
+			} else if (fn())
+				run = true;
+
+			if (run) {
+				callback(null, function(sleep) {
+					setTimeout(function() {
+						WAIT(fn, callback, interval, timeout);
+					}, sleep || 1);
+				});
+				return;
+			}
+
+			if (tkey) {
+				waits[tkey] = setTimeout(function() {
+					clearInterval(waits[key]);
+					delete waits[tkey];
+					delete waits[key];
+					callback(new Error('Timeout.'));
+				}, timeout);
+			}
+
+			waits[key] = setInterval(function() {
+
+				if (is) {
+					var result = get(fn);
+					if (result == null)
+						return;
+				} else if (!fn())
+					return;
+
+				clearInterval(waits[key]);
+				delete waits[key];
+
+				if (tkey) {
+					clearTimeout(waits[tkey]);
+					delete waits[tkey];
+				}
+
+				callback && callback(null, function(sleep) {
+					setTimeout(function() {
+						WAIT(fn, callback, interval);
+					}, sleep || 1);
+				});
+
+			}, interval || 500);
+		};
+
 		return {
 			"bind"  : bind,
 			"cachePath" : cachePath,
@@ -11171,13 +11168,14 @@ define('skylark-totaljs-jcomponent/views/View',[
 	"./binding",
 	"./cache",
 	"./http",
+	"./plugins",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, cache, http,componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, http,plugins,componenter, eventer,compiler, helper,scoper,storing){
 
 
 
@@ -11419,14 +11417,13 @@ define('skylark-totaljs-jcomponent/globals',[
 	"./jc",
 	"./langx",
 	"./utils",
-	"./plugins",
 	"./components",
 	"./binding",
 	"./stores",
 	"./views",
 	"./others/schedulers",
 	"./others/transforms"
-],function(jc, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
+],function(jc, langx,utils,components,binding,stores,views, schedulers, transforms){
 	var $ = utils.query,
 	    blocks = utils.blocks,
 		storage = utils.storage,
@@ -11505,7 +11502,8 @@ define('skylark-totaljs-jcomponent/globals',[
 			gl = gv.compiler,
 			ge = gv.eventer,
 			gt = gv.http,
-			gb = gv.binding;
+			gb = gv.binding,
+			gp=  gv.plugins;
 
 		gv.start();
 		$.components = gv.components;
@@ -11586,7 +11584,7 @@ define('skylark-totaljs-jcomponent/globals',[
 			UPLOAD: gt.upload,
 			UPTODATE: gt.uptodate,
 
-			WAIT : langx.wait,
+			WAIT : gs.wait,
 
 			WARN : logs.warn,
 
@@ -11604,8 +11602,8 @@ define('skylark-totaljs-jcomponent/globals',[
 
 		// plugins
 		langx.mixin(W,{
-			PLUGIN : plugins.register,
-			PLUGINS : plugins.registry
+			PLUGIN : gp.register,
+			PLUGINS : gp.registry
 		});
 
 		W.ADD = gv.add;
@@ -11646,6 +11644,9 @@ define('skylark-totaljs-jcomponent/globals',[
 			return gs.cache(path, expire, rebind) ;
 		};
 
+		W.CAN = function() {
+			return gs.can.apply(gs,arguments);
+		};
 		W.CHANGE = function (path, value) {
 			return gs.change(path.value);
 		};
@@ -11691,8 +11692,12 @@ define('skylark-totaljs-jcomponent/globals',[
 			return gs.default(arr[0], timeout, null, reset);
 		}
 
+		W.DISABLED = function() {
+			return gs.disabled.apply(gs,arguments);
+		};
+
 		W.EMIT = function(name) {
-			return ge.emit.apply(gs,arguments);
+			return ge.emit.apply(ge,arguments);
 		};
 
 		W.ERRORS =	function errors(path, except, highlight) { // 
@@ -12081,7 +12086,6 @@ define('skylark-totaljs-jcomponent/main',[
 	"./binding",
 	"./components",
 	"./langx",
-	"./plugins",
 	"./stores",
 	"./utils",
 	"./views",

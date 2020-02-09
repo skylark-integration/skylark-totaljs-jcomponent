@@ -1,9 +1,8 @@
 define([
 	"../langx",
 	"../utils/storage",
-	"../binding/pathmaker",
-	"../plugins"
-],function(langx,storage,pathmaker,plugins){
+	"../binding/pathmaker"
+],function(langx,storage,pathmaker){
 	var	SELINPUT = 'input,textarea,select';
 	var BLACKLIST = { sort: 1, reverse: 1, splice: 1, slice: 1, pop: 1, unshift: 1, shift: 1, push: 1 };
 	
@@ -15,6 +14,7 @@ define([
 
 		var eventer = view.eventer,
 			binding = view.binding,
+			helper = view.helper,
 			cache = view.cache;
 
 		var store = view.option("store");
@@ -453,7 +453,7 @@ define([
 						}
 					}
 
-					findControl2(com);
+					helper.findControl2(com);
 
 				} else if (com.validate && !com.$valid_disabled) {
 					com.valid(com.validate(result), true);
@@ -528,7 +528,7 @@ define([
 					return;
 				}
 
-				findControl2(com);
+				helper.findControl2(com);
 
 				if (!com.$dirty_disabled) {
 					com.$dirty = true;
@@ -545,7 +545,7 @@ define([
 
 			if (reset) {
 				cache.clearPageData('valid', 'dirty');
-				langx.state(arr, 3, 3);
+				view.componenter.state(arr, 3, 3);
 			}
 
 			return this;
@@ -623,7 +623,7 @@ define([
 						}
 					}
 
-					findControl2(com);
+					helper.findControl2(com);
 
 				} else if (com.validate && !com.$valid_disabled) {
 					com.valid(com.validate(result), true);
@@ -888,7 +888,7 @@ define([
 			if (c === 64) { // @ , ex: EXEC('@PLUGIN.method_name');
 				var index = path.indexOf('.');
 				p = path.substring(1, index);
-				var ctrl = plugins.find(p); //W.PLUGINS[p];
+				var ctrl = view.plugins.find(p); //W.PLUGINS[p];
 				if (ctrl) {
 					var fn = ctrl[path.substring(index + 1)];
 					if (langx.isFunction(fn) ) { // if (typeof(fn) === TYPE_FN) {
@@ -907,7 +907,7 @@ define([
 			var index = path.indexOf('/'); // ex : EXEC('PLUGIN/method_name');
 			if (index !== -1) {
 				p = path.substring(0, index);
-				var ctrl = plugins.find(p); //W.PLUGINS[p];
+				var ctrl = view.plugins.find(p); //W.PLUGINS[p];
 				var fn = path.substring(index + 1);
 				if (ctrl && langx.isFunction(ctrl[fn])) {
 					ctrl[fn].apply(ctx === W ? ctrl : ctx, arg);
@@ -1007,7 +1007,7 @@ define([
 					continue;
 				}
 
-				findControl2(com);
+				helper.findControl2(com);
 
 				if (!com.$dirty_disabled) {
 					com.$dirty = true;
@@ -1025,7 +1025,7 @@ define([
 			}
 
 			cache.clear('valid', 'dirty');
-			state(arr, 1, 3);
+			view.componenter.state(arr, 1, 3);
 			return this;
 		}
 
@@ -1246,6 +1246,81 @@ define([
 			temp = {};
 			paths = {};
 		}
+
+		
+		var waits = {};
+
+	   /**
+	   * Wait for a feature
+	   * @param  {String|Function} path/fn  
+	   * @param  {Function} callback  
+	   * @param  {Number} interval  Optional, in milliseconds (default: 500)
+	   * @param  {Number} timeout Optional, a timeout (default: 0 - disabled) 
+	   * @return {Boolean}  
+	   */ 
+		function wait(fn, callback, interval, timeout) { // W.WAIT = 
+			var key = ((Math.random() * 10000) >> 0).toString(16);
+			var tkey = timeout > 0 ? key + '_timeout' : 0;
+
+			if (typeof(callback) === 'number') {
+				var tmp = interval;
+				interval = callback;
+				callback = tmp;
+			}
+
+			var is = typeof(fn) === 'string';
+			var run = false;
+
+			if (is) {
+				var result = get(fn);
+				if (result)
+					run = true;
+			} else if (fn())
+				run = true;
+
+			if (run) {
+				callback(null, function(sleep) {
+					setTimeout(function() {
+						WAIT(fn, callback, interval, timeout);
+					}, sleep || 1);
+				});
+				return;
+			}
+
+			if (tkey) {
+				waits[tkey] = setTimeout(function() {
+					clearInterval(waits[key]);
+					delete waits[tkey];
+					delete waits[key];
+					callback(new Error('Timeout.'));
+				}, timeout);
+			}
+
+			waits[key] = setInterval(function() {
+
+				if (is) {
+					var result = get(fn);
+					if (result == null)
+						return;
+				} else if (!fn())
+					return;
+
+				clearInterval(waits[key]);
+				delete waits[key];
+
+				if (tkey) {
+					clearTimeout(waits[tkey]);
+					delete waits[tkey];
+				}
+
+				callback && callback(null, function(sleep) {
+					setTimeout(function() {
+						WAIT(fn, callback, interval);
+					}, sleep || 1);
+				});
+
+			}, interval || 500);
+		};
 
 		return {
 			"bind"  : bind,

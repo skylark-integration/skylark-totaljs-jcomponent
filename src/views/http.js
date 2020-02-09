@@ -436,13 +436,15 @@ define([
 
 					if (response) {
 						//caches.current.element = target[0];
-						if (insert === false) {
-							target.html(response);
-						} else {
-							target.append(response);
-						}
+            			target.addClass("importing");
+						//if (insert === false) { // TODO
+							target.html(response); 
+						//} else {
+						//	target.append(response);
+						//}
 						//caches.current.element = null;
-					}
+            			target.removeClass("importing");
+        			}
 
 					setTimeout(function() {
 						// is && compile(response ? target : null);

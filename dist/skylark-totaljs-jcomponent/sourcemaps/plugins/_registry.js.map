@@ -1,1 +1,0 @@
-{"version":3,"sources":["plugins/_registry.js"],"names":["define"],"mappings":";;;;;;;AAAAA,UAAU,WAGT","file":"../../plugins/_registry.js","sourcesContent":["define([],function(){\r\n\tvar registry = {}; // W.PLUGINS\r\n\r\n\treturn registry;\r\n});\r\n"]}

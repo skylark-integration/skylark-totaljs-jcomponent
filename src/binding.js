@@ -2,7 +2,6 @@ define([
 	"./utils/query",
 	"./jc",
 	"./langx",
-	"./plugins",
 	"./binding/Binder",
 	"./binding/findFormat",
 	"./binding/func",
@@ -11,7 +10,7 @@ define([
 	"./binding/VirtualBinder",
 	"./binding/vbind",
 	"./binding/vbindArray"
-],function($, jc,langx,plugins,Binder,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
+],function($, jc,langx,Binder,findFormat,func,parse,pathmaker,VirtualBinder,vbind,vbindArray){
 
 	var REGCOMMA = /,/g;
 

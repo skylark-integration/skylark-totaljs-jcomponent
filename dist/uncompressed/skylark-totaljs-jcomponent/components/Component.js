@@ -479,10 +479,10 @@ define([
 		self.attrd('jc-released', value);
 
 		//(container || self.element).find(consts.ATTRCOM).each(function() {
-		self.view.helper.nested(container || self.element).forEach(function(){ 
-			var el = $(this);
+		self.view.helper.nested(container || self.element).forEach(function(com){ 
+			var el = com.element; //var el = $(this);
 			el.attrd('jc-released', value ? 'true' : 'false');
-			var com = el[0].$com;
+			//var com = el[0].$com;
 			if (com instanceof Object) {
 				if (com instanceof Array) {
 					for (var i = 0, length = com.length; i < length; i++) {

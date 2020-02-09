@@ -5,13 +5,14 @@ define([
 	"./binding",
 	"./cache",
 	"./http",
+	"./plugins",
 	"./componenter",
 	"./eventer",
 	"./compiler",
 	"./helper",
 	"./scoper",
 	"./storing",
-],function(langx, domx, $,binding, cache, http,componenter, eventer,compiler, helper,scoper,storing){
+],function(langx, domx, $,binding, cache, http,plugins,componenter, eventer,compiler, helper,scoper,storing){
 
 
 

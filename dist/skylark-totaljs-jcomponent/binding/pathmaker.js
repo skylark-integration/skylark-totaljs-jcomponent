@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["../plugins"],function(n){return function(r,i){if(!r)return r;var t,u="";if(i&&-1!==(t=r.indexOf(" "))&&(u=r.substring(t),r=r.substring(0,t)),37===r.charCodeAt(0))return"jctmp."+r.substring(1)+u;if(64===r.charCodeAt(0))return r;if(-1===(t=r.indexOf("/")))return r+u;var e=r.substring(0,t);return(n.find(e)?"PLUGINS."+e:e+"_plugin_not_found")+"."+r.substring(t+1)+u}});
+define([],function(n){return function(r,t){if(!r)return r;var i,u="";if(t&&-1!==(i=r.indexOf(" "))&&(u=r.substring(i),r=r.substring(0,i)),37===r.charCodeAt(0))return"jctmp."+r.substring(1)+u;if(64===r.charCodeAt(0))return r;if(-1===(i=r.indexOf("/")))return r+u;var e=r.substring(0,i);return(n.find(e)?"PLUGINS."+e:e+"_plugin_not_found")+"."+r.substring(i+1)+u}});
 //# sourceMappingURL=../sourcemaps/binding/pathmaker.js.map

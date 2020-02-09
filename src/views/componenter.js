@@ -108,7 +108,7 @@ define([
 			}
 
 			cache.clear('valid');
-			langx.state(arr, 1, 1);
+			state(arr, 1, 1);
 			return valid;
 		}
 
@@ -282,7 +282,7 @@ define([
 
 			cache.clear('valid');
 			cache.set('valid',key, valid) ;
-			langx.state(arr, 1, 1);
+			state(arr, 1, 1);
 			return valid;
 		}
 

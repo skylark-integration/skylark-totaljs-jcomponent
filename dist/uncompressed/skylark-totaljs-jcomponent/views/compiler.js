@@ -5,9 +5,8 @@ define([
 	"../utils/logs",
 	"../components/registry",
 	"../components/configs",
-	"../components/versions",
-	"../plugins"
-],function(langx, $, domx, logs,registry,configs,versions,plugins){
+	"../components/versions"
+],function(langx, $, domx, logs,registry,configs,versions){
 	var statics = langx.statics;
 	var warn = logs.warn;
 
@@ -274,7 +273,7 @@ define([
 				if (langx.isFunction(item)) {
 					item(next);
 				} else {
-					http.import2((item.indexOf('<') === -1 ? 'once ' : '') + item, next);  // IMPORT
+					http.import((item.indexOf('<') === -1 ? 'once ' : '') + item, next);  // IMPORT
 				}
 			}, function() {
 				declaration.importing = false;

@@ -124,7 +124,7 @@ define([
 					watches.unshift(obj);
 				}
 
-				init && fn.call(context || M, path, obj.format ? obj.format(view.storing.get(path), path, 0) : view.storing.get(path), 0);
+				init && fn.call(context || view, path, obj.format ? obj.format(view.storing.get(path), path, 0) : view.storing.get(path), 0); // || M
 			} else {
 				if (events[name]) {
 					if (push) {
@@ -310,7 +310,7 @@ define([
 				push = '^';
 			}
 
-			path = pathmaker(path, true);
+			path = view.binding.pathmaker(path, true);
 			on(push + 'watch', path, fn, init);  // ON
 			return this; //W;
 		}

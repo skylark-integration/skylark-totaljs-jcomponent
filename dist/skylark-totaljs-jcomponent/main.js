@@ -5,5 +5,5 @@
  * @link https://github.com/skylark-integration/skylark-totaljs-jcomponent/
  * @license MIT
  */
-define(["./jc","./binding","./components","./langx","./plugins","./stores","./utils","./views","./globals"],function(n){return n});
+define(["./jc","./binding","./components","./langx","./stores","./utils","./views","./globals"],function(n){return n});
 //# sourceMappingURL=sourcemaps/main.js.map

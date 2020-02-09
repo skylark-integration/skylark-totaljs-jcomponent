@@ -2,14 +2,13 @@ define([
 	"./jc",
 	"./langx",
 	"./utils",
-	"./plugins",
 	"./components",
 	"./binding",
 	"./stores",
 	"./views",
 	"./others/schedulers",
 	"./others/transforms"
-],function(jc, langx,utils,plugins,components,binding,stores,views, schedulers, transforms){
+],function(jc, langx,utils,components,binding,stores,views, schedulers, transforms){
 	var $ = utils.query,
 	    blocks = utils.blocks,
 		storage = utils.storage,
@@ -88,7 +87,8 @@ define([
 			gl = gv.compiler,
 			ge = gv.eventer,
 			gt = gv.http,
-			gb = gv.binding;
+			gb = gv.binding,
+			gp=  gv.plugins;
 
 		gv.start();
 		$.components = gv.components;
@@ -169,7 +169,7 @@ define([
 			UPLOAD: gt.upload,
 			UPTODATE: gt.uptodate,
 
-			WAIT : langx.wait,
+			WAIT : gs.wait,
 
 			WARN : logs.warn,
 
@@ -187,8 +187,8 @@ define([
 
 		// plugins
 		langx.mixin(W,{
-			PLUGIN : plugins.register,
-			PLUGINS : plugins.registry
+			PLUGIN : gp.register,
+			PLUGINS : gp.registry
 		});
 
 		W.ADD = gv.add;
@@ -229,6 +229,9 @@ define([
 			return gs.cache(path, expire, rebind) ;
 		};
 
+		W.CAN = function() {
+			return gs.can.apply(gs,arguments);
+		};
 		W.CHANGE = function (path, value) {
 			return gs.change(path.value);
 		};
@@ -274,8 +277,12 @@ define([
 			return gs.default(arr[0], timeout, null, reset);
 		}
 
+		W.DISABLED = function() {
+			return gs.disabled.apply(gs,arguments);
+		};
+
 		W.EMIT = function(name) {
-			return ge.emit.apply(gs,arguments);
+			return ge.emit.apply(ge,arguments);
 		};
 
 		W.ERRORS =	function errors(path, except, highlight) { // 

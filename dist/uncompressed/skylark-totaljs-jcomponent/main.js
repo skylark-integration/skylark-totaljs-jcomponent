@@ -3,7 +3,6 @@ define([
 	"./binding",
 	"./components",
 	"./langx",
-	"./plugins",
 	"./stores",
 	"./utils",
 	"./views",

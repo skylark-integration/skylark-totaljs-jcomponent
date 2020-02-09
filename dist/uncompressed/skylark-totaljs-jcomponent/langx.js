@@ -10,7 +10,6 @@ define([
 	"./langx/NumberEx",
 	"./langx/StringEx"
 ],function(slangx,jc,localCompare,regexp,now,statics){
-	var waits = {};
 
 	var MD = {
 		jsoncompress : false,
@@ -124,78 +123,6 @@ define([
 			return null;
 		}
 	}
-
-   /**
-   * Wait for a feature
-   * @param  {String|Function} path/fn  
-   * @param  {Function} callback  
-   * @param  {Number} interval  Optional, in milliseconds (default: 500)
-   * @param  {Number} timeout Optional, a timeout (default: 0 - disabled) 
-   * @return {Boolean}  
-   */ 
-	function wait(fn, callback, interval, timeout) { // W.WAIT = 
-		var key = ((Math.random() * 10000) >> 0).toString(16);
-		var tkey = timeout > 0 ? key + '_timeout' : 0;
-
-		if (typeof(callback) === 'number') {
-			var tmp = interval;
-			interval = callback;
-			callback = tmp;
-		}
-
-		var is = typeof(fn) === 'string';
-		var run = false;
-
-		if (is) {
-			var result = get(fn);
-			if (result)
-				run = true;
-		} else if (fn())
-			run = true;
-
-		if (run) {
-			callback(null, function(sleep) {
-				setTimeout(function() {
-					WAIT(fn, callback, interval, timeout);
-				}, sleep || 1);
-			});
-			return;
-		}
-
-		if (tkey) {
-			waits[tkey] = setTimeout(function() {
-				clearInterval(waits[key]);
-				delete waits[tkey];
-				delete waits[key];
-				callback(new Error('Timeout.'));
-			}, timeout);
-		}
-
-		waits[key] = setInterval(function() {
-
-			if (is) {
-				var result = get(fn);
-				if (result == null)
-					return;
-			} else if (!fn())
-				return;
-
-			clearInterval(waits[key]);
-			delete waits[key];
-
-			if (tkey) {
-				clearTimeout(waits[tkey]);
-				delete waits[tkey];
-			}
-
-			callback && callback(null, function(sleep) {
-				setTimeout(function() {
-					WAIT(fn, callback, interval);
-				}, sleep || 1);
-			});
-
-		}, interval || 500);
-	};
 
 
 
@@ -338,8 +265,7 @@ define([
 		setTimeout2:setTimeout2,
 		singleton:singleton,
 		stringify:stringify,
-		statics : statics,
-		wait:wait
+		statics : statics
 	};
 
 });

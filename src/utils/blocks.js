@@ -1,6 +1,7 @@
 define([
+	"../langx",
 	"./localStorage"
-],function(localStorage){
+],function(langx,localStorage){
 	var blocked = {},
 		blocks = {};
 
@@ -24,7 +25,7 @@ define([
 			timeout = timeout.env().parseExpire();
 		}
 
-		var local = MD.localstorage && timeout > 10000;
+		var local = timeout > 10000; // MD.localstorage && timeout > 10000;
 		blocked[key] = now + timeout;
 		//if (!M.isPRIVATEMODE && local) { // W.isPRIVATEMODE
 		  //localStorage.setItem(M.$localstorage + '.blocked', JSON.stringify(blocked));
