@@ -44,6 +44,7 @@ define([
 
 			this.cache = cache(this);
 			this.http = http(this);
+			this.plugins = plugins(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);

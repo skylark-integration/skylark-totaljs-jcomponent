@@ -542,7 +542,7 @@ define([
 			}
 
 			if (isWaiting) {
-				langx.wait(function() {  // WAIT
+				view.storing.wait(function() {  // WAIT
 					var val = find(value, many, noCache);
 					if (lazycom[value] && lazycom[value].state === 1) {
 						lazycom[value].state = 2;

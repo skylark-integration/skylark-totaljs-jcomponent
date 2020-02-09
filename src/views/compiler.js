@@ -253,7 +253,7 @@ define([
 		function dependencies(declaration, callback, obj, el) {
 
 			if (declaration.importing) {
-				langx.wait(function() {
+				view.storing.wait(function() {
 					return declaration.importing !== true;
 				}, function() {
 					callback(obj, el);

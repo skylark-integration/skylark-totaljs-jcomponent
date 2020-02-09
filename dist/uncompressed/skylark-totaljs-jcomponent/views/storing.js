@@ -1355,7 +1355,8 @@ define([
  			"skipInc" : skipInc,
  			"skipDec" : skipDec,
  			"update" : update,
- 			"used" : used
+ 			"used" : used,
+ 			"wait" : wait
 		};
 	}
 

@@ -348,7 +348,7 @@ define([
 						if (statics[url] === 2)
 							callback(0);
 						else {
-							langx.wait(function() {
+							view.storing.wait(function() {
 								return statics[url] === 2;
 							}, function() {
 								callback(0);
@@ -411,7 +411,7 @@ define([
 				return this;
 			}
 
-			langx.wait(function() {
+			view.storing.wait(function() {
 				return !!W.jQuery;
 			}, function() {
 
@@ -450,7 +450,7 @@ define([
 						// is && compile(response ? target : null);
 						// because of paths
 						is && view.compiler.compile();
-						callback && langx.wait(function() {
+						callback && view.storing.wait(function() {
 							return view.compiler.is == false;
 						}, function() {
 							callback(1);

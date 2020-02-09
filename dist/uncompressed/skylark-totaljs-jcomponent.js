@@ -6424,7 +6424,7 @@ define('skylark-totaljs-jcomponent/views/http',[
 						if (statics[url] === 2)
 							callback(0);
 						else {
-							langx.wait(function() {
+							view.storing.wait(function() {
 								return statics[url] === 2;
 							}, function() {
 								callback(0);
@@ -6487,7 +6487,7 @@ define('skylark-totaljs-jcomponent/views/http',[
 				return this;
 			}
 
-			langx.wait(function() {
+			view.storing.wait(function() {
 				return !!W.jQuery;
 			}, function() {
 
@@ -6526,7 +6526,7 @@ define('skylark-totaljs-jcomponent/views/http',[
 						// is && compile(response ? target : null);
 						// because of paths
 						is && view.compiler.compile();
-						callback && langx.wait(function() {
+						callback && view.storing.wait(function() {
 							return view.compiler.is == false;
 						}, function() {
 							callback(1);
@@ -7606,7 +7606,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 			}
 
 			if (isWaiting) {
-				langx.wait(function() {  // WAIT
+				view.storing.wait(function() {  // WAIT
 					var val = find(value, many, noCache);
 					if (lazycom[value] && lazycom[value].state === 1) {
 						lazycom[value].state = 2;
@@ -8509,7 +8509,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 		function dependencies(declaration, callback, obj, el) {
 
 			if (declaration.importing) {
-				langx.wait(function() {
+				view.storing.wait(function() {
 					return declaration.importing !== true;
 				}, function() {
 					callback(obj, el);
@@ -11155,7 +11155,8 @@ define('skylark-totaljs-jcomponent/views/storing',[
  			"skipInc" : skipInc,
  			"skipDec" : skipDec,
  			"update" : update,
- 			"used" : used
+ 			"used" : used,
+ 			"wait" : wait
 		};
 	}
 
@@ -11207,6 +11208,7 @@ define('skylark-totaljs-jcomponent/views/View',[
 
 			this.cache = cache(this);
 			this.http = http(this);
+			this.plugins = plugins(this);
 			this.helper = helper(this);
 			this.eventer = eventer(this);
 			this.scoper = scoper(this);
