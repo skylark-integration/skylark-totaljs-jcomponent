@@ -18487,7 +18487,7 @@ define('skylark-totaljs-jcomponent/views/componenter',[
 				eventer.emit('destroy', component.name, component);
 				eventer.emit('component.destroy', component.name, component);
 
-				delete statics['$ST_' + component.name];
+				delete langx.statics['$ST_' + component.name];
 				component.destroy && component.destroy();
 				$('#css' + component.ID).remove();
 
@@ -19551,7 +19551,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			}
 
 		}
-		function crawler(container, onComponent, level, paths) {
+		function crawler(container, onComponent, level, scopes) {
 			if (container) {
 				container = $(container)[0];
 			} else {
@@ -19574,12 +19574,12 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			}
 
 			if (level == null || level === 0) {
-				paths = [];
+				scopes = [];
 				if (container !== view.elm()) { // document.body) {
 					/*
 					var scope = $(container).closest('[' + ATTRSCOPE + ']'); //ATTRCOPE
 					if (scope && scope.length) {
-						paths.push(scope[0]);
+						scopes.push(scope[0]);
 					}
 					*/
 					var scope = helper.scope(container);
@@ -19591,11 +19591,11 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 			var b = null;
 			var released = container ? helper.released(container) : false; // sttrcom
-			var tmp = helper.scope(container); //attrcom
+			var tmp = helper.attrscope(container); //attrcom
 			var binders = null;
 
 			if (tmp) {
-				paths.push(container);
+				scopes.push(container);
 			}
 
 			if (!container.$jcbind) {
@@ -19613,7 +19613,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 
 			var name = helper.attrcom(container);
 			if (!container.$com && name != null) {
-				onComponent(name, container, 0, paths);
+				onComponent(name, container, 0, scopes);
 			}
 
 			var arr = container.childNodes;
@@ -19649,7 +19649,7 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 							if (released) {
 								helper.released(el,"true"); //el.setAttribute(ATTRREL, 'true');
 							}
-							onComponent(name || '', el, level, paths);
+							onComponent(name || '', el, level, scopes);
 						}
 					}
 
@@ -19681,14 +19681,14 @@ define('skylark-totaljs-jcomponent/views/compiler',[
 			for (var i = 0, length = sub.length; i < length; i++) {
 				el = sub[i];
 				if (el) {
-					crawler(el, onComponent, level, paths && paths.length ? paths : []);
+					crawler(el, onComponent, level, scopes && scopes.length ? scopes : []);
 				}
 			}
 
 			if (binders) {
 				for (var i = 0; i < binders.length; i++) {
 					var a = binders[i];
-					a.el.$jcbind = binding.parse(a.el, a.b, paths); //parsebinder
+					a.el.$jcbind = binding.parse(a.el, a.b, scopes); //parsebinder
 				}
 			}
 		}
@@ -20034,9 +20034,9 @@ define('skylark-totaljs-jcomponent/views/helper',[
 		}
 
 		function scope(el) {
-			var results = $(el).closest('[' + ATTRCOMPILE + ']');
+			var results = $(el).closest('[' + ATTRSCOPE + ']');
 			if (results && results.length) {
-				return reesults[0];
+				return results[0];
 			}
 		}
 
@@ -20349,8 +20349,9 @@ define('skylark-totaljs-jcomponent/components/Scope',[
 	
 });
 define('skylark-totaljs-jcomponent/views/scoper',[
+  "../langx",
 	"../components/Scope"
-],function(Scope){
+],function(langx,Scope){
 	function scoper(view) {
 		var current_owner = null;
 		
@@ -20375,7 +20376,7 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 			if (!independent) {
 				for (var i = scopes.length - 1; i > -1; i--) {
 					arr.push(scopes[i]);
-					if (helpers.attrscope(scopes[i]).substring(0, 1) === '!') { // scopes[i].getAttribute(ATTRSCOPE).
+					if (helper.attrscope(scopes[i]).substring(0, 1) === '!') { // scopes[i].getAttribute(ATTRSCOPE).
 						break;
 					}
 				}
@@ -20414,7 +20415,7 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 				}
 
 				sc.$scope = absolute;
-				var d = new Scope();
+				var d = new Scope(sc,view);
 				d._id = d.ID = d.id = langx.guid(10); //GUID
 				d.path = absolute;
 				d.elements = arr.slice(0, i + 1);
@@ -20461,6 +20462,9 @@ define('skylark-totaljs-jcomponent/views/scoper',[
 		}
 
 
+		return {
+			initscopes
+		}
 	}
 
 	return scoper;

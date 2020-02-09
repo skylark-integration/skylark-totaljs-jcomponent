@@ -628,7 +628,7 @@ define([
 			}
 
 		}
-		function crawler(container, onComponent, level, paths) {
+		function crawler(container, onComponent, level, scopes) {
 			if (container) {
 				container = $(container)[0];
 			} else {
@@ -651,12 +651,12 @@ define([
 			}
 
 			if (level == null || level === 0) {
-				paths = [];
+				scopes = [];
 				if (container !== view.elm()) { // document.body) {
 					/*
 					var scope = $(container).closest('[' + ATTRSCOPE + ']'); //ATTRCOPE
 					if (scope && scope.length) {
-						paths.push(scope[0]);
+						scopes.push(scope[0]);
 					}
 					*/
 					var scope = helper.scope(container);
@@ -668,11 +668,11 @@ define([
 
 			var b = null;
 			var released = container ? helper.released(container) : false; // sttrcom
-			var tmp = helper.scope(container); //attrcom
+			var tmp = helper.attrscope(container); //attrcom
 			var binders = null;
 
 			if (tmp) {
-				paths.push(container);
+				scopes.push(container);
 			}
 
 			if (!container.$jcbind) {
@@ -690,7 +690,7 @@ define([
 
 			var name = helper.attrcom(container);
 			if (!container.$com && name != null) {
-				onComponent(name, container, 0, paths);
+				onComponent(name, container, 0, scopes);
 			}
 
 			var arr = container.childNodes;
@@ -726,7 +726,7 @@ define([
 							if (released) {
 								helper.released(el,"true"); //el.setAttribute(ATTRREL, 'true');
 							}
-							onComponent(name || '', el, level, paths);
+							onComponent(name || '', el, level, scopes);
 						}
 					}
 
@@ -758,14 +758,14 @@ define([
 			for (var i = 0, length = sub.length; i < length; i++) {
 				el = sub[i];
 				if (el) {
-					crawler(el, onComponent, level, paths && paths.length ? paths : []);
+					crawler(el, onComponent, level, scopes && scopes.length ? scopes : []);
 				}
 			}
 
 			if (binders) {
 				for (var i = 0; i < binders.length; i++) {
 					var a = binders[i];
-					a.el.$jcbind = binding.parse(a.el, a.b, paths); //parsebinder
+					a.el.$jcbind = binding.parse(a.el, a.b, scopes); //parsebinder
 				}
 			}
 		}

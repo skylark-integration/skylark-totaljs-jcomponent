@@ -1,6 +1,7 @@
 define([
+  "../langx",
 	"../components/Scope"
-],function(Scope){
+],function(langx,Scope){
 	function scoper(view) {
 		var current_owner = null;
 		
@@ -25,7 +26,7 @@ define([
 			if (!independent) {
 				for (var i = scopes.length - 1; i > -1; i--) {
 					arr.push(scopes[i]);
-					if (helpers.attrscope(scopes[i]).substring(0, 1) === '!') { // scopes[i].getAttribute(ATTRSCOPE).
+					if (helper.attrscope(scopes[i]).substring(0, 1) === '!') { // scopes[i].getAttribute(ATTRSCOPE).
 						break;
 					}
 				}
@@ -64,7 +65,7 @@ define([
 				}
 
 				sc.$scope = absolute;
-				var d = new Scope();
+				var d = new Scope(sc,view);
 				d._id = d.ID = d.id = langx.guid(10); //GUID
 				d.path = absolute;
 				d.elements = arr.slice(0, i + 1);
@@ -111,6 +112,9 @@ define([
 		}
 
 
+		return {
+			initscopes
+		}
 	}
 
 	return scoper;

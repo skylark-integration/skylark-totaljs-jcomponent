@@ -756,7 +756,7 @@ define([
 				eventer.emit('destroy', component.name, component);
 				eventer.emit('component.destroy', component.name, component);
 
-				delete statics['$ST_' + component.name];
+				delete langx.statics['$ST_' + component.name];
 				component.destroy && component.destroy();
 				$('#css' + component.ID).remove();
 

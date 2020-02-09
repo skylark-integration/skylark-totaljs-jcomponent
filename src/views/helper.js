@@ -194,9 +194,9 @@ define([
 		}
 
 		function scope(el) {
-			var results = $(el).closest('[' + ATTRCOMPILE + ']');
+			var results = $(el).closest('[' + ATTRSCOPE + ']');
 			if (results && results.length) {
-				return reesults[0];
+				return results[0];
 			}
 		}
 

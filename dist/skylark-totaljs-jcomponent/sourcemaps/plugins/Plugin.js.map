@@ -1,1 +1,0 @@
-{"version":3,"sources":["plugins/Plugin.js"],"names":["define","$","registry","Plugin"],"mappings":";;;;;;;AAAAA,QACC,iBACA,eACC,SAASC,EAAGC,GAIb,OAAOC","file":"../../plugins/Plugin.js","sourcesContent":["define([\r\n\t\"../utils/query\",\r\n\t\"./_registry\"\r\n],function($, registry){\r\n\t\r\n\r\n\r\n\treturn Plugin;\r\n});"]}
